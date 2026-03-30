@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Show Up</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23e8b800'/%3E%3Cg stroke='%23e8b800' stroke-width='2.2' stroke-linecap='round'%3E%3Cline x1='16' y1='1.5' x2='16' y2='6'/%3E%3Cline x1='16' y1='26' x2='16' y2='30.5'/%3E%3Cline x1='1.5' y1='16' x2='6' y2='16'/%3E%3Cline x1='26' y1='16' x2='30.5' y2='16'/%3E%3Cline x1='5' y1='5' x2='8.2' y2='8.2'/%3E%3Cline x1='23.8' y1='23.8' x2='27' y2='27'/%3E%3Cline x1='27' y1='5' x2='23.8' y2='8.2'/%3E%3Cline x1='8.2' y1='23.8' x2='5' y2='27'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Notem hero image palette ─────────────────────────────
+         bg/surface : warm off-white table surface
+         amber      : deep forest green from notebook stripes
+         amber-fill : lighter green for XP bar fill
+         teal       : golden yellow from the pen tray (secondary)
+         green      : same forest green for completion states
+         text       : near-black (Notem's own #1C1C1C)
+      ────────────────────────────────────────────────────── */
+      --bg:         #ede9e1;
+      --surface:    #f5f2eb;
+      --surface2:   #e4e0d7;
+      --border:     #d4cfc3;
+      --border-hl:  #aaa59a;
+      --amber:      #3a5649;
+      --amber-fill: #4a6858;
+      --amber-lt:   rgba(58,86,73,0.08);
+      --amber-ring: rgba(58,86,73,0.20);
+      --teal:       #9a7c1c;
+      --teal-lt:    rgba(154,124,28,0.08);
+      --green:      #3a5649;
+      --green-lt:   rgba(58,86,73,0.07);
+      --red:        #b03428;
+      --orange:     #9a7c1c;
+      --text:       #1a1a1a;
+      --text-dim:   #8a857a;
+      --text-mid:   #504c46;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 60px;
+      line-height: 1.65;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── HEADER ──────────────────────────────────────── */
+    .header {
+      background: transparent;
+      border-bottom: none;
+      padding: 20px 20px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .game-title {
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 2px;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .hero-level-title {
+      font-size: 0.68rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.04em;
+    }
+    .streak-pill {
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.02em;
+    }
+    .xp-total { font-size: 0.67rem; color: var(--text-dim); margin-top: 2px; text-align: right; }
+    .xp-bar-wrap { margin-top: 14px; }
+    .xp-bar-track {
+      width: 100%; height: 1px;
+      background: var(--border);
+      border-radius: 0;
+      border: none;
+      overflow: hidden;
+    }
+    .xp-bar-fill {
+      height: 100%;
+      background: var(--amber);
+      border-radius: 0;
+      transition: width 0.6s cubic-bezier(0.34,1.2,0.64,1);
+    }
+    .xp-bar-label { display: none; }
+
+    /* ── TABS ────────────────────────────────────────── */
+    .tabs-wrap {
+      display: flex;
+      background: transparent;
+      border-bottom: none;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 0 20px;
+      gap: 4px;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+    .tab {
+      flex: 0 0 auto;
+      padding: 8px 16px 8px 0;
+      background: transparent;
+      border: none;
+      border-bottom: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-family: 'Montserrat', sans-serif;
+      white-space: nowrap;
+      transition: color 0.15s;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .tab:hover { color: var(--text-mid); }
+    .tab.active { color: var(--text); font-weight: 700; }
+
+    /* ── LAYOUT ──────────────────────────────────────── */
+    .main { max-width: 720px; margin: 0 auto; padding: 22px 20px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── CARDS / SURFACES ────────────────────────────── */
+    .card {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      border-top: 1px solid var(--border);
+      padding: 20px 0 4px;
+      margin-bottom: 0;
+    }
+    .card-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* ── FIELD NOTE ──────────────────────────────────── */
+    .field-note {
+      background: transparent;
+      border: none;
+      border-left: 2px solid var(--border);
+      border-radius: 0;
+      padding: 2px 0 2px 16px;
+      margin-bottom: 20px;
+    }
+    .field-note-icon { display: none; }
+    .field-note-text { font-size: 0.79rem; color: var(--text-dim); line-height: 1.7; }
+
+    /* ── ENERGY SELECTOR ─────────────────────────────── */
+    .energy-row { display: flex; gap: 8px; margin: 20px 0 12px; }
+    .energy-btn {
+      flex: 1;
+      padding: 20px 6px 16px;
+      background: var(--surface);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .energy-btn:hover { background: var(--surface2); }
+    .energy-btn .e-icon {
+      font-size: 1.3rem;
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-mid);
+      line-height: 1;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+    }
+    .energy-btn .e-label { font-size: 0.74rem; font-weight: 600; color: var(--text); font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em; }
+    .energy-btn .e-sub { font-size: 0.62rem; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+    .rest-day-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px;
+      background: none;
+      border: none;
+      border-top: 1px solid var(--border);
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.76rem;
+      cursor: pointer;
+      transition: color 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.02em;
+    }
+    .rest-day-btn:hover { color: var(--text-mid); }
+
+    /* ── FOCUS LIST (Today tab) ───────────────────────── */
+    .focus-item {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      padding: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 0;
+      animation: slideIn 0.18s ease;
+    }
+    .focus-item:hover .del-btn { opacity: 0.6; }
+    .focus-item.focus-done { opacity: 0.38; }
+    .focus-item.focus-done .focus-text { text-decoration: line-through; }
+    .focus-text { flex: 1; font-size: 0.86rem; line-height: 1.55; color: var(--text); }
+
+    /* ── OUTSIDE / SESSIONS ROW ──────────────────────── */
+    .rhythm-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 12px 0;
+      margin-bottom: 0;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rhythm-row:hover { opacity: 0.75; }
+    .rhythm-row.rhythm-done { opacity: 1; }
+    .rhythm-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .rhythm-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .rhythm-label { font-size: 0.84rem; font-weight: 500; color: var(--text); }
+    .rhythm-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
+    .check-circle {
+      width: 20px; height: 20px;
+      border: 1.5px solid transparent;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0;
+      transition: all 0.2s;
+      color: white;
+      background: transparent;
+    }
+    .focus-item:hover .check-circle,
+    .rhythm-row:hover .check-circle { border-color: var(--border-hl); }
+    .check-circle.checked {
+      background: var(--green);
+      border-color: var(--green);
+      font-size: 0.6rem;
+    }
+    .rhythm-done .check-circle { background: var(--green); border-color: var(--green); font-size: 0.6rem; }
+
+    /* ── SESSION DOTS ────────────────────────────────── */
+    .session-dots { display: flex; gap: 5px; align-items: center; }
+    .sdot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .sdot.done { background: var(--amber); }
+
+    /* ── WIN LOG ─────────────────────────────────────── */
+    .win-entry {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 8px 0;
+      border-bottom: none;
+      font-size: 0.8rem;
+    }
+    .win-entry:last-child { border-bottom: none; }
+    .win-date { font-size: 0.67rem; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; padding-top: 1px; }
+
+    /* ── GREETING ────────────────────────────────────── */
+    .greeting-line { font-size: 1.75rem; font-weight: 300; color: var(--text); font-family: 'Montserrat', sans-serif; letter-spacing: -0.02em; line-height: 1.2; }
+    .greeting-date { font-size: 0.74rem; color: var(--text-dim); margin-top: 6px; letter-spacing: 0.04em; font-family: 'Montserrat', sans-serif; }
+
+    /* ── TASKS (Quests tab) ───────────────────────────── */
+    .task {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      padding: 11px 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 0;
+      animation: slideIn 0.18s ease;
+      transition: opacity 0.15s;
+    }
+    .task:hover { opacity: 0.75; }
+    .task:hover .del-btn { opacity: 0.6; }
+    .task.done { opacity: 0.38; }
+    .task.done .task-text { text-decoration: line-through; }
+    .task-text { flex: 1; font-size: 0.86rem; line-height: 1.4; color: var(--text); word-break: break-word; }
+    .task-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .xp-badge {
+      font-size: 0.63rem; color: var(--text-dim);
+      padding: 0; white-space: nowrap;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+    }
+    .cat-icon { font-size: 0.82rem; opacity: 0.55; }
+    .pin-btn {
+      background: none; border: none;
+      color: var(--text-dim); cursor: pointer;
+      font-size: 0.64rem; padding: 0;
+      transition: color 0.15s; white-space: nowrap;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+    }
+    .pin-btn:hover { color: var(--amber); }
+    .pin-tag { font-size: 0.66rem; color: var(--amber); white-space: nowrap; }
+    .del-btn {
+      background: none; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 0.73rem; padding: 2px 5px;
+      border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+    }
+    .del-btn:hover { opacity: 1 !important; color: var(--red); }
+
+    /* ── ADD FORM ────────────────────────────────────── */
+    .add-form { display: flex; gap: 10px; margin-bottom: 0; align-items: flex-end; }
+    .add-input {
+      flex: 1; min-width: 0;
+      background: transparent;
+      border: none; border-bottom: 1px solid var(--border);
+      color: var(--text); padding: 9px 0;
+      border-radius: 0; font-size: 0.84rem; outline: none;
+      transition: border-color 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .add-input:focus { border-bottom-color: var(--text); box-shadow: none; }
+    .add-input::placeholder { color: var(--text-dim); }
+    .add-btn {
+      background: transparent; color: var(--text);
+      border: none; width: auto; height: auto;
+      padding: 9px 0 9px 4px;
+      cursor: pointer;
+      font-size: 1.1rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.15s; line-height: 1;
+    }
+    .add-btn:hover { opacity: 0.45; }
+    .add-select {
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text); padding: 9px 8px 9px 0;
+      border-radius: 0; font-size: 0.82rem; outline: none;
+      cursor: pointer; flex-shrink: 0;
+      -webkit-appearance: none; appearance: none;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ── CAT TABS (Quests) ───────────────────────────── */
+    .cat-tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      padding: 0 0 10px; border-radius: 0;
+      border: none; border-bottom: 2px solid transparent;
+      background: transparent;
+      font-size: 0.68rem; cursor: pointer; color: var(--text-dim);
+      white-space: nowrap; transition: color 0.15s, border-color 0.15s;
+      display: flex; align-items: center; gap: 5px;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      text-transform: uppercase; margin-bottom: -1px;
+    }
+    .cat-tab:hover { color: var(--text-mid); }
+    .cat-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 700; }
+    .ct-badge { font-size: 0.6rem; opacity: 0.6; }
+
+    /* ── REJECTION BAR ───────────────────────────────── */
+    .rejection-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      border-radius: 0; padding: 16px 0; margin-bottom: 0; gap: 10px;
+    }
+    .rejection-count { font-size: 1.8rem; font-weight: 200; color: var(--text); font-family: 'Montserrat', sans-serif; letter-spacing: -0.02em; line-height: 1; }
+    .rejection-label { font-size: 0.68rem; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+    .rejection-btn {
+      background: transparent; border: none;
+      color: var(--text-dim); padding: 0; border-radius: 0;
+      cursor: pointer; font-size: 0.68rem; white-space: nowrap;
+      transition: color 0.15s; flex-shrink: 0;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+    }
+    .rejection-btn:hover { color: var(--text); }
+
+    /* ── DONE TOGGLE ─────────────────────────────────── */
+    .done-toggle {
+      background: none; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 0.75rem;
+      display: flex; align-items: center; gap: 5px; padding: 4px 0;
+      margin-top: 4px;
+    }
+    .done-toggle:hover { color: var(--text); }
+
+    /* ── EMPTY STATE ─────────────────────────────────── */
+    .empty { text-align: center; padding: 32px 16px; color: var(--text-dim); font-size: 0.83rem; line-height: 1.5; }
+    .empty-icon { font-size: 1.6rem; margin-bottom: 7px; opacity: 0.55; }
+
+    /* ── TIMER ───────────────────────────────────────── */
+    .timer-display {
+      font-size: 4.5rem;
+      font-weight: 100;
+      text-align: center;
+      color: var(--text);
+      letter-spacing: -2px;
+      margin: 16px 0 6px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .timer-mode-row { display: flex; gap: 24px; justify-content: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .timer-mode-btn {
+      padding: 0 0 12px; border-radius: 0;
+      border: none; border-bottom: 2px solid transparent;
+      background: transparent; margin-bottom: -1px;
+      font-size: 0.68rem; cursor: pointer; color: var(--text-dim);
+      transition: color 0.15s, border-color 0.15s;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    .timer-mode-btn:hover { color: var(--text-mid); }
+    .timer-mode-btn.active { color: var(--text); border-bottom-color: var(--text); font-weight: 700; }
+    .timer-controls { display: flex; gap: 8px; justify-content: center; }
+    .timer-btn {
+      padding: 11px 26px; border-radius: 9px; border: none;
+      cursor: pointer; font-size: 0.875rem; font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .timer-btn.primary { background: var(--text); color: var(--surface); }
+    .timer-btn.secondary {
+      background: var(--surface2); color: var(--text-mid);
+      border: 1px solid var(--border);
+    }
+    .timer-btn:hover { opacity: 0.72; }
+    .timer-task-select {
+      width: 100%; background: transparent;
+      border: none; border-bottom: 1px solid var(--border); color: var(--text);
+      padding: 9px 0; border-radius: 0;
+      font-size: 0.83rem; outline: none;
+      -webkit-appearance: none; appearance: none;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ── STATS ROW ───────────────────────────────────── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0; margin-bottom: 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: transparent; border: none;
+      border-radius: 0; padding: 0 16px; text-align: left;
+      border-right: 1px solid var(--border);
+    }
+    .stat-card:first-child { padding-left: 0; }
+    .stat-card:last-child { border-right: none; }
+    .stat-value { font-size: 2rem; font-weight: 200; color: var(--text); font-family: 'Montserrat', sans-serif; line-height: 1; letter-spacing: -0.02em; }
+    .stat-label { font-size: 0.58rem; color: var(--text-dim); margin-top: 6px; line-height: 1.3; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 0.07em; }
+
+    /* ── WEEK GRID ───────────────────────────────────── */
+    .week-grid {
+      display: grid; grid-template-columns: repeat(14, 1fr);
+      gap: 3px; margin-bottom: 7px;
+    }
+    .wday {
+      aspect-ratio: 1; border-radius: 3px;
+      background: var(--surface2); border: none;
+    }
+    .wday.light   { background: rgba(58,86,73,0.20);  }
+    .wday.regular { background: rgba(154,124,28,0.28); }
+    .wday.full    { background: rgba(26,26,26,0.18);  }
+    .wday.rest    { background: rgba(154,124,28,0.10); }
+    .wday.today   { border-color: var(--text); }
+
+    /* ── ACHIEVEMENTS ────────────────────────────────── */
+    .ach-list { display: flex; flex-direction: column; }
+    .ach-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      opacity: 0.28; transition: opacity 0.2s;
+    }
+    .ach-item.earned { opacity: 1; }
+    .ach-item:last-child { border-bottom: none; }
+    .ach-icon { font-size: 1rem; flex-shrink: 0; width: 20px; margin-top: 1px; }
+    .ach-name { font-size: 0.78rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .ach-desc { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; line-height: 1.45; }
+    .ach-item.earned .ach-name { color: var(--amber); }
+
+    /* ── MODAL ───────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.42);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: none;
+      border-radius: 3px; padding: 36px 32px; text-align: center;
+      max-width: 340px; width: 90%;
+      box-shadow: none;
+      animation: popIn 0.28s cubic-bezier(0.34,1.5,0.64,1);
+      max-height: 85vh; overflow-y: auto;
+    }
+    @keyframes popIn { from { transform: scale(0.72); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-big-icon { font-size: 2.8rem; margin-bottom: 9px; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Montserrat', sans-serif; }
+    .modal-body { font-size: 0.86rem; color: var(--text-mid); margin-bottom: 20px; line-height: 1.55; }
+    .modal-btn {
+      background: var(--text); color: var(--surface);
+      border: none; padding: 10px 26px; border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 0.875rem;
+      transition: opacity 0.15s;
+    }
+    .modal-btn:hover { opacity: 0.72; }
+
+    /* ── HEADER WEATHER ──────────────────────────────── */
+    .header-weather {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      margin-top: 12px;
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ── XP FLOAT ────────────────────────────────────── */
+    .xp-float {
+      position: fixed; font-weight: 700; font-size: 0.88rem;
+      color: var(--amber); pointer-events: none;
+      animation: floatUp 0.9s ease forwards; z-index: 300;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      40%  { opacity: 1; transform: translateY(-18px) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-50px) scale(0.9); }
+    }
+    @keyframes fadeToast {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .gcal-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: transparent; border: none;
+      color: var(--text-dim); padding: 0;
+      cursor: pointer; font-size: 0.74rem;
+      transition: color 0.15s; white-space: nowrap;
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+    }
+    .gcal-btn:hover { color: var(--text); }
+    .time-input, .dur-select {
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      color: var(--text); padding: 6px 0; border-radius: 0;
+      font-size: 0.78rem; outline: none; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .time-input:focus, .dur-select:focus { border-bottom-color: var(--text); }
+
+    /* ── RESPONSIVE ──────────────────────────────────── */
+    @media (max-width: 500px) {
+      .header { padding: 11px 14px 10px; }
+      .main { padding: 13px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .week-grid { grid-template-columns: repeat(7, 1fr); }
+      .timer-display { font-size: 3.5rem; }
+    }
+
+    /* ── JOURNAL CALENDAR ────────────────────────────────── */
+    .journal-cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .journal-cal-title {
+      font-size: 0.74rem; font-weight: 700; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--text);
+    }
+    .journal-cal-nav {
+      background: none; border: none; color: var(--text-dim); cursor: pointer;
+      font-size: 0.9rem; padding: 2px 8px; transition: color 0.15s;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .journal-cal-nav:hover { color: var(--text); }
+    .journal-month-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+      margin-bottom: 24px;
+    }
+    .journal-day-label {
+      font-size: 0.56rem; text-align: center; color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      padding-bottom: 6px; text-transform: uppercase;
+    }
+    .journal-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-family: 'Montserrat', sans-serif;
+      border-radius: 2px; color: var(--text-dim); position: relative;
+      transition: opacity 0.15s;
+    }
+    .journal-day.has-data { cursor: pointer; color: var(--text); }
+    .journal-day.has-data:hover { opacity: 0.7; }
+    .journal-day.has-data.light   { background: rgba(58,86,73,0.18); }
+    .journal-day.has-data.regular { background: rgba(154,124,28,0.22); }
+    .journal-day.has-data.full    { background: rgba(26,26,26,0.13); }
+    .journal-day.has-data.rest    { background: rgba(154,124,28,0.09); }
+    .journal-day.is-today { font-weight: 700; color: var(--text); }
+    .journal-day.selected { outline: 1.5px solid var(--text); outline-offset: -1px; }
+    .journal-day.sealed::after {
+      content: ''; position: absolute; bottom: 2px; left: 50%;
+      transform: translateX(-50%); width: 3px; height: 3px;
+      border-radius: 50%; background: var(--amber);
+    }
+    .journal-detail-date {
+      font-size: 1.2rem; font-weight: 300; font-family: 'Montserrat', sans-serif;
+      letter-spacing: -0.01em; line-height: 1.2; margin-bottom: 3px;
+    }
+    .journal-stats-row {
+      display: flex; gap: 0;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 14px 0; margin: 16px 0 20px;
+    }
+    .journal-stat {
+      flex: 1; padding: 0 14px;
+      border-right: 1px solid var(--border);
+    }
+    .journal-stat:first-child { padding-left: 0; }
+    .journal-stat:last-child { border-right: none; }
+    .journal-stat-val {
+      font-size: 1.6rem; font-weight: 200; font-family: 'Montserrat', sans-serif;
+      letter-spacing: -0.02em; line-height: 1;
+    }
+    .journal-stat-lbl {
+      font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-dim); margin-top: 4px; font-family: 'Montserrat', sans-serif;
+    }
+
+    /* ── PIN SCREEN ──────────────────────────────────────── */
+    .pin-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000;
+      flex-direction: column;
+      gap: 0;
+    }
+    .pin-overlay.hidden { display: none; }
+    .pin-app-name {
+      font-family: 'Montserrat', sans-serif; font-size: 1.1rem; font-weight: 700;
+      letter-spacing: 0.08em; color: var(--text); margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .pin-prompt {
+      font-size: 0.65rem; color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      text-transform: uppercase; margin-bottom: 36px; min-height: 1.2em;
+      text-align: center;
+    }
+    .pin-dots {
+      display: flex; gap: 14px; margin-bottom: 36px;
+    }
+    .pin-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      border: 1.5px solid var(--border-hl); background: transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pin-dot.filled { background: var(--text); border-color: var(--text); }
+    .pin-dot.error  { background: var(--red);  border-color: var(--red);  }
+    .pin-pad {
+      display: grid; grid-template-columns: repeat(3, 72px);
+      grid-template-rows: repeat(4, 60px);
+      gap: 6px;
+    }
+    .pin-key {
+      width: 72px; height: 60px;
+      background: none; border: none;
+      font-family: 'Montserrat', sans-serif; font-size: 1.35rem; font-weight: 300;
+      color: var(--text); cursor: pointer; border-radius: 3px;
+      transition: background 0.1s;
+    }
+    .pin-key:hover  { background: var(--surface2); }
+    .pin-key:active { background: var(--border); }
+    .pin-key.ghost  { pointer-events: none; color: transparent; }
+    .pin-key.back   { font-size: 1rem; color: var(--text-dim); }
+    .pin-error-msg  {
+      margin-top: 20px; font-size: 0.63rem; color: var(--red);
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.06em;
+      text-transform: uppercase; min-height: 1em; text-align: center;
+    }
+    .pin-footer {
+      margin-top: 48px; font-size: 0.62rem; color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+      text-align: center; line-height: 1.8;
+    }
+
+    /* ── DATA MANAGEMENT ─────────────────────────────────── */
+    .data-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .data-row:last-child { border-bottom: none; }
+    .data-action-btn {
+      font-size: 0.72rem; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.04em; padding: 7px 14px;
+      background: var(--surface2); border: none;
+      border-radius: 2px; cursor: pointer; color: var(--text);
+      transition: background 0.15s;
+    }
+    .data-action-btn:hover { background: var(--border); }
+    .data-action-btn.danger { color: var(--red); }
+    .data-desc {
+      font-size: 0.73rem; color: var(--text-dim); line-height: 1.5; flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="pin-overlay hidden" id="pinOverlay">
+  <div class="pin-app-name">Show Up</div>
+  <div class="pin-prompt" id="pinPrompt">Enter your PIN</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key ghost">·</button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key back" onclick="pinBack()">⌫</button>
+  </div>
+  <div class="pin-error-msg" id="pinError"></div>
+  <div class="pin-footer" id="pinFooter"></div>
+</div>
+
+<header class="header">
+  <div class="header-top">
+    <div>
+      <div class="game-title">Show Up</div>
+      <div class="hero-level-title" id="levelTitle">Lv 1 · Rookie Applicant 🌱</div>
+    </div>
+    <div style="text-align:right">
+      <div class="streak-pill" id="streakPill">🔥 0-day streak</div>
+      <div class="xp-total" id="xpTotal">0 XP</div>
+    </div>
+  </div>
+  <div class="header-weather" id="headerWeather"></div>
+  <div class="xp-bar-wrap">
+    <div class="xp-bar-track">
+      <div class="xp-bar-fill" id="xpBar" style="width:0%"></div>
+    </div>
+    <div class="xp-bar-label" id="xpBarLabel">Lv 1 → 2</div>
+  </div>
+</header>
+
+<div class="tabs-wrap">
+  <button class="tab active" data-tab="today"    onclick="switchTab('today')">Today</button>
+  <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
+  <button class="tab"        data-tab="quests"   onclick="switchTab('quests')">Quests</button>
+  <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
+  <button class="tab" data-tab="journal" onclick="switchTab('journal')">Journal</button>
+</div>
+
+<div class="main">
+  <div class="section active" id="sec-today"><div id="today-wrap"></div></div>
+  <div class="section"        id="sec-focus"><div id="focus-wrap"></div></div>
+  <div class="section"        id="sec-quests"><div id="quests-wrap"></div></div>
+  <div class="section"        id="sec-progress"><div id="progress-wrap"></div></div>
+  <div class="section" id="sec-journal"><div id="journal-wrap"></div></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal-inner">
+    <div class="modal-big-icon" id="mIcon"></div>
+    <div class="modal-title" id="mTitle"></div>
+    <div class="modal-body"  id="mBody"></div>
+    <button class="modal-btn" onclick="closeModal()">Keep Going</button>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────
+
+const NOTES = [
+  "The job search is a numbers game. The goal is volume and consistency, not perfection.",
+  "Silence after applying isn't rejection — it's just a slow process. Follow up.",
+  "Most people land their job through the 5th, 10th, or 20th application. Not the first.",
+  "A rejection isn't a verdict on your worth. It's one decision by one team at one moment.",
+  "The right role takes longer than you expect and less time than you fear.",
+  "You're not behind. You're in the process. The timeline is nonlinear.",
+  "One action today — even a small one — is better than ten planned for later.",
+  "Getting dressed, getting coffee, getting outside — these count.",
+  "If you got an interview, your application worked. That's real progress.",
+  "Networking isn't schmoozing. It's just telling people what you're looking for.",
+  "Your path is your own. Comparing your chapter 3 to someone else's chapter 10 isn't fair.",
+  "Rejection is data, not a verdict. It tells you where to aim next.",
+  "Persistence in a search is genuinely hard work. Showing up every day counts.",
+  "You don't need to be productive every hour. You need to be productive some hours.",
+  "Some days the win is just staying in it. That's a real win.",
+  "It's okay to have a slow day. Rest is part of the work, not the opposite of it.",
+  "Your last job didn't define you. This search doesn't either.",
+  "Being kind to yourself during this isn't weakness — it's strategy.",
+];
+
+const CLOSE_NOTES = [
+  "You did what you could. That's enough.",
+  "Rest is part of the work, not the opposite of it.",
+  "One more day shown up. That counts for a lot.",
+  "The work continues tomorrow. Tonight, let it be done.",
+  "Consistency isn't about perfection. Showing up is.",
+  "What didn't get done today doesn't define today.",
+  "Every day you stay in this is a day forward.",
+  "Tomorrow is a clean page. Let tonight be rest.",
+  "You're in a hard season. Getting through it is progress.",
+  "Small steps in hard times are still steps.",
+  "The search is slow. You are not.",
+  "You showed up. That was the whole job today.",
+];
+
+const BREAK_NOTES = [
+  "Step away from the screen. Come back fresher.",
+  "Drink some water. Seriously.",
+  "Take a short walk — even just around the room.",
+  "You just did focused work. The break is earned and necessary.",
+  "Look at something far away for 20 seconds. Your eyes need it.",
+  "Breathe. Stretch. Come back ready.",
+  "Rest isn't a reward for finishing. It's part of how the work gets done.",
+];
+
+const REJECTION_MSGS = [
+  "That one's behind you. On to the next.",
+  "Rejection means you tried. That's more than most people do.",
+  "One company's no is not the market's verdict.",
+  "You put yourself out there. That takes guts.",
+  "This narrows the field. The right one is still out there.",
+  "That's data. Not a definition.",
+  "Filed and moving on. Next.",
+];
+
+const CATS = {
+  apply:    { label: 'Apply',      abbr: 'A', color: '#2d6347', xp: 50, ph: 'Company + role, e.g. Acme · Product Designer' },
+  followup: { label: 'Follow Up',  abbr: 'F', color: '#a07c08', xp: 30, ph: 'Who + re: what (e.g. Sarah @ Acme re: interview)' },
+  network:  { label: 'Network',    abbr: 'N', color: '#4a6b8a', xp: 35, ph: 'Name + context (how you know them, why to reach out)' },
+  research: { label: 'Research',   abbr: 'R', color: '#7a5c8a', xp: 20, ph: 'Company + what to look into' },
+  outside:  { label: 'Outside',    abbr: 'O', color: '#8a6540', xp: 25, ph: 'Walk, errand, coffee shop, anything that gets you out' },
+  personal: { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Errand, health, home, finances, anything life needs from you' },
+  todo:     { label: 'To-Do',      abbr: 'T', color: '#6b6560', xp: 15, ph: 'Job search admin, resume, interview prep...' },
+};
+
+const ENERGY = {
+  light:   { icon: '○', label: 'Light day',   sub: '1–2 focus items', xp: 5  },
+  regular: { icon: '◎', label: 'Regular day', sub: '2–3 focus items', xp: 10 },
+  full:    { icon: '●', label: 'Full send',   sub: '3–5 focus items', xp: 15 },
+  rest:    { icon: '–', label: 'Rest day',    sub: 'Rest is valid',   xp: 10 },
+};
+
+const LEVELS = [
+  { min:    0, title: 'Rookie Applicant'     },
+  { min:  150, title: 'Resume Ranger'        },
+  { min:  350, title: 'Cover Letter Crafter' },
+  { min:  600, title: 'LinkedIn Legend'      },
+  { min:  900, title: 'Networking Ninja'     },
+  { min: 1300, title: 'Interview Ace'        },
+  { min: 1800, title: 'Offer Magnet'         },
+  { min: 2500, title: 'Career Champion'      },
+];
+
+const ACHIEVEMENTS = [
+  { id: 'checkin_1',   icon: '☀️', name: 'Day One',          desc: 'Complete your first daily check-in',       check: s => s.showUpStreak >= 1 },
+  { id: 'checkin_5',   icon: '📅', name: 'Five Days',        desc: 'Check in 5 days in a row',                 check: s => s.maxShowUpStreak >= 5 },
+  { id: 'checkin_14',  icon: '🗓️', name: 'Two Weeks',        desc: 'Check in 14 days in a row',                check: s => s.maxShowUpStreak >= 14 },
+  { id: 'first_win',   icon: '⭐', name: 'First Win',        desc: 'Log your first daily win',                 check: s => s.totalWins >= 1 },
+  { id: 'wins_10',     icon: '🌟', name: 'Win Collector',    desc: 'Log 10 daily wins',                        check: s => s.totalWins >= 10 },
+  { id: 'outside_1',   icon: '🚶', name: 'Out the Door',     desc: 'Mark "got outside" for the first time',    check: s => s.totalOutside >= 1 },
+  { id: 'outside_7',   icon: '🌳', name: 'Fresh Air Habit',  desc: 'Got outside 7 times',                      check: s => s.totalOutside >= 7 },
+  { id: 'focus_5',     icon: '⏱',  name: 'Getting Focused',  desc: 'Complete 5 Pomodoro sessions',             check: s => s.totalFocusBlocks >= 5 },
+  { id: 'focus_25',    icon: '🧠', name: 'Deep Work',        desc: 'Complete 25 Pomodoro sessions',            check: s => s.totalFocusBlocks >= 25 },
+  { id: 'apps_5',      icon: '📤', name: 'On the Offensive', desc: 'Submit 5 applications',                    check: s => s.doneBy.apply >= 5 },
+  { id: 'apps_15',     icon: '🚀', name: 'Application Army', desc: 'Submit 15 applications',                   check: s => s.doneBy.apply >= 15 },
+  { id: 'network_3',   icon: '🤝', name: 'Connector',        desc: 'Complete 3 networking reach-outs',         check: s => s.doneBy.network >= 3 },
+  { id: 'network_10',  icon: '🕸️', name: 'Web Weaver',       desc: 'Complete 10 networking reach-outs',        check: s => s.doneBy.network >= 10 },
+  { id: 'rejection_1', icon: '🪨', name: 'Still Standing',   desc: 'Log your first rejection',                 check: s => s.rejections >= 1 },
+  { id: 'rejection_5', icon: '💪', name: 'Resilient',        desc: 'Log 5 rejections and keep going',          check: s => s.rejections >= 5 },
+  { id: 'rest_1',      icon: '☁️', name: 'Permission Granted', desc: 'Honor a rest day',                               check: s => s.totalRestDays >= 1 },
+  { id: 'personal_5',  icon: '🌻', name: 'Whole Person',      desc: 'Complete 5 personal tasks',                      check: s => s.doneBy.personal >= 5 },
+  { id: 'balanced_1',  icon: '⚖️', name: 'Balanced Day',      desc: 'Complete both a job search and personal task',   check: s => s.doneBy.apply + s.doneBy.followup + s.doneBy.network + s.doneBy.research >= 1 && s.doneBy.personal >= 1 },
+  { id: 'lv3',         icon: '📜', name: 'Level 3',           desc: 'Reach Level 3',                                  check: s => s.level >= 3 },
+  { id: 'lv5',         icon: '🎯', name: 'Level 5',           desc: 'Reach Level 5',                           check: s => s.level >= 5 },
+  { id: 'lv8',         icon: '🏆', name: 'Career Champion',   desc: 'Reach Level 8',                           check: s => s.level >= 8 },
+];
+
+// ── STATE ────────────────────────────────────────────────────
+const DEFAULT_STATE = {
+  // tasks
+  tasks: [],
+  nextId: 1,
+  totalAdded: 0,
+  totalDone: 0,
+  doneBy: { apply:0, followup:0, network:0, research:0, outside:0, personal:0, todo:0 },
+  rejections: 0,
+  // xp / levels
+  xp: 0,
+  earned: [],
+  // daily rhythm
+  wins: [],
+  totalWins: 0,
+  showUpDays: [],       // [{ date, energy }] last 28 days
+  showUpStreak: 0,
+  maxShowUpStreak: 0,
+  totalFocusBlocks: 0,
+  totalOutside: 0,
+  totalRestDays: 0,
+  // today (reset each new day)
+  todayDate: null,
+  todayEnergy: null,
+  todayFocusIds: [],
+  focusBlocksToday: 0,
+  gotOutsideToday: false,
+  todaySealed: false,
+  carryOverIds: [],
+  dailySnapshots: [],
+};
+
+let S = loadState();
+let currentTab = 'today';
+let currentQuestCat = 'all';
+let journalViewYear = new Date().getFullYear();
+let journalViewMonth = new Date().getMonth();
+let journalSelectedDate = null;
+
+// ── PIN ──────────────────────────────────────────────────────
+const PIN_KEY = 'showup_pin';
+let pinInput  = '';
+let pinStage  = 'entry';   // 'entry' | 'setup' | 'confirm'
+let pinFirst  = '';
+
+function initPin() {
+  const stored = localStorage.getItem(PIN_KEY);
+  const overlay = document.getElementById('pinOverlay');
+  if (!stored) {
+    pinStage = 'setup';
+    updatePinUI('Choose a 4-digit PIN to protect your app');
+    overlay.classList.remove('hidden');
+  } else {
+    pinStage = 'entry';
+    updatePinUI('Enter your PIN');
+    overlay.classList.remove('hidden');
+  }
+}
+
+function pinPress(digit) {
+  if (pinInput.length >= 4) return;
+  pinInput += digit;
+  updatePinDots();
+  if (pinInput.length === 4) setTimeout(pinSubmit, 80);
+}
+
+function pinBack() {
+  pinInput = pinInput.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+}
+
+function pinSubmit() {
+  const stored = localStorage.getItem(PIN_KEY);
+  if (pinStage === 'entry') {
+    if (pinInput === stored) {
+      document.getElementById('pinOverlay').classList.add('hidden');
+    } else {
+      pinError('Incorrect PIN');
+    }
+  } else if (pinStage === 'setup') {
+    pinFirst = pinInput;
+    pinInput = '';
+    pinStage = 'confirm';
+    updatePinUI('Confirm your PIN');
+    updatePinDots();
+  } else if (pinStage === 'confirm') {
+    if (pinInput === pinFirst) {
+      localStorage.setItem(PIN_KEY, pinInput);
+      document.getElementById('pinOverlay').classList.add('hidden');
+    } else {
+      pinFirst = '';
+      pinStage = 'setup';
+      pinError('PINs didn\'t match — try again');
+      updatePinUI('Choose a 4-digit PIN');
+    }
+  }
+}
+
+function pinError(msg) {
+  pinInput = '';
+  updatePinDots(true);
+  document.getElementById('pinError').textContent = msg;
+  setTimeout(() => { updatePinDots(false); }, 500);
+}
+
+function updatePinDots(error) {
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById(`pd${i}`);
+    el.classList.toggle('filled', !error && i < pinInput.length);
+    el.classList.toggle('error', !!error && i < 4);
+  }
+}
+
+function updatePinUI(promptText) {
+  document.getElementById('pinPrompt').textContent = promptText;
+  document.getElementById('pinError').textContent  = '';
+  const footer = document.getElementById('pinFooter');
+  if (pinStage === 'setup') {
+    footer.textContent = '';
+  } else {
+    footer.innerHTML = 'Forgot your PIN?<br>Clear site data in browser settings to reset.';
+  }
+}
+
+function changePin() {
+  pinInput = '';
+  pinFirst = '';
+  pinStage = 'setup';
+  updatePinUI('Choose a new PIN');
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinOverlay').classList.remove('hidden');
+}
+
+// Timer — not persisted
+const T_DUR = { work: 25*60, short: 5*60, long: 15*60 };
+let timer = { mode: 'work', remaining: T_DUR.work, running: false, interval: null };
+
+// ── WEATHER ──────────────────────────────────────────────────
+const WX = {
+  0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Icy fog',
+  51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+  61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+  71: 'Light snow', 73: 'Snowing', 75: 'Heavy snow', 77: 'Flurries',
+  80: 'Showers', 81: 'Showers', 82: 'Heavy showers',
+  85: 'Snow showers', 86: 'Snow showers',
+  95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm',
+};
+
+function fetchWeather() {
+  const el = document.getElementById('headerWeather');
+  if (!el) return;
+
+  const now = new Date();
+  const day  = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const dateStr = `${day}, ${date}`;
+
+  el.textContent = dateStr;
+
+  // Fixed coordinates for 11372 (Jackson Heights, Queens, NY)
+  const lat = 40.7465, lon = -73.8830;
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`)
+    .then(r => r.json())
+    .then(d => {
+      const temp = Math.round(d.current.temperature_2m);
+      const cond = WX[d.current.weathercode] || 'Clear';
+      el.textContent = `${dateStr}  ·  ${temp}°  ·  ${cond}`;
+    })
+    .catch(() => {}); // date already shown if fetch fails
+}
+
+// ── CAT DOT ──────────────────────────────────────────────────
+function catDot(cat, size = '20px') {
+  const c = CATS[cat] || { abbr: '?', color: '#8c8880' };
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size};height:${size};border-radius:50%;background:${c.color}18;color:${c.color};font-size:calc(${size} * 0.45);font-weight:700;font-family:'Montserrat',sans-serif;flex-shrink:0;letter-spacing:0">${c.abbr}</span>`;
+}
+
+// ── PERSISTENCE ──────────────────────────────────────────────
+function loadState() {
+  try {
+    const raw = localStorage.getItem('jhc3');
+    if (raw) return Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+    // Migrate from v2
+    const old = localStorage.getItem('jhc2');
+    if (old) {
+      const p = JSON.parse(old);
+      return Object.assign({}, DEFAULT_STATE, {
+        tasks: (p.tasks || []).map(t => ({
+          ...t,
+          cat: t.cat === 'network' ? 'network' : t.cat // keep as-is, outside is new
+        })),
+        nextId: p.nextId || 1,
+        totalAdded: p.totalAdded || 0,
+        totalDone:  p.totalDone  || 0,
+        doneBy: Object.assign({ apply:0, followup:0, network:0, research:0, outside:0, personal:0, todo:0 }, p.doneBy || {}),
+        rejections: p.rejections || 0,
+        xp: p.xp || 0,
+        earned: p.earned || [],
+      });
+    }
+  } catch(e) {}
+  return Object.assign({}, DEFAULT_STATE);
+}
+
+function save() { localStorage.setItem('jhc3', JSON.stringify(S)); }
+
+// ── DAY SNAPSHOT ─────────────────────────────────────────────
+function saveDaySnapshot(sealed) {
+  if (!S.todayDate || !S.todayEnergy) return;
+  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
+  const snapshot = {
+    date: S.todayDate,
+    energy: S.todayEnergy,
+    sealed: sealed || S.todaySealed || false,
+    completedTasks: focusTasks.filter(t => t.done).map(t => ({ text: t.text, cat: t.cat })),
+    incompleteTasks: focusTasks.filter(t => !t.done).map(t => ({ text: t.text, cat: t.cat })),
+    wins: (S.wins || []).filter(w => new Date(w.date).toDateString() === S.todayDate).map(w => w.text),
+    focusSessions: S.focusBlocksToday || 0,
+    gotOutside: S.gotOutsideToday || false,
+  };
+  if (!S.dailySnapshots) S.dailySnapshots = [];
+  const idx = S.dailySnapshots.findIndex(s => s.date === S.todayDate);
+  if (idx >= 0) S.dailySnapshots[idx] = snapshot;
+  else S.dailySnapshots.push(snapshot);
+  if (S.dailySnapshots.length > 90) S.dailySnapshots = S.dailySnapshots.slice(-90);
+}
+
+// ── DAY RESET ────────────────────────────────────────────────
+function checkDayReset() {
+  const today = new Date().toDateString();
+  if (S.todayDate !== today) {
+    saveDaySnapshot(S.todaySealed || false); // capture yesterday before clearing
+    S.todayDate         = today;
+    S.todayEnergy       = null;
+    S.todayFocusIds     = [...(S.carryOverIds || [])];
+    S.focusBlocksToday  = 0;
+    S.gotOutsideToday   = false;
+    S.todaySealed       = false;
+    S.carryOverIds      = [];
+    save();
+  }
+}
+
+// ── STREAK ───────────────────────────────────────────────────
+function touchStreak(energy) {
+  const today = new Date().toDateString();
+  const alreadyToday = S.showUpDays.length > 0 &&
+    S.showUpDays[S.showUpDays.length - 1].date === today;
+
+  if (!alreadyToday) {
+    const yest = new Date(Date.now() - 86400000).toDateString();
+    const hadYest = S.showUpDays.some(d => d.date === yest);
+    S.showUpStreak = hadYest ? S.showUpStreak + 1 : 1;
+    S.maxShowUpStreak = Math.max(S.maxShowUpStreak, S.showUpStreak);
+    S.showUpDays.push({ date: today, energy });
+    if (S.showUpDays.length > 28) S.showUpDays.shift();
+  } else {
+    S.showUpDays[S.showUpDays.length - 1].energy = energy;
+  }
+}
+
+// ── LEVEL ────────────────────────────────────────────────────
+function getLvl(xp) {
+  let i = 0;
+  for (let j = LEVELS.length - 1; j >= 0; j--) { if (xp >= LEVELS[j].min) { i = j; break; } }
+  const cur = LEVELS[i], next = LEVELS[i + 1] || null;
+  const xpIn = xp - cur.min, xpFor = next ? next.min - cur.min : 9999;
+  return { num: i+1, title: cur.title,
+           pct: next ? Math.min(100, xpIn/xpFor*100) : 100,
+           xpIn, xpFor, next };
+}
+
+function gainXP(amt) { S.xp += amt; }
+
+// ── STREAK LABEL ─────────────────────────────────────────────
+function timeOfDayWord() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
+}
+
+function streakLabel(n) {
+  const word = timeOfDayWord();
+  const plural = word + 's';
+  if (n === 0) return `first ${word}`;
+  if (n === 1) return `1 ${word}`;
+  return `${n} ${plural}`;
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function render() {
+  updateHeader();
+  if (currentTab === 'today')    renderToday();
+  if (currentTab === 'focus')    renderFocusTimer();
+  if (currentTab === 'quests')   renderQuests();
+  if (currentTab === 'progress') renderProgress();
+  if (currentTab === 'journal')  renderJournal();
+}
+
+function updateHeader() {
+  const lv = getLvl(S.xp);
+  document.getElementById('levelTitle').textContent  = `Lv ${lv.num} · ${lv.title}`;
+  document.getElementById('xpBar').style.width        = lv.pct + '%';
+  document.getElementById('xpBarLabel').textContent   = lv.next ? `Lv ${lv.num} → ${lv.num+1}` : 'MAX';
+  document.getElementById('xpTotal').textContent      = `${S.xp} XP`;
+  document.getElementById('streakPill').textContent   = streakLabel(S.showUpStreak);
+}
+
+// ── TODAY TAB ────────────────────────────────────────────────
+function renderToday() {
+  const wrap = document.getElementById('today-wrap');
+  if (!wrap) return;
+
+  const now = new Date();
+  const h = now.getHours();
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  if (!S.todayEnergy) {
+    wrap.innerHTML = `
+      <div style="margin-bottom:16px">
+        <div class="greeting-line">${greet}</div>
+        <div class="greeting-date">${dateStr}</div>
+      </div>
+      <div class="field-note">
+        <div class="field-note-icon">💬</div>
+        <div class="field-note-text">${randomPick(NOTES)}</div>
+      </div>
+      <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:4px">How are you showing up today?</div>
+      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:12px">There's no wrong answer. This shapes what you aim for today.</div>
+      <div class="energy-row">
+        <button class="energy-btn" onclick="setEnergy('light')">
+          <span class="e-icon">○</span>
+          <div class="e-label">Light</div>
+          <div class="e-sub">1–2 things,<br>mix of both</div>
+        </button>
+        <button class="energy-btn" onclick="setEnergy('regular')">
+          <span class="e-icon">◎</span>
+          <div class="e-label">Regular</div>
+          <div class="e-sub">job search<br>+ personal</div>
+        </button>
+        <button class="energy-btn" onclick="setEnergy('full')">
+          <span class="e-icon">●</span>
+          <div class="e-label">Full send</div>
+          <div class="e-sub">all of it —<br>let's go</div>
+        </button>
+      </div>
+      <button class="rest-day-btn" onclick="setEnergy('rest')">Honor a rest day — I need to recharge</button>
+    `;
+    return;
+  }
+
+  const ec = ENERGY[S.todayEnergy];
+  const isRest = S.todayEnergy === 'rest';
+  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
+  const recentWins = [...S.wins].reverse().slice(0, 5);
+
+  const sessionDots = Array.from({ length: Math.max(4, S.focusBlocksToday + 1) }, (_, i) =>
+    `<div class="sdot ${i < S.focusBlocksToday ? 'done' : ''}"></div>`
+  ).join('');
+
+  const winsHtml = recentWins.length > 0
+    ? recentWins.map(w => `
+        <div class="win-entry">
+          <div class="win-date">${fmtWinDate(w.date)}</div>
+          <div style="color:var(--text-mid)">${escHtml(w.text)}</div>
+        </div>`).join('')
+    : `<div style="font-size:0.77rem;color:var(--text-dim);padding:8px 0">Nothing logged yet. Even a tiny thing counts.</div>`;
+
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:0.76rem;color:var(--text-dim)">${dateStr}</div>
+        <div style="font-size:0.92rem;font-weight:600;color:var(--text);margin-top:2px">${ec.icon} ${ec.label}</div>
+      </div>
+      <button onclick="resetCheckin()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;padding:4px 0;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Change</button>
+    </div>
+
+    ${isRest ? `
+      <div class="field-note" style="background:rgba(14,116,144,0.05);margin-bottom:14px">
+        <div class="field-note-icon">☁️</div>
+        <div class="field-note-text">Rest is part of the work, not the opposite of it. Your nervous system needs downtime to stay in this for the long haul. You showed up today just by being honest about what you need.</div>
+      </div>
+    ` : `
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-label" style="margin-bottom:0">Today's focus</div>
+          <button onclick="openFocusPicker()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Pick from quests →</button>
+        </div>
+        <div id="focus-list">
+          ${focusTasks.length > 0
+            ? focusTasks.map(t => makeFocusItemHTML(t)).join('')
+            : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Add 1–${S.todayEnergy === 'light' ? 2 : 3} things to work on today.</div>`
+          }
+        </div>
+        <div class="add-form" style="margin-top:10px">
+          <input class="add-input" id="focus-quick-input" placeholder="Quick add a focus item..." onkeydown="if(event.key==='Enter')quickAddFocus()">
+          <button class="add-btn" onclick="quickAddFocus()">+</button>
+        </div>
+      </div>
+    `}
+
+    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()" style="margin-top:20px">
+      <div class="rhythm-left">
+        <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><circle cx="8" cy="2.5" r="1.3"/><path d="M8 3.8L6.8 8.5l-1.8 4"/><path d="M8 3.8L9.2 8.5l1.8 4"/><path d="M6.5 8.5h3"/></svg></div>
+        <div>
+          <div class="rhythm-label">Got outside today</div>
+          <div class="rhythm-sub">Even a short walk counts. Fresh air matters.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${S.gotOutsideToday ? `<span style="font-size:0.72rem;color:var(--green);font-weight:600;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">+20</span>` : ``}
+        <div class="check-circle ${S.gotOutsideToday ? 'checked' : ''}">${S.gotOutsideToday ? '✓' : ''}</div>
+      </div>
+    </div>
+
+    ${!isRest ? `
+    <div class="rhythm-row" onclick="switchTab('focus')" style="cursor:pointer">
+      <div class="rhythm-left">
+        <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="opacity:0.55"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 2"/></svg></div>
+        <div>
+          <div class="rhythm-label">Focus sessions today</div>
+          <div class="rhythm-sub">25-minute deep work blocks — tap to open timer</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="session-dots">${sessionDots}</div>
+        <span style="font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif">${S.focusBlocksToday}</span>
+      </div>
+    </div>
+    ` : ''}
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div class="card-label" style="margin-bottom:0">Block time on Google Calendar</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input type="time" id="gcal-time" class="time-input"
+            value="${(() => { const n=new Date(); const m=n.getMinutes()<30?30:0; const h=n.getMinutes()<30?n.getHours():Math.min(23,n.getHours()+1); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; })()}">
+          <select id="gcal-dur" class="dur-select">
+            <option value="60" ${S.todayEnergy==='light'?'selected':''}>1 hr</option>
+            <option value="90" ${S.todayEnergy==='regular'||!S.todayEnergy?'selected':''}>1.5 hr</option>
+            <option value="120" ${S.todayEnergy==='full'?'selected':''}>2 hr</option>
+            <option value="180">3 hr</option>
+          </select>
+          <button class="gcal-btn" onclick="scheduleJobSearchTime()">Add to Calendar</button>
+        </div>
+      </div>
+      ${S.todayFocusIds.length > 0 ? `<div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Your focus items will be included in the event description.</div>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="card-label">Today's win</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:9px;margin-top:-4px">One thing that went well — even if small.</div>
+      <div class="add-form" style="margin-bottom:${recentWins.length > 0 ? '10px' : '0'}">
+        <input class="add-input" id="win-input" placeholder="Something that went well today..." onkeydown="if(event.key==='Enter')logWin()">
+        <button class="add-btn" onclick="logWin()" style="font-size:0.9rem">→</button>
+      </div>
+      <div id="wins-list">${winsHtml}</div>
+    </div>
+
+    <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">
+      ${S.todaySealed
+        ? `<div style="display:flex;align-items:center;gap:10px">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
+            <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase">Day closed</span>
+           </div>`
+        : `<button onclick="openCloseOut()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Close out the day →</button>`
+      }
+    </div>
+  `;
+}
+
+function makeFocusItemHTML(task) {
+  return `
+    <div class="focus-item ${task.done ? 'focus-done' : ''}">
+      <div class="check-circle ${task.done ? 'checked' : ''}" onclick="completeFocusTask(${task.id},event)" style="cursor:pointer">${task.done ? '✓' : ''}</div>
+      <div class="focus-text">${escHtml(task.text)}</div>
+      ${catDot(task.cat, '18px')}
+      <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
+    </div>`;
+}
+
+function fmtWinDate(iso) {
+  const d = new Date(iso);
+  const t = new Date().toDateString(), y = new Date(Date.now()-86400000).toDateString();
+  if (d.toDateString() === t) return 'Today';
+  if (d.toDateString() === y) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+// ── TODAY ACTIONS ────────────────────────────────────────────
+function setEnergy(energy) {
+  S.todayEnergy = energy;
+  touchStreak(energy);
+  const xp = ENERGY[energy].xp;
+  gainXP(xp);
+  if (energy === 'rest') S.totalRestDays = (S.totalRestDays || 0) + 1;
+  save();
+  render();
+  checkAchievements();
+}
+
+function resetCheckin() {
+  S.todayEnergy = null;
+  save();
+  renderToday();
+}
+
+function quickAddFocus() {
+  const inp = document.getElementById('focus-quick-input');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  const task = { id: S.nextId++, text, cat: 'todo', done: false, createdAt: Date.now() };
+  S.tasks.unshift(task);
+  S.totalAdded++;
+  S.todayFocusIds.push(task.id);
+  save();
+  inp.value = '';
+  renderToday();
+}
+
+function removeFocusItem(id) {
+  S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  save();
+  renderToday();
+}
+
+function completeFocusTask(id, event) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || task.done) return;
+  const cat = CATS[task.cat];
+  const xp = cat ? cat.xp : 15;
+  const oldLv = getLvl(S.xp).num;
+  task.done = true;
+  task.doneAt = Date.now();
+  gainXP(xp);
+  S.totalDone++;
+  if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
+  save();
+  floatXP(event, `+${xp} XP`);
+  renderToday();
+  updateHeader();
+  const newLv = getLvl(S.xp).num;
+  if (newLv > oldLv) showLevelUp(newLv); else checkAchievements();
+}
+
+function toggleOutside() {
+  if (S.gotOutsideToday) return;
+  S.gotOutsideToday = true;
+  S.totalOutside = (S.totalOutside || 0) + 1;
+  gainXP(20);
+  save();
+  updateHeader();
+  renderToday();
+  checkAchievements();
+}
+
+function logWin() {
+  const inp = document.getElementById('win-input');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  S.wins.push({ text, date: new Date().toISOString() });
+  S.totalWins = (S.totalWins || 0) + 1;
+  gainXP(5);
+  save();
+  inp.value = '';
+  updateHeader();
+  renderToday();
+  checkAchievements();
+}
+
+// ── CLOSE OUT THE DAY ────────────────────────────────────────
+function openCloseOut() {
+  const focusTasks  = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
+  const done        = focusTasks.filter(t => t.done);
+  const incomplete  = focusTasks.filter(t => !t.done);
+  const todayWin    = [...S.wins].reverse().find(w => {
+    const d = new Date(w.date);
+    return d.toDateString() === new Date().toDateString();
+  });
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const closeNote = randomPick(CLOSE_NOTES);
+
+  const statsHtml = `
+    <div style="display:flex;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:18px 0;margin:16px 0 20px">
+      <div style="flex:1;padding-right:16px;border-right:1px solid var(--border)">
+        <div style="font-size:2rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1">${done.length}</div>
+        <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:5px;font-family:'Montserrat',sans-serif">completed</div>
+      </div>
+      <div style="flex:1;padding:0 16px;border-right:1px solid var(--border)">
+        <div style="font-size:2rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1">${S.focusBlocksToday}</div>
+        <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:5px;font-family:'Montserrat',sans-serif">sessions</div>
+      </div>
+      <div style="flex:1;padding-left:16px">
+        <div style="font-size:2rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1">${S.gotOutsideToday ? '✓' : '—'}</div>
+        <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:5px;font-family:'Montserrat',sans-serif">outside</div>
+      </div>
+    </div>`;
+
+  const incompleteHtml = incomplete.length > 0 ? `
+    <div style="margin-bottom:20px">
+      <div class="card-label" style="margin-bottom:10px">Didn't get to</div>
+      ${incomplete.map(t => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;font-size:0.82rem;color:var(--text-mid)">${escHtml(t.text)}</div>
+          <button onclick="carryTask(${t.id})" style="background:none;border:none;font-size:0.65rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">${(S.carryOverIds||[]).includes(t.id) ? '✓ Tomorrow' : '→ Tomorrow'}</button>
+          <button onclick="releaseTask(${t.id})" style="background:none;border:none;font-size:0.65rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--text-mid)'" onmouseout="this.style.color='var(--text-dim)'">Let go</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const winHtml = todayWin
+    ? `<div style="margin-bottom:20px">
+        <div class="card-label" style="margin-bottom:8px">Today's win</div>
+        <div style="font-size:0.84rem;color:var(--text-mid);line-height:1.6">${escHtml(todayWin.text)}</div>
+       </div>`
+    : `<div style="margin-bottom:20px">
+        <div class="card-label" style="margin-bottom:8px">One win before you go</div>
+        <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">Even something small. It happened.</div>
+        <div class="add-form">
+          <input class="add-input" id="closeout-win-input" placeholder="Something that went well today..." onkeydown="if(event.key==='Enter')closeOutWin()">
+          <button class="add-btn" onclick="closeOutWin()">→</button>
+        </div>
+       </div>`;
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">End of day</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0">${dateStr}</div>
+      ${statsHtml}
+      ${incompleteHtml}
+      ${winHtml}
+      <div style="border-left:2px solid var(--border);padding:2px 0 2px 16px;margin-bottom:24px">
+        <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.7">${closeNote}</div>
+      </div>
+      <button onclick="sealDay()" style="width:100%;background:var(--text);color:var(--surface);border:none;padding:12px;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border-radius:2px;transition:opacity 0.15s" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Seal the day</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function carryTask(id) {
+  if (!S.carryOverIds) S.carryOverIds = [];
+  if (!S.carryOverIds.includes(id)) S.carryOverIds.push(id);
+  save();
+  openCloseOut(); // refresh modal
+}
+
+function releaseTask(id) {
+  S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  S.carryOverIds  = (S.carryOverIds || []).filter(fid => fid !== id);
+  save();
+  openCloseOut(); // refresh modal
+}
+
+function closeOutWin() {
+  const inp = document.getElementById('closeout-win-input');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  S.wins.push({ text, date: new Date().toISOString() });
+  S.totalWins = (S.totalWins || 0) + 1;
+  gainXP(5);
+  save();
+  updateHeader();
+  checkAchievements();
+  openCloseOut(); // refresh to show the win
+}
+
+function sealDay() {
+  saveDaySnapshot(true);
+  S.todaySealed = true;
+  save();
+  closeModal();
+  if (currentTab === 'today') renderToday();
+}
+
+function openFocusPicker() {
+  const active = S.tasks.filter(t => !t.done && !S.todayFocusIds.includes(t.id));
+  const inner = document.getElementById('modal-inner');
+  if (active.length === 0) {
+    inner.innerHTML = `
+      <div class="modal-big-icon">📋</div>
+      <div class="modal-title">Nothing left to pick</div>
+      <div class="modal-body">All active quests are already in today's focus, or you haven't added any yet. Head to the Quests tab to add tasks.</div>
+      <button class="modal-btn" onclick="closeModal()">Got it</button>`;
+    document.getElementById('overlay').classList.add('show');
+    return;
+  }
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:3px">Pick a quest</div>
+      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:12px">Select one to add to today's focus</div>
+      <div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:5px">
+        ${active.map(t => {
+          const cat = CATS[t.cat] || {};
+          return `<div onclick="pinToFocus(${t.id})" style="padding:10px 11px;background:var(--surface2);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px">
+            ${catDot(t.cat, '20px')}
+            <div style="flex:1;font-size:0.81rem;color:var(--text)">${escHtml(t.text)}</div>
+            <div style="font-size:0.63rem;color:var(--text-dim);white-space:nowrap">${cat.label||''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button onclick="closeModal()" style="margin-top:12px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);padding:9px;border-radius:8px;cursor:pointer;font-size:0.81rem">Cancel</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function pinToFocus(id) {
+  if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
+  save();
+  closeModal();
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'quests') renderQuests();
+}
+
+// ── FOCUS TIMER ──────────────────────────────────────────────
+function renderFocusTimer() {
+  const wrap = document.getElementById('focus-wrap');
+  if (!wrap) return;
+
+  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(t => t && !t.done);
+  const mins = String(Math.floor(timer.remaining / 60)).padStart(2, '0');
+  const secs = String(timer.remaining % 60).padStart(2, '0');
+  const sessionDots = Array.from({ length: Math.max(4, S.focusBlocksToday + 2) }, (_, i) =>
+    `<div class="sdot ${i < S.focusBlocksToday ? 'done' : ''}"></div>`
+  ).join('');
+  const modeLabel = timer.mode === 'work' ? 'Focus' : timer.mode === 'short' ? 'Short Break' : 'Long Break';
+  const noteText = timer.mode === 'work'
+    ? 'One focused session at a time. You don\'t need to solve everything today.'
+    : randomPick(BREAK_NOTES);
+
+  wrap.innerHTML = `
+    <div class="card" style="text-align:center;border-top:none;padding-top:0">
+      <div class="timer-mode-row">
+        <button class="timer-mode-btn ${timer.mode==='work'?'active':''}" onclick="setTimerMode('work')">Focus</button>
+        <button class="timer-mode-btn ${timer.mode==='short'?'active':''}" onclick="setTimerMode('short')">Short Break</button>
+        <button class="timer-mode-btn ${timer.mode==='long'?'active':''}" onclick="setTimerMode('long')">Long Break</button>
+      </div>
+      <div class="timer-display" id="timer-display">${mins}:${secs}</div>
+      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:20px">${modeLabel} · ${S.focusBlocksToday} session${S.focusBlocksToday!==1?'s':''} completed today</div>
+      <div class="timer-controls">
+        <button class="timer-btn primary" onclick="toggleTimer()" id="timer-start-btn">${timer.running ? 'Pause' : 'Start'}</button>
+        <button class="timer-btn secondary" onclick="resetTimer()">Reset</button>
+      </div>
+      <div class="session-dots" style="margin-top:20px;justify-content:center">${sessionDots}</div>
+    </div>
+
+    ${focusTasks.length > 0 ? `
+    <div class="card">
+      <div class="card-label">Working on</div>
+      <select class="timer-task-select" id="timer-task-sel">
+        ${focusTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('')}
+      </select>
+    </div>` : `
+    <div class="card" style="text-align:center">
+      <div style="font-size:0.8rem;color:var(--text-dim)">No focus items set for today. Add some in the Today tab.</div>
+      <button onclick="switchTab('today')" style="margin-top:12px;background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Go to Today →</button>
+    </div>`}
+
+    <div class="field-note">
+      <div class="field-note-icon">${timer.mode==='work'?'💬':'☕'}</div>
+      <div class="field-note-text">${noteText}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:10px">Add to Google Calendar</div>
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <button class="gcal-btn" onclick="scheduleFocusBlock()">Add focus block</button>
+        <span style="font-size:0.71rem;color:var(--text-dim)">Opens Google Calendar pre-filled · 25 min · starts now</span>
+      </div>
+    </div>
+  `;
+}
+
+function toggleTimer() {
+  if (timer.running) {
+    clearInterval(timer.interval);
+    timer.running = false;
+  } else {
+    timer.running = true;
+    timer.interval = setInterval(timerTick, 1000);
+  }
+  const btn = document.getElementById('timer-start-btn');
+  if (btn) btn.textContent = timer.running ? 'Pause' : 'Start';
+}
+
+function timerTick() {
+  timer.remaining--;
+  const mins = String(Math.floor(timer.remaining / 60)).padStart(2, '0');
+  const secs = String(timer.remaining % 60).padStart(2, '0');
+  const el = document.getElementById('timer-display');
+  if (el) el.textContent = `${mins}:${secs}`;
+  if (timer.remaining <= 0) {
+    clearInterval(timer.interval);
+    timer.running = false;
+    timerDone();
+  }
+}
+
+function timerDone() {
+  if (timer.mode === 'work') {
+    S.focusBlocksToday++;
+    S.totalFocusBlocks = (S.totalFocusBlocks || 0) + 1;
+    gainXP(15);
+    save();
+    updateHeader();
+    checkAchievements();
+    showModal('⏱', 'Session complete!',
+      `+15 XP · ${S.focusBlocksToday} session${S.focusBlocksToday!==1?'s':''} today. Take a real break — it makes the next session better.`,
+      'Take a break');
+    setTimerMode('short');
+  } else {
+    showModal(timer.mode === 'long' ? '🧘' : '☕', 'Break\'s over',
+      'Ready when you are. Start the next session at your own pace.',
+      'Let\'s go');
+    setTimerMode('work');
+  }
+}
+
+function setTimerMode(mode) {
+  if (timer.running) { clearInterval(timer.interval); timer.running = false; }
+  timer.mode = mode;
+  timer.remaining = T_DUR[mode];
+  renderFocusTimer();
+}
+
+function resetTimer() {
+  if (timer.running) { clearInterval(timer.interval); timer.running = false; }
+  timer.remaining = T_DUR[timer.mode];
+  renderFocusTimer();
+}
+
+// ── QUESTS TAB ───────────────────────────────────────────────
+function renderQuests() {
+  const wrap = document.getElementById('quests-wrap');
+  if (!wrap) return;
+
+  const active = S.tasks.filter(t => !t.done);
+  const catTabsHTML = ['all', ...Object.keys(CATS)].map(c => {
+    const count = c === 'all' ? active.length : active.filter(t => t.cat === c).length;
+    const label = c === 'all' ? 'All' : CATS[c].label;
+    return `<button class="cat-tab ${currentQuestCat===c?'active':''}" onclick="switchQuestCat('${c}')">${label} <span class="ct-badge">${count}</span></button>`;
+  }).join('');
+
+  const rejHtml = currentQuestCat === 'apply' ? `
+    <div class="rejection-bar">
+      <div>
+        <div class="rejection-count">${S.rejections === 1 ? '1 rejection' : `${S.rejections} rejections`}</div>
+        <div class="rejection-label">Every one means you put yourself out there. That counts.</div>
+      </div>
+      <button class="rejection-btn" onclick="logRejection()">+ Log rejection</button>
+    </div>` : '';
+
+  const activeTasks = currentQuestCat === 'all'
+    ? S.tasks.filter(t => !t.done)
+    : S.tasks.filter(t => !t.done && t.cat === currentQuestCat);
+  const doneTasks = currentQuestCat === 'all'
+    ? S.tasks.filter(t => t.done)
+    : S.tasks.filter(t => t.done && t.cat === currentQuestCat);
+
+  const catForNew = currentQuestCat === 'all' ? 'todo' : currentQuestCat;
+  const ph = currentQuestCat === 'all' ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
+
+  const catSelectHTML = currentQuestCat === 'all' ? `
+    <select class="add-select" id="quick-cat">
+      ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+    </select>` : '';
+
+  const tasksHTML = activeTasks.length === 0
+    ? `<div class="empty"><div class="empty-icon">◦</div>Nothing here yet.</div>`
+    : activeTasks.map(t => makeQuestTaskHTML(t, currentQuestCat === 'all')).join('');
+
+  const doneHTML = doneTasks.length > 0 ? `
+    <div style="margin-top:6px">
+      <button class="done-toggle" id="done-tog" onclick="toggleDoneList()">▶ Show ${doneTasks.length} completed</button>
+      <div id="done-list" style="display:none;margin-top:6px">
+        ${doneTasks.map(t => makeQuestTaskHTML(t, currentQuestCat === 'all')).join('')}
+      </div>
+    </div>` : '';
+
+  wrap.innerHTML = `
+    <div class="cat-tabs">${catTabsHTML}</div>
+    ${rejHtml}
+    <div class="add-form">
+      ${catSelectHTML}
+      <input class="add-input" id="quest-input" placeholder="${ph}" onkeydown="if(event.key==='Enter')addQuestTask()">
+      <button class="add-btn" onclick="addQuestTask()">+</button>
+    </div>
+    <div id="quest-list">${tasksHTML}</div>
+    ${doneHTML}
+    <div style="margin-top:20px;padding-top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <button onclick="copyTasksList()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;display:flex;align-items:center;gap:5px;padding:2px 0;transition:color 0.15s;font-family:'DM Sans',sans-serif" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Copy all tasks to clipboard</button>
+      <span style="font-size:0.67rem;color:var(--text-dim)">or ask me to sync to Apple Notes →</span>
+    </div>
+  `;
+}
+
+function makeQuestTaskHTML(task, showCat) {
+  const cat = CATS[task.cat] || {};
+  const isPinned = S.todayFocusIds.includes(task.id);
+  return `
+    <div class="task ${task.done?'done':''}">
+      <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
+      <div class="task-text">${escHtml(task.text)}</div>
+      <div class="task-meta">
+        ${!task.done ? `<div class="xp-badge">+${cat.xp||15} XP</div>` : ''}
+        ${showCat ? catDot(task.cat, '18px') : ''}
+        ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
+        ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+      </div>
+      <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
+    </div>`;
+}
+
+function switchQuestCat(cat) {
+  currentQuestCat = cat;
+  renderQuests();
+}
+
+function addQuestTask() {
+  const inp = document.getElementById('quest-input');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  const cat = currentQuestCat === 'all'
+    ? (document.getElementById('quick-cat')?.value || 'todo')
+    : currentQuestCat;
+  S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now() });
+  S.totalAdded++;
+  save();
+  inp.value = '';
+  renderQuests();
+}
+
+function completeQuestTask(id, event) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || task.done) return;
+  const cat = CATS[task.cat];
+  const xp = cat ? cat.xp : 15;
+  const oldLv = getLvl(S.xp).num;
+  task.done = true; task.doneAt = Date.now();
+  gainXP(xp);
+  S.totalDone++;
+  if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
+  save();
+  floatXP(event, `+${xp} XP`);
+  renderQuests();
+  updateHeader();
+  const newLv = getLvl(S.xp).num;
+  if (newLv > oldLv) showLevelUp(newLv); else checkAchievements();
+}
+
+function deleteQuestTask(id) {
+  S.tasks = S.tasks.filter(t => t.id !== id);
+  S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  save();
+  renderQuests();
+}
+
+function toggleDoneList() {
+  const el = document.getElementById('done-list');
+  const btn = document.getElementById('done-tog');
+  if (!el || !btn) return;
+  const showing = el.style.display !== 'none';
+  el.style.display = showing ? 'none' : 'block';
+  btn.textContent = showing
+    ? `▶ Show ${el.querySelectorAll('.task').length} completed`
+    : '▼ Hide completed';
+}
+
+function logRejection() {
+  S.rejections++;
+  gainXP(10);
+  save();
+  updateHeader();
+  const msg = randomPick(REJECTION_MSGS);
+  showModal('🪨', 'Logged.', `${msg} (+10 XP for putting yourself out there)`, 'Keep going');
+  checkAchievements();
+  if (currentTab === 'quests') renderQuests();
+}
+
+// ── PROGRESS TAB ─────────────────────────────────────────────
+function renderProgress() {
+  const wrap = document.getElementById('progress-wrap');
+  if (!wrap) return;
+
+  const lv = getLvl(S.xp);
+  const today = new Date();
+  const weekHTML = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (13 - i));
+    const ds = d.toDateString();
+    const entry = S.showUpDays.find(sd => sd.date === ds);
+    const isToday = ds === today.toDateString();
+    const cls = entry ? entry.energy : '';
+    return `<div class="wday ${cls} ${isToday?'today':''}" title="${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${entry?' · '+ENERGY[entry.energy]?.label:''}"></div>`;
+  }).join('');
+
+  const achStats = {
+    showUpStreak: S.showUpStreak,
+    maxShowUpStreak: S.maxShowUpStreak,
+    totalWins: S.totalWins || 0,
+    totalOutside: S.totalOutside || 0,
+    totalFocusBlocks: S.totalFocusBlocks || 0,
+    doneBy: S.doneBy,
+    rejections: S.rejections,
+    totalRestDays: S.totalRestDays || 0,
+    level: lv.num,
+  };
+  const achHTML = ACHIEVEMENTS.map(a => {
+    const earned = a.check(achStats);
+    return `<div class="ach-item ${earned?'earned':''}">
+      <div class="ach-icon">${a.icon}</div>
+      <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value">${S.showUpStreak}</div>
+        <div class="stat-label">day streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${S.doneBy.apply||0}</div>
+        <div class="stat-label">applications</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${S.totalFocusBlocks||0}</div>
+        <div class="stat-label">focus sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${S.rejections}</div>
+        <div class="stat-label">rejections = data</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Last 14 days</div>
+      <div class="week-grid">${weekHTML}</div>
+      <div style="display:flex;gap:10px;font-size:0.64rem;color:var(--text-dim);margin-top:6px;flex-wrap:wrap">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(58,86,73,0.25);vertical-align:middle"></span> Light &nbsp;
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(154,124,28,0.3);vertical-align:middle"></span> Regular &nbsp;
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(26,26,26,0.2);vertical-align:middle"></span> Full send &nbsp;
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(154,124,28,0.15);vertical-align:middle"></span> Rest
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Lv ${lv.num} · ${lv.title}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim)">${S.xp} XP</div>
+      </div>
+      <div class="xp-bar-track" style="height:2px">
+        <div class="xp-bar-fill" style="width:${lv.pct}%"></div>
+      </div>
+      ${lv.next ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px">${lv.xpIn} / ${lv.xpFor} XP to Level ${lv.num+1}</div>` : ''}
+    </div>
+
+    <div class="card-label" style="padding:20px 0 4px;border-top:1px solid var(--border)">Badges</div>
+    <div class="ach-list">${achHTML}</div>
+
+    <div style="margin-top:32px;border-top:1px solid var(--border);padding-top:20px">
+      <div class="card-label" style="margin-bottom:16px">Data & Security</div>
+      <div class="data-row">
+        <div class="data-desc">Export all your data as a JSON file. Use this to back up or move to another device.</div>
+        <button class="data-action-btn" onclick="exportData()">Export</button>
+      </div>
+      <div class="data-row">
+        <div class="data-desc">Import a previously exported file. This replaces all current data.</div>
+        <button class="data-action-btn" onclick="importData()">Import</button>
+      </div>
+      <div class="data-row">
+        <div class="data-desc">Change your 4-digit app PIN.</div>
+        <button class="data-action-btn" onclick="changePin()">Change PIN</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── ACHIEVEMENTS ─────────────────────────────────────────────
+function checkAchievements() {
+  const lv = getLvl(S.xp);
+  const stats = {
+    showUpStreak: S.showUpStreak,
+    maxShowUpStreak: S.maxShowUpStreak,
+    totalWins: S.totalWins || 0,
+    totalOutside: S.totalOutside || 0,
+    totalFocusBlocks: S.totalFocusBlocks || 0,
+    doneBy: S.doneBy,
+    rejections: S.rejections,
+    totalRestDays: S.totalRestDays || 0,
+    level: lv.num,
+  };
+  ACHIEVEMENTS.forEach(a => {
+    if (!S.earned.includes(a.id) && a.check(stats)) {
+      S.earned.push(a.id);
+      save();
+      showModal(a.icon, 'Badge unlocked!', `"${a.name}" — ${a.desc}`, 'Nice!');
+    }
+  });
+}
+
+// ── NAV ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + tab).classList.add('active');
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  render();
+}
+
+// ── MODAL ────────────────────────────────────────────────────
+function showModal(icon, title, body, btnText) {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div class="modal-big-icon">${icon}</div>
+    <div class="modal-title">${title}</div>
+    <div class="modal-body">${body}</div>
+    <button class="modal-btn" onclick="closeModal()">${btnText}</button>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function showLevelUp(num) {
+  const lv = LEVELS[num - 1];
+  showModal('◉', `Level ${num}`, `You're now a "${lv.title}." Keep going.`, 'Let\'s go!');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('show');
+  // Restore default modal structure for next use
+  document.getElementById('modal-inner').innerHTML = `
+    <div class="modal-big-icon" id="mIcon"></div>
+    <div class="modal-title" id="mTitle"></div>
+    <div class="modal-body" id="mBody"></div>
+    <button class="modal-btn" onclick="closeModal()">Keep Going</button>`;
+}
+
+// ── XP FLOAT ────────────────────────────────────────────────
+function floatXP(event, label) {
+  if (!event) return;
+  const el = document.createElement('div');
+  el.className = 'xp-float';
+  el.textContent = label;
+  el.style.left = (event.clientX - 20) + 'px';
+  el.style.top  = (event.clientY - 10) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CALENDAR & EXPORT ────────────────────────────────────────
+
+function fmtGCal(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+}
+
+// Opens Google Calendar with a pre-filled event — no login required, user just confirms
+function openGCal(title, startDate, durationMins, description) {
+  const end = new Date(startDate.getTime() + durationMins * 60000);
+  const url = `https://calendar.google.com/calendar/event?action=TEMPLATE`
+    + `&text=${encodeURIComponent(title)}`
+    + `&dates=${fmtGCal(startDate)}/${fmtGCal(end)}`
+    + `&details=${encodeURIComponent(description || '')}`;
+  window.open(url, '_blank');
+}
+
+// "Schedule Focus Block" — from the Focus timer tab
+function scheduleFocusBlock() {
+  const sel = document.getElementById('timer-task-sel');
+  const taskText = sel ? (S.tasks.find(t => t.id === parseInt(sel.value))?.text || '') : '';
+  const desc = taskText ? `Working on: ${taskText}\n\nScheduled from Show Up.` : 'Deep work session — Show Up.';
+  openGCal('🎯 Focus Block — Job Hunt', new Date(), 25, desc);
+}
+
+// "Schedule job search time" — from the Today tab, uses the time + duration pickers
+function scheduleJobSearchTime() {
+  const timeEl = document.getElementById('gcal-time');
+  const durEl  = document.getElementById('gcal-dur');
+  if (!timeEl || !durEl) return;
+  const [h, m] = timeEl.value.split(':').map(Number);
+  const start = new Date();
+  start.setHours(h, m, 0, 0);
+  const dur = parseInt(durEl.value, 10);
+  const ec = S.todayEnergy ? ENERGY[S.todayEnergy] : null;
+  const title = `💼 Job Search${ec ? ' — ' + ec.label : ''} — Show Up`;
+  const focusLines = S.todayFocusIds
+    .map(id => S.tasks.find(t => t.id === id))
+    .filter(Boolean)
+    .map(t => `• ${t.text}`)
+    .join('\n');
+  const desc = focusLines ? `Today's focus:\n${focusLines}` : 'Job search time block.';
+  openGCal(title, start, dur, desc);
+}
+
+// Copy active task list to clipboard (paste into Reminders, Notes, etc.)
+function copyTasksList() {
+  const active = S.tasks.filter(t => !t.done);
+  if (active.length === 0) { showToast('No active tasks to copy.'); return; }
+  const text = Object.keys(CATS).map(cat => {
+    const items = active.filter(t => t.cat === cat);
+    if (!items.length) return '';
+    return `${CATS[cat].icon} ${CATS[cat].label}\n${items.map(t => `  ☐ ${t.text}`).join('\n')}`;
+  }).filter(Boolean).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => showToast('Copied! Paste into Reminders, Notes, or anywhere.'));
+}
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:9px 18px;border-radius:8px;font-size:0.79rem;z-index:400;animation:fadeToast 2.5s ease forwards;white-space:nowrap;pointer-events:none`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ── JOURNAL ──────────────────────────────────────────────────
+function renderJournal() {
+  const wrap = document.getElementById('journal-wrap');
+  if (!wrap) return;
+
+  const year = journalViewYear, month = journalViewMonth;
+  const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const today = new Date().toDateString();
+
+  // Calendar grid
+  const firstDow  = new Date(year, month, 1).getDay(); // 0=Sun
+  const startOff  = (firstDow + 6) % 7;               // shift to Mon=0
+  const daysInMo  = new Date(year, month + 1, 0).getDate();
+  const dayNames  = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+  let cells = dayNames.map(d => `<div class="journal-day-label">${d}</div>`).join('');
+  for (let i = 0; i < startOff; i++) cells += '<div></div>';
+  for (let d = 1; d <= daysInMo; d++) {
+    const date = new Date(year, month, d).toDateString();
+    const snap = (S.dailySnapshots || []).find(s => s.date === date);
+    const cls  = ['journal-day',
+      snap ? 'has-data' : '',
+      snap ? snap.energy : '',
+      date === today ? 'is-today' : '',
+      date === journalSelectedDate ? 'selected' : '',
+      snap?.sealed ? 'sealed' : '',
+    ].filter(Boolean).join(' ');
+    const click = snap ? `onclick="selectJournalDay('${date}')"` : '';
+    cells += `<div class="${cls}" ${click}>${d}</div>`;
+  }
+
+  const snaps = S.dailySnapshots || [];
+  const selectedSnap = journalSelectedDate ? snaps.find(s => s.date === journalSelectedDate) : null;
+  const noData = snaps.length === 0;
+
+  wrap.innerHTML = `
+    <div class="journal-cal">
+      <div class="journal-cal-header">
+        <button class="journal-cal-nav" onclick="journalPrevMonth()">←</button>
+        <div class="journal-cal-title">${monthLabel}</div>
+        <button class="journal-cal-nav" onclick="journalNextMonth()">→</button>
+      </div>
+      <div class="journal-month-grid">${cells}</div>
+    </div>
+    ${selectedSnap
+      ? renderJournalDay(selectedSnap)
+      : noData
+        ? `<div style="padding-top:4px;font-size:0.8rem;color:var(--text-dim);line-height:1.7">No days recorded yet.<br>Seal your first day and it'll appear here.</div>`
+        : `<div style="padding-top:4px;font-size:0.76rem;color:var(--text-dim)">Select a day above to see what happened.</div>`
+    }
+  `;
+}
+
+function renderJournalDay(snap) {
+  const d = new Date(snap.date);
+  const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const ec = ENERGY[snap.energy] || {};
+
+  const completedHtml = snap.completedTasks && snap.completedTasks.length > 0
+    ? snap.completedTasks.map(t => `
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)">
+          ${catDot(t.cat, '16px')}
+          <div style="font-size:0.82rem;color:var(--text-mid);opacity:0.7;text-decoration:line-through">${escHtml(t.text)}</div>
+        </div>`).join('')
+    : `<div style="font-size:0.76rem;color:var(--text-dim);padding:8px 0">Nothing completed.</div>`;
+
+  const incompleteHtml = snap.incompleteTasks && snap.incompleteTasks.length > 0 ? `
+    <div style="margin-top:20px">
+      <div class="card-label" style="margin-bottom:8px">Didn't get to</div>
+      ${snap.incompleteTasks.map(t => `
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)">
+          ${catDot(t.cat, '16px')}
+          <div style="font-size:0.82rem;color:var(--text-dim)">${escHtml(t.text)}</div>
+        </div>`).join('')}
+    </div>` : '';
+
+  const winsHtml = snap.wins && snap.wins.length > 0
+    ? snap.wins.map(w => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem;color:var(--text-mid)">${escHtml(w)}</div>`).join('')
+    : `<div style="font-size:0.76rem;color:var(--text-dim);padding:8px 0">No wins logged.</div>`;
+
+  return `
+    <div style="border-top:1px solid var(--border);padding-top:20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px">
+        <div class="journal-detail-date">${dateLabel}</div>
+        <span style="font-size:0.56rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:${snap.sealed ? 'var(--amber)' : 'var(--text-dim)'};margin-top:4px">${snap.sealed ? 'Sealed' : 'Partial'}</span>
+      </div>
+      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-bottom:0">${ec.label || snap.energy}</div>
+
+      <div class="journal-stats-row">
+        <div class="journal-stat">
+          <div class="journal-stat-val">${(snap.completedTasks || []).length}</div>
+          <div class="journal-stat-lbl">completed</div>
+        </div>
+        <div class="journal-stat">
+          <div class="journal-stat-val">${snap.focusSessions || 0}</div>
+          <div class="journal-stat-lbl">sessions</div>
+        </div>
+        <div class="journal-stat">
+          <div class="journal-stat-val">${snap.gotOutside ? '✓' : '—'}</div>
+          <div class="journal-stat-lbl">outside</div>
+        </div>
+      </div>
+
+      <div class="card-label" style="margin-bottom:8px">Completed</div>
+      ${completedHtml}
+      ${incompleteHtml}
+
+      <div class="card-label" style="margin-top:20px;margin-bottom:8px">Wins</div>
+      ${winsHtml}
+    </div>`;
+}
+
+function journalPrevMonth() {
+  journalViewMonth--;
+  if (journalViewMonth < 0) { journalViewMonth = 11; journalViewYear--; }
+  renderJournal();
+}
+
+function journalNextMonth() {
+  journalViewMonth++;
+  if (journalViewMonth > 11) { journalViewMonth = 0; journalViewYear++; }
+  renderJournal();
+}
+
+function selectJournalDay(date) {
+  journalSelectedDate = journalSelectedDate === date ? null : date;
+  renderJournal();
+}
+
+// ── DATA EXPORT / IMPORT ─────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify(S, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `showup-data-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported ✓');
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.tasks && !parsed.xp && !parsed.wins) throw new Error('Unrecognised file');
+        if (!confirm('This will replace all your current data with the imported file. Continue?')) return;
+        S = Object.assign({}, DEFAULT_STATE, parsed);
+        save();
+        render();
+        showToast('Data imported ✓');
+      } catch(err) {
+        alert('Could not read that file. Make sure it\'s a Show Up export.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+initPin();
+checkDayReset();
+render();
+fetchWeather();
+</script>
+</body>
+</html>
