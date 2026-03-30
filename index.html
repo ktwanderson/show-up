@@ -892,6 +892,97 @@
 .nudge-row:last-of-type { border-bottom: none; }
 .nudge-name { font-size: 0.82rem; color: var(--text); flex: 1; }
 .nudge-days { font-size: 0.7rem; color: var(--red); font-family: 'Montserrat', sans-serif; }
+
+/* ── REJECTION MODAL ─────────────────────────────────── */
+.rej-quote {
+  font-size: 1.05rem;
+  font-weight: 300;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: -0.01em;
+  line-height: 1.7;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.rej-author {
+  font-size: 0.6rem;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 24px;
+}
+.rej-field-label {
+  font-size: 0.62rem;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+.rej-textarea {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text);
+  padding: 6px 0 8px;
+  resize: none;
+  outline: none;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+.rej-textarea:focus { border-bottom-color: var(--border-hl); }
+.rej-small-input {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text);
+  padding: 4px 0 6px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.rej-small-input:focus { border-bottom-color: var(--border-hl); }
+.rej-log-entry {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rej-log-date {
+  font-size: 0.62rem;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.rej-log-source {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  font-family: 'Montserrat', sans-serif;
+}
+.rej-log-field {
+  font-size: 0.8rem;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+.rej-log-lesson {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 6px;
+  line-height: 1.6;
+}
   </style>
 </head>
 <body>
@@ -1033,6 +1124,29 @@ const REJECTION_MSGS = [
   "Filed and moving on. Next.",
 ];
 
+const REJECTION_QUOTES = [
+  { text: "You may encounter many defeats, but you must not be defeated.", author: "Maya Angelou" },
+  { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+  { text: "The brick walls are not there to keep us out. They're there to give us a chance to show how badly we want something.", author: "Randy Pausch" },
+  { text: "Success is stumbling from failure to failure with no loss of enthusiasm.", author: "Winston Churchill" },
+  { text: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
+  { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson" },
+  { text: "Every strike brings me closer to the next home run.", author: "Babe Ruth" },
+  { text: "Courage doesn't always roar. Sometimes courage is the quiet voice at the end of the day saying, 'I will try again tomorrow.'", author: "Mary Anne Radmacher" },
+  { text: "The most common way people give up their power is by thinking they don't have any.", author: "Alice Walker" },
+  { text: "Do not judge me by my successes — judge me by how many times I fell down and got back up again.", author: "Nelson Mandela" },
+  { text: "Sometimes not getting what you want is a wonderful stroke of luck.", author: "Dalai Lama" },
+  { text: "Fall seven times, stand up eight.", author: "Japanese proverb" },
+  { text: "What the caterpillar calls the end, the rest of the world calls a butterfly.", author: "Lao Tzu" },
+  { text: "Be not afraid of going slowly; be afraid only of standing still.", author: "Chinese proverb" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "Hard times never last, but hard people do.", author: "Robert H. Schuller" },
+  { text: "You are not your rejection. You are your persistence.", author: null },
+  { text: "The comeback is always stronger than the setback.", author: null },
+  { text: "One door closes so that a better one can open.", author: null },
+  { text: "Keep going. Everything you need will come to you at the right time.", author: null },
+];
+
 const CATS = {
   apply:    { label: 'Apply',      abbr: 'A', color: '#2d6347', xp: 50, ph: 'Company + role, e.g. Acme · Product Designer' },
   followup: { label: 'Follow Up',  abbr: 'F', color: '#a07c08', xp: 30, ph: 'Who + re: what (e.g. Sarah @ Acme re: interview)' },
@@ -1095,6 +1209,8 @@ const DEFAULT_STATE = {
   totalDone: 0,
   doneBy: { apply:0, followup:0, network:0, research:0, outside:0, personal:0, todo:0 },
   rejections: 0,
+  rejectionLog: [],
+  nextRejectionId: 1,
   // xp / levels
   xp: 0,
   earned: [],
@@ -2119,15 +2235,79 @@ function toggleDoneList() {
     : '▼ Hide completed';
 }
 
+let _rejQuote = null;
+
 function logRejection() {
-  S.rejections++;
+  _rejQuote = REJECTION_QUOTES[Math.floor(Math.random() * REJECTION_QUOTES.length)];
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="padding:8px 0">
+      <div class="rej-quote">"${escHtml(_rejQuote.text)}"</div>
+      ${_rejQuote.author ? `<div class="rej-author">— ${escHtml(_rejQuote.author)}</div>` : '<div style="margin-bottom:24px"></div>'}
+      <div style="font-size:0.78rem;color:var(--text-dim);text-align:center;line-height:1.7;margin-bottom:20px">Give yourself a moment.<br>Then, if you're ready, log what happened.</div>
+      <button class="modal-btn" onclick="showRejectionStep2()">I'm ready →</button>
+      <button onclick="closeModal()" style="margin-top:10px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Not right now</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function showRejectionStep2() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:0.9rem;font-weight:600;font-family:'Montserrat',sans-serif;color:var(--text);margin-bottom:18px">What happened?</div>
+
+      <div class="rej-field-label">Where from? <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></div>
+      <div style="display:flex;gap:10px;margin-bottom:2px">
+        <input class="rej-small-input" id="rej-company" placeholder="Company" style="flex:1">
+        <input class="rej-small-input" id="rej-role" placeholder="Role" style="flex:1">
+      </div>
+
+      <div class="rej-field-label">How are you feeling right now?</div>
+      <textarea class="rej-textarea" id="rej-feelings" rows="3" placeholder="No filter needed. This is just for you."></textarea>
+
+      <div class="rej-field-label">What are you taking from this?</div>
+      <textarea class="rej-textarea" id="rej-lesson" rows="2" placeholder="A lesson, a question, anything — or nothing at all."></textarea>
+
+      <button class="modal-btn" style="margin-top:20px" onclick="confirmRejection()">Log it</button>
+      <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Skip for now</button>
+    </div>`;
+}
+
+function confirmRejection() {
+  const company  = (document.getElementById('rej-company')  || {}).value?.trim() || '';
+  const role     = (document.getElementById('rej-role')     || {}).value?.trim() || '';
+  const feelings = (document.getElementById('rej-feelings') || {}).value?.trim() || '';
+  const lesson   = (document.getElementById('rej-lesson')   || {}).value?.trim() || '';
+
+  S.rejections = (S.rejections || 0) + 1;
+  if (!S.rejectionLog) S.rejectionLog = [];
+  S.rejectionLog.unshift({
+    id: S.nextRejectionId++,
+    date: new Date().toISOString(),
+    company, role, feelings, lesson,
+    quote: _rejQuote ? { text: _rejQuote.text, author: _rejQuote.author } : null,
+  });
+  if (S.rejectionLog.length > 50) S.rejectionLog = S.rejectionLog.slice(0, 50);
   gainXP(10);
   save();
   updateHeader();
-  const msg = randomPick(REJECTION_MSGS);
-  showModal('🪨', 'Logged.', `${msg} (+10 for putting yourself out there)`, 'Keep going');
   checkAchievements();
-  if (currentTab === 'quests') renderQuests();
+
+  const count = S.rejections;
+  const countLine = count === 1
+    ? "This is the first one. It won't be the last — and that's okay."
+    : `${count} rejections logged. Each one is proof you're in motion.`;
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:16px">Logged</div>
+      <div style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:8px">Your feelings are valid.<br>You're allowed to sit with this.</div>
+      <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.6;margin-bottom:24px">${countLine}</div>
+      ${_rejQuote ? `<div class="rej-quote" style="font-size:0.82rem;margin-bottom:6px">"${escHtml(_rejQuote.text)}"</div>${_rejQuote.author ? `<div class="rej-author">— ${escHtml(_rejQuote.author)}</div>` : ''}` : ''}
+      <button class="modal-btn" onclick="closeModal()">Keep going</button>
+    </div>`;
 }
 
 // ── PROGRESS TAB ─────────────────────────────────────────────
@@ -2165,6 +2345,23 @@ function renderProgress() {
       <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
     </div>`;
   }).join('');
+
+  const rejLogHTML = (S.rejectionLog && S.rejectionLog.length > 0) ? `
+  <div style="margin-top:32px">
+    <div class="card-label" style="margin-bottom:16px">Rejection log</div>
+    ${S.rejectionLog.slice(0, 10).map(r => {
+      const d = new Date(r.date);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const source = [r.company, r.role].filter(Boolean).join(' · ');
+      return `<div class="rej-log-entry">
+        <div class="rej-log-date">${dateStr}</div>
+        ${source ? `<div class="rej-log-source">${escHtml(source)}</div>` : ''}
+        ${r.feelings ? `<div class="rej-log-field">${escHtml(r.feelings)}</div>` : ''}
+        ${r.lesson ? `<div class="rej-log-lesson">↳ ${escHtml(r.lesson)}</div>` : ''}
+      </div>`;
+    }).join('')}
+    ${S.rejectionLog.length > 10 ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:10px">${S.rejectionLog.length - 10} more not shown</div>` : ''}
+  </div>` : '';
 
   wrap.innerHTML = `
     <div class="stats-row">
@@ -2210,6 +2407,7 @@ function renderProgress() {
 
     <div class="card-label" style="padding:20px 0 4px;border-top:1px solid var(--border)">Badges</div>
     <div class="ach-list">${achHTML}</div>
+    ${rejLogHTML}
   `;
 }
 
