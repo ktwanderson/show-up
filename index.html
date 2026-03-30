@@ -108,7 +108,7 @@
       border-radius: 0;
       transition: width 0.6s cubic-bezier(0.34,1.2,0.64,1);
     }
-    .xp-bar-label { display: none; }
+    .xp-bar-label { display: block; font-size: 0.63rem; color: var(--text-dim); margin-top: 4px; font-family: 'Montserrat', sans-serif; letter-spacing: 0.03em; }
 
     /* ── TABS ────────────────────────────────────────── */
     .tabs-wrap {
@@ -379,7 +379,10 @@
     }
 
     /* ── CAT TABS (Quests) ───────────────────────────── */
-    .cat-tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .cat-tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%);
+    }
     .cat-tabs::-webkit-scrollbar { display: none; }
     .cat-tab {
       padding: 0 0 10px; border-radius: 0;
@@ -508,14 +511,28 @@
     .ach-item {
       display: flex; align-items: flex-start; gap: 14px;
       padding: 14px 0; border-bottom: 1px solid var(--border);
-      opacity: 0.28; transition: opacity 0.2s;
+      transition: opacity 0.2s;
     }
     .ach-item.earned { opacity: 1; }
     .ach-item:last-child { border-bottom: none; }
     .ach-icon { font-size: 1rem; flex-shrink: 0; width: 20px; margin-top: 1px; }
+    .ach-text-wrap { opacity: 0.45; transition: opacity 0.2s; }
+    .ach-item.earned .ach-text-wrap { opacity: 1; }
     .ach-name { font-size: 0.78rem; font-weight: 600; color: var(--text); line-height: 1.3; }
     .ach-desc { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; line-height: 1.45; }
     .ach-item.earned .ach-name { color: var(--amber); }
+
+    /* ── VIEW TOGGLE BUTTONS ─────────────────────────── */
+    .view-toggle-btn {
+      padding: 0 0 10px; border: none; border-bottom: 2px solid transparent;
+      background: transparent; color: var(--text-dim); font-weight: 400;
+      font-size: 0.68rem; cursor: pointer; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .view-toggle-btn.active {
+      color: var(--text); border-bottom-color: var(--text); font-weight: 700;
+    }
 
     /* ── MODAL ───────────────────────────────────────── */
     .overlay {
@@ -1158,6 +1175,7 @@ const CATS = {
 };
 
 const PIPELINE_STAGES = [
+  { key: 'prospect',   label: 'Prospect',     color: '#8c8880' },
   { key: 'applied',    label: 'Applied',      color: '#4a6b8a' },
   { key: 'phone',      label: 'Phone Screen', color: '#7a5c8a' },
   { key: 'interview1', label: 'Interview 1',  color: '#a07c08' },
@@ -1546,7 +1564,7 @@ function updateHeader() {
   const nameTag = S.userName ? `, ${S.userName}` : '';
   document.getElementById('levelTitle').textContent  = `${lv.title}${nameTag}`;
   document.getElementById('xpBar').style.width        = lv.pct + '%';
-  document.getElementById('xpBarLabel').textContent   = '';
+  document.getElementById('xpBarLabel').textContent   = lv.next ? `${lv.xpIn} / ${lv.xpFor} XP to next level` : `Max level · ${S.xp} XP`;
   document.getElementById('xpTotal').textContent      = '';
   document.getElementById('streakPill').textContent   = streakLabel(S.showUpStreak);
 }
@@ -1696,6 +1714,7 @@ function renderToday() {
       <div style="display:flex;align-items:center;gap:8px">
         <div class="session-dots">${sessionDots}</div>
         <span style="font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif">${S.focusBlocksToday}</span>
+        <button onclick="event.stopPropagation();logFocusSessionManually()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;line-height:1.4;">+</button>
       </div>
     </div>
     ` : ''}
@@ -2042,6 +2061,13 @@ function renderFocusTimer() {
         <button class="timer-btn secondary" onclick="resetTimer()">Reset</button>
       </div>
       <div class="session-dots" style="margin-top:20px;justify-content:center">${sessionDots}</div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:0.78rem;font-weight:600;color:var(--text-mid);">Worked outside the timer?</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);">Log a session manually</div>
+        </div>
+        <button onclick="logFocusSessionManually()" style="background:none;border:1px solid var(--border);border-radius:2px;padding:7px 14px;font-size:0.82rem;font-weight:600;color:var(--text-mid);cursor:pointer;">+ Log</button>
+      </div>
     </div>
 
     ${focusTasks.length > 0 ? `
@@ -2065,7 +2091,7 @@ function renderFocusTimer() {
       <div class="card-label" style="margin-bottom:10px">Add to Google Calendar</div>
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
         <button class="gcal-btn" onclick="scheduleFocusBlock()">Add focus block</button>
-        <span style="font-size:0.71rem;color:var(--text-dim)">Opens Google Calendar pre-filled · 25 min · starts now</span>
+        <span style="font-size:0.71rem;color:var(--text-dim)">Opens Google Calendar · use timer or + to log when done</span>
       </div>
     </div>
   `;
@@ -2103,16 +2129,28 @@ function timerDone() {
     gainXP(15);
     save();
     updateHeader();
+    renderFocusTimer();
     checkAchievements();
-    showModal('⏱', 'Session complete!',
-      `+15 · ${S.focusBlocksToday} session${S.focusBlocksToday!==1?'s':''} today. Take a real break — it makes the next session better.`,
-      'Take a break');
-    setTimerMode('short');
+    showModal(`
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:2.5rem;font-weight:100;font-family:'Montserrat',sans-serif;color:var(--amber);letter-spacing:-0.02em;margin-bottom:4px;">${S.focusBlocksToday}</div>
+        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:16px;">session${S.focusBlocksToday!==1?'s':''} completed today</div>
+        <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;">Session complete</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">Take a real break — it makes the next session better.</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeModal();setTimerMode('short')" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;color:var(--text-mid);">Short break</button>
+          <button onclick="closeModal();setTimerMode('work')" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Keep going</button>
+        </div>
+      </div>
+    `);
   } else {
-    showModal(timer.mode === 'long' ? '🧘' : '☕', 'Break\'s over',
-      'Ready when you are. Start the next session at your own pace.',
-      'Let\'s go');
-    setTimerMode('work');
+    showModal(`
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;">Break's over</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">Ready when you are.</div>
+        <button onclick="closeModal();setTimerMode('work')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Start next session</button>
+      </div>
+    `);
   }
 }
 
@@ -2121,6 +2159,17 @@ function setTimerMode(mode) {
   timer.mode = mode;
   timer.remaining = T_DUR[mode];
   renderFocusTimer();
+}
+
+function logFocusSessionManually() {
+  S.focusBlocksToday++;
+  S.totalFocusBlocks = (S.totalFocusBlocks || 0) + 1;
+  save();
+  updateHeader();
+  renderFocusTimer();
+  if (currentTab === 'today') renderToday();
+  showToast(`Session logged · ${S.focusBlocksToday} today`);
+  checkAchievements();
 }
 
 function resetTimer() {
@@ -2135,8 +2184,8 @@ function renderQuests() {
   if (!wrap) return;
 
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
-    <button onclick="questsView='tasks';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid ${questsView==='tasks'?'var(--text)':'transparent'};background:transparent;color:${questsView==='tasks'?'var(--text)':'var(--text-dim)'};font-weight:${questsView==='tasks'?'700':'400'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Tasks</button>
-    <button onclick="questsView='pipeline';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid ${questsView==='pipeline'?'var(--text)':'transparent'};background:transparent;color:${questsView==='pipeline'?'var(--text)':'var(--text-dim)'};font-weight:${questsView==='pipeline'?'700':'400'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Pipeline</button>
+    <button class="view-toggle-btn ${questsView==='tasks'?'active':''}" onclick="questsView='tasks';renderQuests()">Tasks</button>
+    <button class="view-toggle-btn ${questsView==='pipeline'?'active':''}" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
   </div>`;
 
   if (questsView === 'pipeline') {
@@ -2159,7 +2208,10 @@ function renderQuests() {
         <div class="rejection-label">Every one means you put yourself out there. That counts.</div>
       </div>
       <button class="rejection-btn" onclick="logRejection()">+ Log rejection</button>
-    </div>` : '';
+    </div>` : `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button onclick="logRejection()" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">${S.rejections > 0 ? `${S.rejections} rejection${S.rejections!==1?'s':''} logged →` : '+ Log rejection'}</button>
+    </div>`;
 
   const activeTasks = currentQuestCat === 'all'
     ? S.tasks.filter(t => !t.done)
@@ -2176,8 +2228,11 @@ function renderQuests() {
       ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
     </select>` : '';
 
+  const emptyMsg = currentQuestCat === 'all'
+    ? 'No tasks yet. Add something to work on.'
+    : `No ${CATS[currentQuestCat]?.label || currentQuestCat} tasks yet.`;
   const tasksHTML = activeTasks.length === 0
-    ? `<div class="empty"><div class="empty-icon">◦</div>Nothing here yet.</div>`
+    ? `<div class="empty"><div class="empty-icon">◦</div>${emptyMsg}</div>`
     : activeTasks.map(t => makeQuestTaskHTML(t, currentQuestCat === 'all')).join('');
 
   const doneHTML = doneTasks.length > 0 ? `
@@ -2286,10 +2341,11 @@ function toggleDoneList() {
   const btn = document.getElementById('done-tog');
   if (!el || !btn) return;
   const showing = el.style.display !== 'none';
+  const count = el.querySelectorAll('.task').length;
   el.style.display = showing ? 'none' : 'block';
   btn.textContent = showing
-    ? `▶ Show ${el.querySelectorAll('.task').length} completed`
-    : '▼ Hide completed';
+    ? `▶ Show ${count} completed`
+    : `▼ Hide ${count} completed`;
 }
 
 // ── PIPELINE ─────────────────────────────────────────────────
@@ -2300,9 +2356,10 @@ function renderPipeline() {
   const active = S.pipeline.filter(e => !['rejected','withdrawn'].includes(e.stage));
   const closed = S.pipeline.filter(e => ['rejected','withdrawn'].includes(e.stage));
 
+
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
-    <button onclick="questsView='tasks';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-dim);font-weight:400;font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Tasks</button>
-    <button onclick="questsView='pipeline';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid var(--text);background:transparent;color:var(--text);font-weight:700;font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Pipeline</button>
+    <button class="view-toggle-btn" onclick="questsView='tasks';renderQuests()">Tasks</button>
+    <button class="view-toggle-btn active" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
   </div>`;
 
   let html = toggleHTML;
@@ -2322,7 +2379,7 @@ function renderPipeline() {
     return;
   }
 
-  const stageOrder = ['applied','phone','interview1','interview2','final','offer'];
+  const stageOrder = ['prospect','applied','phone','interview1','interview2','final','offer'];
   stageOrder.forEach(stageKey => {
     const entries = active.filter(e => e.stage === stageKey);
     if (entries.length === 0) return;
@@ -2361,6 +2418,7 @@ function renderPipelineEntry(e) {
         <div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role || '\u2014')}</div>
       </div>
       <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);font-weight:600;white-space:nowrap;">${stageInfo.label}</div>
+      ${e.jdUrl ? `<a href="${escHtml(e.jdUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open job posting" style="flex-shrink:0;color:var(--text-dim);line-height:1;opacity:0.6;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2H2v8h8V7"/><path d="M7 2h3v3"/><path d="M10 2L5.5 6.5"/></svg></a>` : ''}
       <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?'180':'0'}deg);transition:transform 0.2s;flex-shrink:0;color:var(--text-dim)"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </div>
     ${isOpen ? `<div style="padding:0 0 16px 17px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:12px;">
@@ -2377,6 +2435,10 @@ function renderPipelineEntry(e) {
           <div style="${fieldLabelStyle}">Role</div>
           <input id="pe-role-${e.id}" value="${escHtml(e.role||'')}" onblur="savePipelineField(${e.id},'role')" style="${inlineInputStyle}">
         </div>
+      </div>
+      <div>
+        <div style="${fieldLabelStyle}">Job posting</div>
+        <input id="pe-url-${e.id}" value="${escHtml(e.jdUrl||'')}" placeholder="https://..." onblur="savePipelineField(${e.id},'jdUrl')" style="${inlineInputStyle}">
       </div>
       <div>
         <div style="${fieldLabelStyle}">Applied date</div>
@@ -2413,7 +2475,11 @@ function updatePipelineStage(id, stage) {
 function savePipelineField(id, field) {
   const e = S.pipeline.find(x => x.id === id);
   if (!e) return;
-  const elId = field === 'appliedDate' ? `pe-date-${id}` : field === 'nextStep' ? `pe-next-${id}` : `pe-${field}-${id}`;
+  let elId;
+  if (field === 'appliedDate') elId = `pe-date-${id}`;
+  else if (field === 'nextStep') elId = `pe-next-${id}`;
+  else if (field === 'jdUrl') elId = `pe-url-${id}`;
+  else elId = `pe-${field}-${id}`;
   const el = document.getElementById(elId);
   if (!el) return;
   e[field] = el.value;
@@ -2433,6 +2499,8 @@ function openAddPipelineEntry() {
         <input id="np-company" placeholder="Company name" style="${mInput}">
         <label style="${mFieldLabel}">Role</label>
         <input id="np-role" placeholder="Job title" style="${mInput}">
+        <label style="${mFieldLabel}">Job posting <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></label>
+        <input id="np-url" placeholder="https://..." style="${mInput}">
         <label style="${mFieldLabel}">Stage</label>
         <select id="np-stage" style="${mInput}-webkit-appearance:none;appearance:none;cursor:pointer;">
           ${PIPELINE_STAGES.filter(s=>!['rejected','withdrawn'].includes(s.key)).map(s=>`<option value="${s.key}">${s.label}</option>`).join('')}
@@ -2455,7 +2523,8 @@ function saveNewPipelineEntry() {
   const role = (document.getElementById('np-role')||{}).value?.trim() || '';
   const stage = (document.getElementById('np-stage')||{}).value || 'applied';
   const appliedDate = (document.getElementById('np-date')||{}).value || '';
-  S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, nextStep: '', notes: '' });
+  const jdUrl = (document.getElementById('np-url')||{}).value?.trim() || '';
+  S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, nextStep: '', notes: '' });
   save();
   closeModal();
   questsView = 'pipeline';
@@ -2576,7 +2645,7 @@ function renderProgress() {
     const earned = a.check(achStats);
     return `<div class="ach-item ${earned?'earned':''}">
       <div class="ach-icon">${a.icon}</div>
-      <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
+      <div class="ach-text-wrap"><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
     </div>`;
   }).join('');
 
@@ -2825,13 +2894,19 @@ function switchTab(tab) {
 }
 
 // ── MODAL ────────────────────────────────────────────────────
-function showModal(icon, title, body, btnText) {
+function showModal(iconOrHtml, title, body, btnText) {
   const inner = document.getElementById('modal-inner');
-  inner.innerHTML = `
-    <div class="modal-big-icon">${icon}</div>
-    <div class="modal-title">${title}</div>
-    <div class="modal-body">${body}</div>
-    <button class="modal-btn" onclick="closeModal()">${btnText}</button>`;
+  if (title === undefined) {
+    // Single-HTML string signature
+    inner.innerHTML = iconOrHtml;
+  } else {
+    // Legacy multi-arg signature
+    inner.innerHTML = `
+      <div class="modal-big-icon">${iconOrHtml}</div>
+      <div class="modal-title">${title}</div>
+      <div class="modal-body">${body}</div>
+      <button class="modal-btn" onclick="closeModal()">${btnText}</button>`;
+  }
   document.getElementById('overlay').classList.add('show');
 }
 
@@ -2890,7 +2965,8 @@ function scheduleFocusBlock() {
   const sel = document.getElementById('timer-task-sel');
   const taskText = sel ? (S.tasks.find(t => t.id === parseInt(sel.value))?.text || '') : '';
   const desc = taskText ? `Working on: ${taskText}\n\nScheduled from Show Up.` : 'Deep work session — Show Up.';
-  openGCal('🎯 Focus Block — Job Hunt', new Date(), 25, desc);
+  openGCal('Focus Block', new Date(), 25, desc);
+  setTimeout(() => showToast('Calendar opened · tap + to log session when done'), 500);
 }
 
 // "Schedule job search time" — from the Today tab, uses the time + duration pickers
@@ -2911,6 +2987,7 @@ function scheduleJobSearchTime() {
     .join('\n');
   const desc = focusLines ? `Today's focus:\n${focusLines}` : 'Job search time block.';
   openGCal(title, start, dur, desc);
+  setTimeout(() => showToast('Calendar opened · tap + to log session when done'), 500);
 }
 
 // Copy active task list to clipboard (paste into Reminders, Notes, etc.)
@@ -3083,24 +3160,37 @@ function openAddContactForm() {
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `
     <div style="text-align:left">
-      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:14px">Add contact</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <input class="contact-inline-input" id="nc-first" placeholder="First name">
-        <input class="contact-inline-input" id="nc-last" placeholder="Last name">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Add contact</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:24px">New to your network</div>
+
+      <div class="rej-field-label">Name</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:2px">
+        <input class="rej-small-input" id="nc-first" placeholder="First">
+        <input class="rej-small-input" id="nc-last" placeholder="Last">
       </div>
-      <input class="contact-inline-input" id="nc-company" placeholder="Company" style="margin-bottom:8px">
-      <input class="contact-inline-input" id="nc-email" placeholder="Email" style="margin-bottom:8px">
-      <select class="contact-inline-input" id="nc-type" style="margin-bottom:8px">
+
+      <div class="rej-field-label">Company</div>
+      <input class="rej-small-input" id="nc-company" placeholder="Where they work">
+
+      <div class="rej-field-label">Role / Title <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></div>
+      <input class="rej-small-input" id="nc-role" placeholder="Their title or position">
+
+      <div class="rej-field-label">Email <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></div>
+      <input class="rej-small-input" id="nc-email" placeholder="email@example.com" type="email">
+
+      <div class="rej-field-label">Type</div>
+      <select id="nc-type" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;box-sizing:border-box;">
         <option value="peer">Peer</option>
         <option value="mentor">Mentor</option>
         <option value="mentee">Mentee</option>
         <option value="recruiter">Recruiter</option>
       </select>
-      <input class="contact-inline-input" id="nc-notes" placeholder="Notes (optional)" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px">
-        <button onclick="saveNewContact()" class="net-add-btn primary" style="flex:1">Add contact</button>
-        <button onclick="closeModal()" class="net-add-btn" style="flex:0 0 auto">Cancel</button>
-      </div>
+
+      <div class="rej-field-label">Notes <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></div>
+      <input class="rej-small-input" id="nc-notes" placeholder="How you met, context, anything useful">
+
+      <button onclick="saveNewContact()" style="margin-top:28px;width:100%;background:var(--text);color:var(--surface);border:none;padding:11px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border-radius:2px;transition:opacity 0.15s" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Add contact</button>
+      <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Cancel</button>
     </div>`;
   document.getElementById('overlay').classList.add('show');
 }
@@ -3111,16 +3201,18 @@ function saveNewContact() {
   if (!first && !last) { showToast('Enter a name'); return; }
   S.contacts.push({
     id: S.nextContactId++,
-    type: document.getElementById('nc-type').value,
+    name: `${first} ${last}`.trim(),
     first, last,
-    company: document.getElementById('nc-company').value.trim(),
-    email: document.getElementById('nc-email').value.trim(),
+    company: (document.getElementById('nc-company')||{}).value?.trim()||'',
+    role: (document.getElementById('nc-role')||{}).value?.trim()||'',
+    email: (document.getElementById('nc-email')||{}).value?.trim()||'',
+    type: (document.getElementById('nc-type')||{}).value||'peer',
+    notes: (document.getElementById('nc-notes')||{}).value?.trim()||'',
     lastContact: null,
+    cadence: null,
     preferredMethod: '',
     resumeSent: false,
     nextStep: '',
-    cadence: null,
-    notes: document.getElementById('nc-notes').value.trim(),
     interactions: [],
     priority: false,
     nextContactDate: '',
@@ -3423,8 +3515,11 @@ function renderNetwork() {
       <span style="font-size:0.68rem;color:var(--text-dim);align-self:center;margin-left:2px">${contacts.length} contacts</span>
     </div>
     <div class="network-toolbar">
-      <input class="network-search" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
-        oninput="networkSearch=this.value;renderNetwork()">
+      <div style="position:relative;flex:1;min-width:140px;">
+        <input class="network-search" id="net-search-input" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
+          oninput="networkSearch=this.value;renderNetwork()" style="width:100%;padding-right:${networkSearch?'24px':'2px'};">
+        ${networkSearch ? `<button onclick="networkSearch='';renderNetwork()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.9rem;padding:2px 4px;line-height:1;">×</button>` : ''}
+      </div>
     </div>
     <div class="net-filter-row">${filterBtns}</div>
     <div class="contact-list">${listHTML}</div>
@@ -3465,7 +3560,12 @@ function renderContactCard(c) {
     <div class="contact-detail">
 
       <div>
-        <div class="contact-detail-section-label">Log new interaction</div>
+        <div class="card-label">Interaction history</div>
+        ${historyHTML}
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div class="card-label">Log interaction</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:7px">
           <input type="date" class="contact-inline-input" id="qi-date-${c.id}"
             value="${today}" style="flex:1;min-width:120px;max-width:160px">
@@ -3479,50 +3579,51 @@ function renderContactCard(c) {
         <button class="contact-action-btn" onclick="event.stopPropagation();quickLogInteraction(${c.id})">Log it</button>
       </div>
 
-      <div>
-        <div class="contact-detail-section-label">Last contact date</div>
-        <input type="date" class="contact-inline-input" id="lc-${c.id}"
-          value="${c.lastContact || ''}" style="max-width:160px"
-          onchange="saveContactLastContact(${c.id})">
-      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div class="card-label">Details</div>
 
-      ${c.email ? `<div>
-        <div class="contact-detail-section-label">Email</div>
-        <div style="font-size:0.8rem;color:var(--text-mid)">${escHtml(c.email)}</div>
-      </div>` : ''}
-
-      <div>
-        <div class="contact-detail-section-label">Next step</div>
-        <textarea class="contact-inline-input" id="ns-${c.id}" rows="2"
-          placeholder="What's the next thing to do with this person?"
-          onblur="saveContactNextStep(${c.id})">${escHtml(c.nextStep || '')}</textarea>
-      </div>
-
-      <div>
-        <div class="contact-detail-section-label">Notes</div>
-        <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
-          placeholder="Context, background, things to remember..."
-          onblur="saveContactNotes(${c.id})">${escHtml(c.notes || '')}</textarea>
-      </div>
-
-      <div>
-        <div class="contact-detail-section-label">Planned follow-up</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-          <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
-          <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
+        <div>
+          <div class="contact-detail-section-label">Last contact date</div>
+          <input type="date" class="contact-inline-input" id="lc-${c.id}"
+            value="${c.lastContact || ''}" style="max-width:160px"
+            onchange="saveContactLastContact(${c.id})">
         </div>
-        <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
+
+        ${c.email ? `<div style="margin-top:10px;">
+          <div class="contact-detail-section-label">Email</div>
+          <div style="font-size:0.8rem;color:var(--text-mid)">${escHtml(c.email)}</div>
+        </div>` : ''}
+
+        <div style="margin-top:10px;">
+          <div class="contact-detail-section-label">Next step</div>
+          <textarea class="contact-inline-input" id="ns-${c.id}" rows="2"
+            placeholder="What's the next thing to do with this person?"
+            onblur="saveContactNextStep(${c.id})">${escHtml(c.nextStep || '')}</textarea>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="contact-detail-section-label">Notes</div>
+          <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
+            placeholder="Context, background, things to remember..."
+            onblur="saveContactNotes(${c.id})">${escHtml(c.notes || '')}</textarea>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="contact-detail-section-label">Planned follow-up</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+            <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
+            <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
+          </div>
+          <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
+        </div>
       </div>
 
-      <div class="contact-action-row">
-        <button class="contact-action-btn" onclick="event.stopPropagation();openEditContact(${c.id})">Edit</button>
-        <button class="contact-action-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
-        <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
-      </div>
-
-      <div style="margin-top:4px">
-        <div class="contact-detail-section-label">History</div>
-        ${historyHTML}
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div class="contact-action-row">
+          <button class="contact-action-btn" onclick="event.stopPropagation();openEditContact(${c.id})">Edit</button>
+          <button class="contact-action-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
+          <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
+        </div>
       </div>
 
     </div>` : '';
@@ -3532,7 +3633,8 @@ function renderContactCard(c) {
       <div class="contact-row-main" onclick="toggleNetworkOpen(${c.id})">
         <div class="contact-status-dot ${status}"></div>
         <span class="contact-priority-star ${c.priority?'on':''}"
-          onclick="event.stopPropagation();toggleContactPriority(${c.id})">\u2605</span>
+          onclick="event.stopPropagation();toggleContactPriority(${c.id})"
+          style="font-size:1.1rem;padding:4px 6px;">\u2605</span>
         <div style="flex:1;min-width:0">
           <div class="contact-name">${escHtml(contactFullName(c))}</div>
           <div class="contact-meta">${escHtml(c.company || '\u2014')} \u00b7 ${lastStr}</div>
@@ -3589,7 +3691,13 @@ function renderJournal() {
       <div class="journal-month-grid">${cells}</div>
     </div>
     ${selectedSnap
-      ? renderJournalDay(selectedSnap)
+      ? `<div style="margin-top:16px;">
+          <button onclick="journalSelectedDate=null;renderJournal()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;display:flex;align-items:center;gap:4px;margin-bottom:16px;">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2L4 6l4 4"/></svg>
+            Back to calendar
+          </button>
+          ${renderJournalDay(selectedSnap)}
+        </div>`
       : noData
         ? `<div style="padding-top:4px;font-size:0.8rem;color:var(--text-dim);line-height:1.7">No days recorded yet.<br>Seal your first day and it'll appear here.</div>`
         : `<div style="padding-top:4px;font-size:0.76rem;color:var(--text-dim)">Select a day above to see what happened.</div>`
@@ -3688,6 +3796,15 @@ function exportData() {
   showToast('Data exported ✓');
 }
 
+let _pendingImportData = null;
+
+function doImport(data) {
+  S = Object.assign({}, DEFAULT_STATE, data);
+  save();
+  render();
+  showToast('Data imported ✓');
+}
+
 function importData() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -3700,11 +3817,17 @@ function importData() {
       try {
         const parsed = JSON.parse(ev.target.result);
         if (!parsed.tasks && !parsed.xp && !parsed.wins) throw new Error('Unrecognised file');
-        if (!confirm('This will replace all your current data with the imported file. Continue?')) return;
-        S = Object.assign({}, DEFAULT_STATE, parsed);
-        save();
-        render();
-        showToast('Data imported ✓');
+        _pendingImportData = parsed;
+        showModal(`
+          <div style="text-align:left">
+            <div style="font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:8px;">Import data?</div>
+            <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">This will replace all your current data. This cannot be undone.</div>
+            <div style="display:flex;gap:8px;">
+              <button onclick="closeModal()" style="flex:1;padding:9px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Cancel</button>
+              <button onclick="closeModal();doImport(_pendingImportData)" style="flex:1;padding:9px;background:var(--red);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Replace data</button>
+            </div>
+          </div>
+        `);
       } catch(err) {
         alert('Could not read that file. Make sure it\'s a Show Up export.');
       }
@@ -3721,11 +3844,11 @@ function renderAccount() {
   const nameSection = `
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:8px">Your name</div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="text" id="user-name-input" class="add-input"
           value="${escHtml(S.userName || '')}"
           placeholder="Your first name..."
-          style="max-width:200px"
+          style="width:100%"
           onblur="saveUserName()">
         <span style="font-size:0.72rem;color:var(--text-dim)">Used in your daily greeting</span>
       </div>
@@ -3734,30 +3857,30 @@ function renderAccount() {
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Data</div>
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <div style="font-size:0.84rem;color:var(--text);font-weight:500">Export data</div>
-            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Download a backup of everything</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Downloads a .json backup of all your data.</div>
           </div>
-          <button onclick="exportData()" style="background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Export</button>
+          <button onclick="exportData()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Export</button>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <div style="font-size:0.84rem;color:var(--text);font-weight:500">Import data</div>
-            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Restore from a backup file</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Replaces all current data with a backup file.</div>
           </div>
-          <button onclick="importData()" style="background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Import</button>
+          <button onclick="importData()" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Import</button>
         </div>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Security</div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div>
           <div style="font-size:0.84rem;color:var(--text);font-weight:500">Change PIN</div>
-          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Update your unlock PIN</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Update the 4-digit PIN used to unlock this app.</div>
         </div>
-        <button onclick="changePin()" style="background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Change</button>
+        <button onclick="changePin()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Change</button>
       </div>
     </div>
   `;
