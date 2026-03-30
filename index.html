@@ -739,6 +739,150 @@
     .data-desc {
       font-size: 0.73rem; color: var(--text-dim); line-height: 1.5; flex: 1;
     }
+
+/* ── NETWORK TAB ─────────────────────────────────────── */
+.network-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.network-search {
+  flex: 1; min-width: 140px;
+  background: var(--surface2); border: none; border-radius: 2px;
+  padding: 8px 12px; font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+  color: var(--text); outline: none;
+}
+.network-search::placeholder { color: var(--text-dim); }
+.net-filter-row {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.net-filter {
+  padding: 4px 12px; background: none; border: 1px solid var(--border);
+  border-radius: 2px; font-size: 0.68rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.04em; color: var(--text-dim); cursor: pointer;
+  transition: all 0.15s;
+}
+.net-filter:hover { border-color: var(--border-hl); color: var(--text-mid); }
+.net-filter.active { background: var(--text); color: white; border-color: var(--text); }
+.net-filter .net-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--red); color: white; border-radius: 10px;
+  font-size: 0.58rem; min-width: 14px; height: 14px;
+  padding: 0 3px; margin-left: 4px; font-weight: 700;
+}
+.contact-list { display: flex; flex-direction: column; gap: 0; }
+.contact-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.contact-row:first-child { border-top: 1px solid var(--border); }
+.contact-row-main {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 0; cursor: pointer;
+}
+.contact-row-main:hover { opacity: 0.75; }
+.contact-status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.contact-status-dot.overdue  { background: var(--red); }
+.contact-status-dot.due-soon { background: #c8960c; }
+.contact-status-dot.ok       { background: var(--green); }
+.contact-status-dot.unset    { background: var(--border-hl); }
+.contact-name {
+  font-size: 0.84rem; font-weight: 500; color: var(--text); flex: 1;
+}
+.contact-meta {
+  font-size: 0.72rem; color: var(--text-dim);
+}
+.contact-type-badge {
+  font-size: 0.56rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 2px; flex-shrink: 0;
+  font-weight: 600;
+}
+.contact-type-badge.mentor   { background: rgba(45,99,71,0.12);  color: var(--green); }
+.contact-type-badge.peer     { background: rgba(74,107,138,0.12); color: #4a6b8a; }
+.contact-type-badge.mentee   { background: rgba(160,124,8,0.12);  color: var(--teal); }
+.contact-type-badge.recruiter { background: rgba(122,92,138,0.12); color: #7a5c8a; }
+.contact-today-btn {
+  background: none; border: 1px solid var(--border); border-radius: 2px;
+  font-size: 0.65rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.03em; color: var(--text-dim); padding: 3px 8px;
+  cursor: pointer; flex-shrink: 0; transition: all 0.15s; white-space: nowrap;
+}
+.contact-today-btn:hover { border-color: var(--amber); color: var(--amber); }
+.contact-detail {
+  padding: 0 0 14px 17px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.contact-detail-section-label {
+  font-size: 0.58rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 4px;
+}
+.contact-inline-input {
+  background: var(--surface2); border: none; border-radius: 2px;
+  padding: 7px 10px; font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+  color: var(--text); width: 100%; outline: none; resize: vertical;
+  min-height: 36px;
+}
+.contact-inline-input:focus { outline: 1px solid var(--border-hl); }
+.contact-interaction-entry {
+  font-size: 0.76rem; color: var(--text-mid); line-height: 1.5;
+  padding: 5px 0; border-bottom: 1px solid var(--border);
+}
+.contact-interaction-entry:last-child { border-bottom: none; }
+.contact-interaction-date {
+  font-size: 0.65rem; color: var(--text-dim);
+  font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
+}
+.contact-action-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+}
+.contact-action-btn {
+  background: none; border: 1px solid var(--border); border-radius: 2px;
+  font-size: 0.68rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.04em; color: var(--text-dim);
+  padding: 5px 12px; cursor: pointer; transition: all 0.15s;
+}
+.contact-action-btn:hover { border-color: var(--border-hl); color: var(--text-mid); }
+.contact-action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.contact-priority-star {
+  font-size: 0.9rem; cursor: pointer; flex-shrink: 0; opacity: 0.35;
+  transition: opacity 0.15s; line-height: 1;
+}
+.contact-priority-star.on { opacity: 1; }
+.network-empty {
+  text-align: center; padding: 40px 20px;
+  font-size: 0.8rem; color: var(--text-dim); line-height: 1.8;
+}
+.net-add-row {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.net-add-btn {
+  background: none; border: 1px solid var(--border); border-radius: 2px;
+  font-size: 0.7rem; font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.05em; color: var(--text-dim);
+  padding: 7px 14px; cursor: pointer; transition: all 0.15s;
+}
+.net-add-btn:hover { border-color: var(--border-hl); color: var(--text-mid); }
+.net-add-btn.primary {
+  background: var(--amber); color: white; border-color: var(--amber);
+}
+.net-add-btn.primary:hover { opacity: 0.85; }
+/* Overdue nudges in Today */
+.nudge-card {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.nudge-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.nudge-row:last-of-type { border-bottom: none; }
+.nudge-name { font-size: 0.82rem; color: var(--text); flex: 1; }
+.nudge-days { font-size: 0.7rem; color: var(--red); font-family: 'Montserrat', sans-serif; }
   </style>
 </head>
 <body>
@@ -794,6 +938,7 @@
   <button class="tab active" data-tab="today"    onclick="switchTab('today')">Today</button>
   <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
   <button class="tab"        data-tab="quests"   onclick="switchTab('quests')">Quests</button>
+  <button class="tab" data-tab="network" onclick="switchTab('network')">Network</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
   <button class="tab" data-tab="journal" onclick="switchTab('journal')">Journal</button>
 </div>
@@ -802,6 +947,7 @@
   <div class="section active" id="sec-today"><div id="today-wrap"></div></div>
   <div class="section"        id="sec-focus"><div id="focus-wrap"></div></div>
   <div class="section"        id="sec-quests"><div id="quests-wrap"></div></div>
+  <div class="section" id="sec-network"><div id="network-wrap"></div></div>
   <div class="section"        id="sec-progress"><div id="progress-wrap"></div></div>
   <div class="section" id="sec-journal"><div id="journal-wrap"></div></div>
 </div>
@@ -956,6 +1102,8 @@ const DEFAULT_STATE = {
   todaySealed: false,
   carryOverIds: [],
   dailySnapshots: [],
+  contacts: [],
+  nextContactId: 1,
 };
 
 let S = loadState();
@@ -964,6 +1112,9 @@ let currentQuestCat = 'all';
 let journalViewYear = new Date().getFullYear();
 let journalViewMonth = new Date().getMonth();
 let journalSelectedDate = null;
+let networkFilter = 'all';
+let networkSearch = '';
+let networkOpenId = null;
 
 // ── PIN ──────────────────────────────────────────────────────
 const PIN_KEY = 'showup_pin';
@@ -1225,6 +1376,7 @@ function render() {
   if (currentTab === 'today')    renderToday();
   if (currentTab === 'focus')    renderFocusTimer();
   if (currentTab === 'quests')   renderQuests();
+  if (currentTab === 'network')  renderNetwork();
   if (currentTab === 'progress') renderProgress();
   if (currentTab === 'journal')  renderJournal();
 }
@@ -1282,6 +1434,7 @@ function renderToday() {
     return;
   }
 
+  const overdueContacts = getOverdueContacts ? getOverdueContacts().slice(0, 3) : [];
   const ec = ENERGY[S.todayEnergy];
   const isRest = S.todayEnergy === 'rest';
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
@@ -1396,9 +1549,24 @@ function renderToday() {
             <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
             <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase">Day closed</span>
            </div>`
-        : `<button onclick="openCloseOut()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Close out the day →</button>`
+        : `<button onclick="openCloseOut()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Close out the day \u2192</button>`
       }
     </div>
+
+    ${overdueContacts.length > 0 ? `
+    <div class="nudge-card">
+      <div class="card-label" style="margin-bottom:10px">Network check-ins due</div>
+      ${overdueContacts.map(c => {
+        const days = getDaysSince(c.lastContact);
+        return `<div class="nudge-row">
+          <div class="contact-status-dot overdue" style="flex-shrink:0"></div>
+          <div class="nudge-name">${escHtml(contactFullName(c))} <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company||'')}</span></div>
+          <div class="nudge-days">${days}d overdue</div>
+          <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
+        </div>`;
+      }).join('')}
+      ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('overdue')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
+    </div>` : ''}
   `;
 }
 
@@ -2152,6 +2320,424 @@ function showToast(msg) {
   el.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:9px 18px;border-radius:8px;font-size:0.79rem;z-index:400;animation:fadeToast 2.5s ease forwards;white-space:nowrap;pointer-events:none`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2500);
+}
+
+// ── NETWORK ──────────────────────────────────────────────────
+function getDefaultCadence(type) {
+  return { mentor: 30, peer: 14, mentee: 30, recruiter: 30 }[type] || 30;
+}
+
+function getDaysSince(dateStr) {
+  if (!dateStr) return null;
+  const ms = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(ms / 86400000);
+}
+
+function getContactStatus(contact) {
+  if (!contact.lastContact) return 'unset';
+  const cadence = contact.cadence || getDefaultCadence(contact.type);
+  const days = getDaysSince(contact.lastContact);
+  if (days === null) return 'unset';
+  if (days >= cadence) return 'overdue';
+  if (days >= cadence - 7) return 'due-soon';
+  return 'ok';
+}
+
+function contactFullName(c) { return `${c.first} ${c.last}`.trim(); }
+
+function parseSheetDate(str) {
+  if (!str || !str.trim()) return null;
+  const parts = str.trim().split('/');
+  if (parts.length !== 3) return null;
+  const [m, d, y] = parts.map(Number);
+  const year = y < 100 ? 2000 + y : y;
+  return `${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function mapContactType(str) {
+  const t = (str || '').toLowerCase().trim();
+  if (t === 'mentor') return 'mentor';
+  if (t === 'mentee') return 'mentee';
+  if (t === 'recruiter') return 'recruiter';
+  return 'peer';
+}
+
+function parseCSVText(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const row = [];
+    let inQuote = false, cell = '';
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { row.push(cell.trim().replace(/^"|"$/g, '')); cell = ''; }
+      else { cell += ch; }
+    }
+    row.push(cell.trim().replace(/^"|"$/g, ''));
+    rows.push(row);
+  }
+  return rows;
+}
+
+function importContactsCSV() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv,text/csv,application/csv,text/plain';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const rows = parseCSVText(ev.target.result);
+        if (rows.length < 2) { alert('CSV appears empty.'); return; }
+        const hdrs = rows[0].map(h => h.toLowerCase().trim());
+        const col = key => hdrs.findIndex(h => h.includes(key));
+        const typeI = col('type'), firstI = col('first'), lastI = col('last'),
+              compI = col('company'), emailI = col('email'),
+              lcI = col('last contact'), methI = col('method'),
+              resI = col('resume'), notesI = col('notes');
+        let count = 0;
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          const first = firstI >= 0 ? r[firstI] : '';
+          const last  = lastI  >= 0 ? r[lastI]  : '';
+          if (!first && !last) continue;
+          const company = compI  >= 0 ? r[compI]  : '';
+          if (company === '?') {} // keep as-is
+          S.contacts.push({
+            id: S.nextContactId++,
+            type: mapContactType(typeI >= 0 ? r[typeI] : ''),
+            first, last,
+            company: compI >= 0 ? (r[compI] === '?' ? '' : r[compI]) : '',
+            email:   emailI >= 0 ? r[emailI] : '',
+            lastContact: lcI >= 0 ? parseSheetDate(r[lcI]) : null,
+            preferredMethod: methI >= 0 ? r[methI] : '',
+            resumeSent: resI >= 0 && !!(r[resI] && r[resI].trim()),
+            nextStep: '',
+            cadence: null,
+            notes: notesI >= 0 ? r[notesI] : '',
+            interactions: [],
+            priority: false,
+          });
+          count++;
+        }
+        save();
+        renderNetwork();
+        showToast(`${count} contacts imported \u2713`);
+      } catch(err) {
+        alert('Could not parse this CSV. Please export directly from Google Sheets as CSV.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function openAddContactForm() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:14px">Add contact</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input class="contact-inline-input" id="nc-first" placeholder="First name">
+        <input class="contact-inline-input" id="nc-last" placeholder="Last name">
+      </div>
+      <input class="contact-inline-input" id="nc-company" placeholder="Company" style="margin-bottom:8px">
+      <input class="contact-inline-input" id="nc-email" placeholder="Email" style="margin-bottom:8px">
+      <select class="contact-inline-input" id="nc-type" style="margin-bottom:8px">
+        <option value="peer">Peer</option>
+        <option value="mentor">Mentor</option>
+        <option value="mentee">Mentee</option>
+        <option value="recruiter">Recruiter</option>
+      </select>
+      <input class="contact-inline-input" id="nc-notes" placeholder="Notes (optional)" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button onclick="saveNewContact()" class="net-add-btn primary" style="flex:1">Add contact</button>
+        <button onclick="closeModal()" class="net-add-btn" style="flex:0 0 auto">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function saveNewContact() {
+  const first = document.getElementById('nc-first').value.trim();
+  const last  = document.getElementById('nc-last').value.trim();
+  if (!first && !last) { showToast('Enter a name'); return; }
+  S.contacts.push({
+    id: S.nextContactId++,
+    type: document.getElementById('nc-type').value,
+    first, last,
+    company: document.getElementById('nc-company').value.trim(),
+    email: document.getElementById('nc-email').value.trim(),
+    lastContact: null,
+    preferredMethod: '',
+    resumeSent: false,
+    nextStep: '',
+    cadence: null,
+    notes: document.getElementById('nc-notes').value.trim(),
+    interactions: [],
+    priority: false,
+  });
+  save();
+  closeModal();
+  renderNetwork();
+  showToast(`${first} ${last} added \u2713`);
+}
+
+function openLogInteraction(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const today = new Date().toISOString().split('T')[0];
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px">Log interaction</div>
+      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:14px">${escHtml(contactFullName(c))} \u00b7 ${escHtml(c.company)}</div>
+      <div class="contact-detail-section-label">Date</div>
+      <input type="date" class="contact-inline-input" id="li-date" value="${today}" style="margin-bottom:10px">
+      <div class="contact-detail-section-label">Method</div>
+      <select class="contact-inline-input" id="li-method" style="margin-bottom:10px">
+        ${['Email','Text','LinkedIn','Coffee','Lunch','Zoom','Phone','Video call','Other'].map(m =>
+          `<option ${c.preferredMethod===m?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <div class="contact-detail-section-label">Notes</div>
+      <textarea class="contact-inline-input" id="li-notes" rows="3" placeholder="What did you discuss? Any next steps?" style="margin-bottom:12px"></textarea>
+      <div style="display:flex;gap:8px">
+        <button onclick="saveLogInteraction(${contactId})" class="net-add-btn primary" style="flex:1">Log it</button>
+        <button onclick="closeModal()" class="net-add-btn">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function saveLogInteraction(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const date   = document.getElementById('li-date').value;
+  const method = document.getElementById('li-method').value;
+  const notes  = document.getElementById('li-notes').value.trim();
+  c.lastContact = date;
+  if (method) c.preferredMethod = method;
+  if (!c.interactions) c.interactions = [];
+  c.interactions.unshift({ date, method, notes });
+  save();
+  closeModal();
+  networkOpenId = contactId;
+  renderNetwork();
+  showToast('Interaction logged \u2713');
+}
+
+function addContactToToday(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const text = `Reach out to ${contactFullName(c)}`;
+  const task = { id: S.nextId++, text, cat: 'network', done: false, createdAt: Date.now(), contactId };
+  S.tasks.unshift(task);
+  S.totalAdded++;
+  if (!S.todayFocusIds.includes(task.id)) S.todayFocusIds.push(task.id);
+  save();
+  showToast(`Added to Today's focus \u2713`);
+  if (currentTab === 'today') renderToday();
+}
+
+function toggleContactPriority(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  c.priority = !c.priority;
+  save();
+  renderNetwork();
+}
+
+function deleteContact(contactId) {
+  if (!confirm('Remove this contact? This cannot be undone.')) return;
+  S.contacts = S.contacts.filter(x => x.id !== contactId);
+  if (networkOpenId === contactId) networkOpenId = null;
+  save();
+  renderNetwork();
+}
+
+function saveContactNextStep(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const el = document.getElementById(`ns-${contactId}`);
+  if (el) { c.nextStep = el.value; save(); showToast('Saved'); }
+}
+
+function saveContactNotes(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const el = document.getElementById(`note-${contactId}`);
+  if (el) { c.notes = el.value; save(); }
+}
+
+function saveContactLastContact(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const el = document.getElementById(`lc-${contactId}`);
+  if (el && el.value) { c.lastContact = el.value; save(); renderNetwork(); }
+}
+
+function toggleNetworkOpen(id) {
+  networkOpenId = networkOpenId === id ? null : id;
+  renderNetwork();
+}
+
+function setNetworkFilter(f) {
+  networkFilter = f;
+  renderNetwork();
+}
+
+function getOverdueContacts() {
+  return S.contacts.filter(c => getContactStatus(c) === 'overdue');
+}
+
+function renderNetwork() {
+  const wrap = document.getElementById('network-wrap');
+  if (!wrap) return;
+
+  const contacts = S.contacts || [];
+  const overdueCount = contacts.filter(c => getContactStatus(c) === 'overdue').length;
+
+  // Filter
+  let filtered = contacts;
+  if (networkFilter === 'overdue')   filtered = contacts.filter(c => getContactStatus(c) === 'overdue');
+  else if (networkFilter === 'priority') filtered = contacts.filter(c => c.priority);
+  else if (['mentor','peer','mentee','recruiter'].includes(networkFilter))
+    filtered = contacts.filter(c => c.type === networkFilter);
+
+  // Search
+  const q = (networkSearch || '').toLowerCase();
+  if (q) filtered = filtered.filter(c =>
+    contactFullName(c).toLowerCase().includes(q) ||
+    (c.company || '').toLowerCase().includes(q) ||
+    (c.notes || '').toLowerCase().includes(q)
+  );
+
+  // Sort: overdue first (most overdue), then due-soon, then ok, then unset — within each, alphabetical
+  const order = { overdue: 0, 'due-soon': 1, ok: 2, unset: 3 };
+  filtered = [...filtered].sort((a, b) => {
+    const sa = order[getContactStatus(a)], sb = order[getContactStatus(b)];
+    if (sa !== sb) return sa - sb;
+    if (sa === 0) { // both overdue, most overdue first
+      const da = getDaysSince(a.lastContact) || 0;
+      const db = getDaysSince(b.lastContact) || 0;
+      return db - da;
+    }
+    return contactFullName(a).localeCompare(contactFullName(b));
+  });
+
+  const filterBtns = [
+    { key: 'all',       label: 'All',       badge: null },
+    { key: 'overdue',   label: 'Overdue',   badge: overdueCount || null },
+    { key: 'priority',  label: '\u2605',    badge: null },
+    { key: 'mentor',    label: 'Mentors',   badge: null },
+    { key: 'peer',      label: 'Peers',     badge: null },
+    { key: 'mentee',    label: 'Mentees',   badge: null },
+    { key: 'recruiter', label: 'Recruiters',badge: null },
+  ].map(f => `<button class="net-filter ${networkFilter===f.key?'active':''}" onclick="setNetworkFilter('${f.key}')">${f.label}${f.badge ? `<span class="net-badge">${f.badge}</span>` : ''}</button>`).join('');
+
+  const listHTML = filtered.length === 0
+    ? `<div class="network-empty">${contacts.length === 0
+        ? 'No contacts yet.<br>Import from Google Sheets or add one manually.'
+        : 'No contacts match this filter.'
+      }</div>`
+    : filtered.map(c => renderContactCard(c)).join('');
+
+  wrap.innerHTML = `
+    <div class="net-add-row">
+      <button class="net-add-btn primary" onclick="openAddContactForm()">+ Add contact</button>
+      <button class="net-add-btn" onclick="importContactsCSV()">Import from CSV</button>
+      <span style="font-size:0.68rem;color:var(--text-dim);align-self:center;margin-left:2px">${contacts.length} contacts</span>
+    </div>
+    <div class="network-toolbar">
+      <input class="network-search" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
+        oninput="networkSearch=this.value;renderNetwork()">
+    </div>
+    <div class="net-filter-row">${filterBtns}</div>
+    <div class="contact-list">${listHTML}</div>
+  `;
+}
+
+function renderContactCard(c) {
+  const status = getContactStatus(c);
+  const days = getDaysSince(c.lastContact);
+  const cadence = c.cadence || getDefaultCadence(c.type);
+  const isOpen = networkOpenId === c.id;
+
+  let lastStr = '\u2014';
+  if (c.lastContact) {
+    if (days === 0) lastStr = 'Today';
+    else if (days === 1) lastStr = 'Yesterday';
+    else lastStr = `${days}d ago`;
+  }
+
+  const detailHTML = isOpen ? `
+    <div class="contact-detail">
+      <div style="margin-top:2px">
+        <div class="contact-detail-section-label">Last contact date</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" class="contact-inline-input" id="lc-${c.id}"
+            value="${c.lastContact || ''}" style="max-width:160px"
+            onchange="saveContactLastContact(${c.id})">
+          ${c.preferredMethod ? `<span style="font-size:0.72rem;color:var(--text-dim)">${escHtml(c.preferredMethod)}</span>` : ''}
+        </div>
+      </div>
+
+      ${c.email ? `<div>
+        <div class="contact-detail-section-label">Email</div>
+        <div style="font-size:0.8rem;color:var(--text-mid)">${escHtml(c.email)}</div>
+      </div>` : ''}
+
+      <div>
+        <div class="contact-detail-section-label">Next step</div>
+        <textarea class="contact-inline-input" id="ns-${c.id}" rows="2"
+          placeholder="What's the next thing to do with this person?"
+          onblur="saveContactNextStep(${c.id})">${escHtml(c.nextStep || '')}</textarea>
+      </div>
+
+      <div>
+        <div class="contact-detail-section-label">Notes</div>
+        <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
+          placeholder="Context, background, things to remember..."
+          onblur="saveContactNotes(${c.id})">${escHtml(c.notes || '')}</textarea>
+      </div>
+
+      ${c.interactions && c.interactions.length > 0 ? `
+      <div>
+        <div class="contact-detail-section-label">Interaction history</div>
+        ${c.interactions.slice(0, 5).map(ix => `
+          <div class="contact-interaction-entry">
+            <span class="contact-interaction-date">${new Date(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} \u00b7 ${escHtml(ix.method)}</span>
+            ${ix.notes ? `<br>${escHtml(ix.notes)}` : ''}
+          </div>`).join('')}
+      </div>` : ''}
+
+      <div class="contact-action-row">
+        <button class="contact-action-btn" onclick="event.stopPropagation();openLogInteraction(${c.id})">Log interaction</button>
+        <button class="contact-action-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
+        <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="contact-row" id="crow-${c.id}">
+      <div class="contact-row-main" onclick="toggleNetworkOpen(${c.id})">
+        <div class="contact-status-dot ${status}"></div>
+        <span class="contact-priority-star ${c.priority?'on':''}"
+          onclick="event.stopPropagation();toggleContactPriority(${c.id})">\u2605</span>
+        <div style="flex:1;min-width:0">
+          <div class="contact-name">${escHtml(contactFullName(c))}</div>
+          <div class="contact-meta">${escHtml(c.company || '\u2014')} \u00b7 ${lastStr}</div>
+        </div>
+        <span class="contact-type-badge ${c.type}">${c.type}</span>
+        <button class="contact-today-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
+      </div>
+      ${detailHTML}
+    </div>`;
 }
 
 // ── JOURNAL ──────────────────────────────────────────────────
