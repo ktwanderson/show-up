@@ -71,20 +71,20 @@
       gap: 12px;
     }
     .game-title {
-      font-size: 1.05rem;
-      letter-spacing: -0.01em;
-      text-transform: none;
-      color: var(--text);
-      font-weight: 700;
-      margin-bottom: 2px;
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: var(--amber);
       font-family: 'Montserrat', sans-serif;
+      line-height: 1;
+      margin-bottom: 2px;
     }
     .hero-level-title {
       font-size: 0.68rem;
-      font-weight: 400;
       color: var(--text-dim);
       font-family: 'Montserrat', sans-serif;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
+      margin-top: 1px;
     }
     .streak-pill {
       font-size: 0.74rem;
@@ -1087,6 +1087,7 @@ const ACHIEVEMENTS = [
 
 // ── STATE ────────────────────────────────────────────────────
 const DEFAULT_STATE = {
+  userName: 'Kendra',
   // tasks
   tasks: [],
   nextId: 1,
@@ -1117,6 +1118,7 @@ const DEFAULT_STATE = {
   dailySnapshots: [],
   contacts: [],
   nextContactId: 1,
+  aspirationalsVisible: false,
 };
 
 let S = loadState();
@@ -1129,6 +1131,7 @@ let networkFilter = 'all';
 let networkSearch = '';
 let networkOpenId = null;
 let _pendingImportRows = null;
+let pendingReminderImport = null;
 
 // ── PIN ──────────────────────────────────────────────────────
 const PIN_KEY = 'showup_pin';
@@ -1300,6 +1303,14 @@ function loadState() {
 
 function save() { localStorage.setItem('jhc3', JSON.stringify(S)); }
 
+function saveUserName() {
+  const inp = document.getElementById('user-name-input');
+  if (!inp) return;
+  S.userName = inp.value.trim();
+  save();
+  updateHeader();
+}
+
 // ── DAY SNAPSHOT ─────────────────────────────────────────────
 function saveDaySnapshot(sealed) {
   if (!S.todayDate || !S.todayEnergy) return;
@@ -1398,7 +1409,8 @@ function render() {
 
 function updateHeader() {
   const lv = getLvl(S.xp);
-  document.getElementById('levelTitle').textContent  = lv.title;
+  const nameTag = S.userName ? `, ${S.userName}` : '';
+  document.getElementById('levelTitle').textContent  = `${lv.title}${nameTag}`;
   document.getElementById('xpBar').style.width        = lv.pct + '%';
   document.getElementById('xpBarLabel').textContent   = '';
   document.getElementById('xpTotal').textContent      = '';
@@ -1493,9 +1505,10 @@ function renderToday() {
             : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Add 1–${S.todayEnergy === 'light' ? 2 : 3} things to work on today.</div>`
           }
         </div>
-        <div class="add-form" style="margin-top:10px">
+        <div class="add-form" style="margin-top:8px;margin-bottom:0">
           <input class="add-input" id="focus-quick-input" placeholder="Quick add a focus item..." onkeydown="if(event.key==='Enter')quickAddFocus()">
-          <button class="add-btn" onclick="quickAddFocus()">+</button>
+          <button class="add-btn" onclick="quickAddFocus()" title="Add to Show Up">+</button>
+          <button class="add-btn" onclick="(function(){const v=document.getElementById('focus-quick-input').value.trim();if(!v)return;quickAddFocus();pushToReminders(v);})()" title="Add to Show Up + Reminders" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap">+R</button>
         </div>
       </div>
     `}
@@ -1658,6 +1671,16 @@ function completeFocusTask(id, event) {
   updateHeader();
   const newLv = getLvl(S.xp).num;
   if (newLv > oldLv) showLevelUp(newLv); else checkAchievements();
+  if (task.fromReminders) {
+    setTimeout(() => {
+      const toast = document.getElementById('toast');
+      if (toast) {
+        toast.innerHTML = `Marked done · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Also complete in Reminders →</span>`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 5000);
+      }
+    }, 800);
+  }
 }
 
 function toggleOutside() {
@@ -2001,7 +2024,8 @@ function renderQuests() {
     <div class="add-form">
       ${catSelectHTML}
       <input class="add-input" id="quest-input" placeholder="${ph}" onkeydown="if(event.key==='Enter')addQuestTask()">
-      <button class="add-btn" onclick="addQuestTask()">+</button>
+      <button class="add-btn" onclick="addQuestTask()" title="Add to Show Up">+</button>
+      <button class="add-btn" onclick="(function(){const v=document.getElementById('quest-input').value.trim();if(!v)return;addQuestTask();pushToReminders(v);})()" title="Add to Show Up + Reminders" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap">+R</button>
     </div>
     <div id="quest-list">${tasksHTML}</div>
     ${doneHTML}
@@ -2065,6 +2089,16 @@ function completeQuestTask(id, event) {
   updateHeader();
   const newLv = getLvl(S.xp).num;
   if (newLv > oldLv) showLevelUp(newLv); else checkAchievements();
+  if (task.fromReminders) {
+    setTimeout(() => {
+      const toast = document.getElementById('toast');
+      if (toast) {
+        toast.innerHTML = `Marked done · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Also complete in Reminders →</span>`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 5000);
+      }
+    }, 800);
+  }
 }
 
 function deleteQuestTask(id) {
@@ -2688,6 +2722,12 @@ function setNetworkFilter(f) {
   renderNetwork();
 }
 
+function toggleAspirationalsVisible() {
+  S.aspirationalsVisible = !S.aspirationalsVisible;
+  save();
+  renderNetwork();
+}
+
 function getOverdueContacts() {
   return S.contacts.filter(c => getContactStatus(c) === 'overdue');
 }
@@ -2737,12 +2777,37 @@ function renderNetwork() {
     { key: 'recruiter', label: 'Recruiters',badge: null },
   ].map(f => `<button class="net-filter ${networkFilter===f.key?'active':''}" onclick="setNetworkFilter('${f.key}')">${f.label}${f.badge ? `<span class="net-badge">${f.badge}</span>` : ''}</button>`).join('');
 
-  const listHTML = filtered.length === 0
+  // Split into active (have lastContact) and aspirational (no lastContact)
+  // Only split when showing 'all' or 'not-recently' — for other filters, show as-is
+  let activeContacts = filtered;
+  let aspirationalContacts = [];
+
+  if (networkFilter === 'all' || networkFilter === 'not-recently') {
+    activeContacts = filtered.filter(c => c.lastContact);
+    aspirationalContacts = filtered.filter(c => !c.lastContact);
+  }
+
+  const activeHTML = activeContacts.length > 0
+    ? activeContacts.map(c => renderContactCard(c)).join('')
+    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:12px 0">No contacts here yet.</div>`;
+
+  const aspCount = aspirationalContacts.length;
+  const aspirationalHTML = aspCount > 0 ? `
+    <div style="margin-top:20px">
+      <button onclick="toggleAspirationalsVisible()" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim)" id="asp-toggle-label">${S.aspirationalsVisible ? '▾' : '▸'} ${aspCount} aspirational</span>
+      </button>
+      <div id="aspirationals-list" style="display:${S.aspirationalsVisible ? 'block' : 'none'}">
+        ${aspirationalContacts.map(c => renderContactCard(c)).join('')}
+      </div>
+    </div>` : '';
+
+  const listHTML = (activeContacts.length === 0 && aspirationalContacts.length === 0)
     ? `<div class="network-empty">${contacts.length === 0
         ? 'No contacts yet.<br>Import from Google Sheets or add one manually.'
         : 'No contacts match this filter.'
       }</div>`
-    : filtered.map(c => renderContactCard(c)).join('');
+    : activeHTML + aspirationalHTML;
 
   wrap.innerHTML = `
     <div class="net-add-row">
@@ -3037,7 +3102,19 @@ function importData() {
 function renderAccount() {
   const wrap = document.getElementById('account-wrap');
   if (!wrap) return;
-  wrap.innerHTML = `
+  const nameSection = `
+    <div style="margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:8px">Your name</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="user-name-input" class="add-input"
+          value="${escHtml(S.userName || '')}"
+          placeholder="Your first name..."
+          style="max-width:200px"
+          onblur="saveUserName()">
+        <span style="font-size:0.72rem;color:var(--text-dim)">Used in your daily greeting</span>
+      </div>
+    </div>`;
+  wrap.innerHTML = nameSection + `
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Data</div>
       <div style="display:flex;flex-direction:column;gap:14px">
@@ -3070,8 +3147,68 @@ function renderAccount() {
   `;
 }
 
+// ── REMINDERS BRIDGE ─────────────────────────────────────────
+function checkURLImport() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('import');
+    if (!raw) return;
+    const tasks = decodeURIComponent(raw).split('|').map(t => t.trim()).filter(Boolean);
+    if (!tasks.length) return;
+    pendingReminderImport = tasks;
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(showReminderImportModal, 400);
+  } catch(e) {}
+}
+
+function showReminderImportModal() {
+  if (!pendingReminderImport || !pendingReminderImport.length) return;
+  const inner = document.getElementById('modal-inner');
+  const count = pendingReminderImport.length;
+  const preview = pendingReminderImport.slice(0, 6)
+    .map(t => `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text-mid)">${escHtml(t)}</div>`)
+    .join('');
+  const more = count > 6 ? `<div style="font-size:0.72rem;color:var(--text-dim);padding:6px 0">+${count - 6} more</div>` : '';
+  inner.innerHTML = `
+    <div class="modal-big-icon" style="font-size:0.72rem;font-family:'Montserrat',sans-serif;font-weight:700;letter-spacing:0.1em">REMINDERS</div>
+    <div class="modal-title">Import ${count} item${count !== 1 ? 's' : ''}?</div>
+    <div class="modal-body" style="text-align:left">${preview}${more}
+      <div style="margin-top:10px;font-size:0.74rem;color:var(--text-dim)">Added to Personal tasks.</div>
+    </div>
+    <button class="modal-btn" onclick="confirmReminderImport()">Import</button>
+    <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif">Cancel</button>
+  `;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function confirmReminderImport() {
+  if (!pendingReminderImport) return;
+  pendingReminderImport.forEach(text => {
+    S.tasks.unshift({ id: S.nextId++, text, cat: 'personal', done: false, createdAt: Date.now(), fromReminders: true });
+    S.totalAdded++;
+  });
+  const count = pendingReminderImport.length;
+  pendingReminderImport = null;
+  save();
+  closeModal();
+  currentTab = 'quests';
+  currentQuestCat = 'personal';
+  render();
+  showToast(`${count} tasks added from Reminders ✓`);
+}
+
+function pushToReminders(text) {
+  if (!text || !text.trim()) return;
+  window.location.href = `shortcuts://run-shortcut?name=Add%20to%20Reminders&input=${encodeURIComponent(text.trim())}`;
+}
+
+function completeInReminders(text) {
+  window.location.href = `shortcuts://run-shortcut?name=Complete%20in%20Reminders&input=${encodeURIComponent(text.trim())}`;
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 initPin();
+checkURLImport();
 checkDayReset();
 render();
 fetchWeather();
