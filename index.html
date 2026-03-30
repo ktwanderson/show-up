@@ -1617,20 +1617,20 @@ function renderToday() {
   const weekReviewHtml = shouldShowWeekReview() ? renderWeekReviewHTML() : '';
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
   const todayIso = new Date().toISOString().slice(0,10);
-  const followUpNudgesHtml = followUpNudges.length > 0 ? `<div style="margin-bottom:16px;">
-    <div style="font-size:0.75rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Reach out</div>
+  const followUpNudgesHtml = followUpNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
+    <div class="card-label" style="margin-bottom:12px;">Reach out</div>
     ${followUpNudges.map(c => {
       const isToday = c.nextContactDate === todayIso;
       const isPast = c.nextContactDate < todayIso;
+      const statusCls = isPast ? 'overdue' : isToday ? 'due-soon' : 'ok';
       const label = isPast ? 'overdue' : isToday ? 'today' : 'upcoming';
-      const labelColor = isPast ? 'var(--red)' : isToday ? 'var(--amber)' : 'var(--text-dim)';
-      return `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();},50)" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;cursor:pointer;">
-        ${catDot('network','22px')}
+      return `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();},50)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+        <div class="contact-status-dot ${statusCls}"></div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:0.88rem;color:var(--text);">${escHtml(contactFullName(c))}</div>
-          ${c.followUpNote ? `<div style="font-size:0.78rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.followUpNote)}</div>` : ''}
+          <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(c))}</div>
+          ${c.followUpNote ? `<div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.followUpNote)}</div>` : ''}
         </div>
-        <div style="font-size:0.75rem;color:${labelColor};font-weight:600;">${label}</div>
+        <div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isPast?'var(--red)':isToday?'var(--teal)':'var(--text-dim)'};">${label}</div>
       </div>`;
     }).join('')}
   </div>` : '';
@@ -2134,9 +2134,9 @@ function renderQuests() {
   const wrap = document.getElementById('quests-wrap');
   if (!wrap) return;
 
-  const toggleHTML = `<div style="display:flex;gap:8px;margin-bottom:16px;">
-    <button onclick="questsView='tasks';renderQuests()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:${questsView==='tasks'?'var(--amber)':'transparent'};color:${questsView==='tasks'?'#fff':'var(--text-mid)'};font-weight:600;font-size:0.85rem;cursor:pointer;">Tasks</button>
-    <button onclick="questsView='pipeline';renderQuests()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:${questsView==='pipeline'?'var(--amber)':'transparent'};color:${questsView==='pipeline'?'#fff':'var(--text-mid)'};font-weight:600;font-size:0.85rem;cursor:pointer;">Pipeline</button>
+  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+    <button onclick="questsView='tasks';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid ${questsView==='tasks'?'var(--text)':'transparent'};background:transparent;color:${questsView==='tasks'?'var(--text)':'var(--text-dim)'};font-weight:${questsView==='tasks'?'700':'400'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Tasks</button>
+    <button onclick="questsView='pipeline';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid ${questsView==='pipeline'?'var(--text)':'transparent'};background:transparent;color:${questsView==='pipeline'?'var(--text)':'var(--text-dim)'};font-weight:${questsView==='pipeline'?'700':'400'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Pipeline</button>
   </div>`;
 
   if (questsView === 'pipeline') {
@@ -2300,23 +2300,23 @@ function renderPipeline() {
   const active = S.pipeline.filter(e => !['rejected','withdrawn'].includes(e.stage));
   const closed = S.pipeline.filter(e => ['rejected','withdrawn'].includes(e.stage));
 
-  const toggleHTML = `<div style="display:flex;gap:8px;margin-bottom:16px;">
-    <button onclick="questsView='tasks';renderQuests()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-mid);font-weight:600;font-size:0.85rem;cursor:pointer;">Tasks</button>
-    <button onclick="questsView='pipeline';renderQuests()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:var(--amber);color:#fff;font-weight:600;font-size:0.85rem;cursor:pointer;">Pipeline</button>
+  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+    <button onclick="questsView='tasks';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-dim);font-weight:400;font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Tasks</button>
+    <button onclick="questsView='pipeline';renderQuests()" style="padding:0 0 10px;border:none;border-bottom:2px solid var(--text);background:transparent;color:var(--text);font-weight:700;font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;">Pipeline</button>
   </div>`;
 
   let html = toggleHTML;
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <span style="font-size:0.8rem;color:var(--text-dim)">${active.length} active · ${closed.length} closed</span>
-    <button onclick="openAddPipelineEntry()" style="background:var(--amber);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:0.82rem;font-weight:600;cursor:pointer;">+ Add</button>
+    <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;">${active.length} active · ${closed.length} closed</span>
+    <button onclick="openAddPipelineEntry()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
   </div>`;
 
   if (S.pipeline.length === 0) {
-    html += `<div style="text-align:center;padding:40px 20px;color:var(--text-dim);">
-      <div style="font-size:1.5rem;margin-bottom:8px;">📋</div>
-      <div style="font-weight:600;margin-bottom:4px;">No applications yet</div>
-      <div style="font-size:0.85rem;">Track your interview pipeline here</div>
-      <button onclick="openAddPipelineEntry()" style="margin-top:16px;background:var(--amber);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ Add Application</button>
+    html += `<div class="empty">
+      <div class="empty-icon">◦</div>
+      <div>No applications yet.</div>
+      <div style="margin-top:4px;font-size:0.78rem;">Track your interview pipeline here.</div>
+      <button onclick="openAddPipelineEntry()" style="margin-top:14px;background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add Application</button>
     </div>`;
     container.innerHTML = html;
     return;
@@ -2328,14 +2328,14 @@ function renderPipeline() {
     if (entries.length === 0) return;
     const stageInfo = PIPELINE_STAGES.find(s => s.key === stageKey);
     html += `<div style="margin-bottom:12px;">
-      <div style="font-size:0.75rem;font-weight:700;color:${stageInfo.color};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${stageInfo.label} · ${entries.length}</div>
+      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
       ${entries.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   });
 
   if (closed.length > 0) {
     html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="font-size:0.75rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Closed · ${closed.length}</div>
+      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
       ${closed.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   }
@@ -2350,45 +2350,48 @@ function renderPipelineEntry(e) {
     `<option value="${s.key}" ${e.stage===s.key?'selected':''}>${s.label}</option>`
   ).join('');
 
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
-    <div onclick="togglePipelineDetail(${e.id})" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;">
-      <div style="width:8px;height:8px;border-radius:50%;background:${stageInfo.color};flex-shrink:0;"></div>
+  const fieldLabelStyle = `font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;`;
+  const inlineInputStyle = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
+  const inlineSelectStyle = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;-webkit-appearance:none;appearance:none;cursor:pointer;`;
+  return `<div style="border-bottom:1px solid var(--border);">
+    <div onclick="togglePipelineDetail(${e.id})" style="display:flex;align-items:center;gap:10px;padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+      <div style="width:7px;height:7px;border-radius:50%;background:${stageInfo.color};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.company)}</div>
-        <div style="font-size:0.8rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role || '—')}</div>
+        <div style="font-size:0.84rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.company)}</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role || '\u2014')}</div>
       </div>
-      <div style="font-size:0.75rem;color:${stageInfo.color};font-weight:600;white-space:nowrap;">${stageInfo.label}</div>
-      <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?'180':'0'}deg);transition:transform 0.2s;flex-shrink:0;"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);font-weight:600;white-space:nowrap;">${stageInfo.label}</div>
+      <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?'180':'0'}deg);transition:transform 0.2s;flex-shrink:0;color:var(--text-dim)"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </div>
-    ${isOpen ? `<div style="padding:0 14px 14px;border-top:1px solid var(--border);padding-top:12px;">
-      <div style="display:grid;gap:10px;">
+    ${isOpen ? `<div style="padding:0 0 16px 17px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div style="${fieldLabelStyle}">Stage</div>
+        <select onchange="updatePipelineStage(${e.id}, this.value)" style="${inlineSelectStyle}">${stageOptions}</select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
-          <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Stage</label>
-          <select onchange="updatePipelineStage(${e.id}, this.value)" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font-size:0.85rem;color:var(--text);">${stageOptions}</select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div>
-            <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Company</label>
-            <input id="pe-company-${e.id}" value="${escHtml(e.company||'')}" onblur="savePipelineField(${e.id},'company')" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;">
-          </div>
-          <div>
-            <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Role</label>
-            <input id="pe-role-${e.id}" value="${escHtml(e.role||'')}" onblur="savePipelineField(${e.id},'role')" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;">
-          </div>
+          <div style="${fieldLabelStyle}">Company</div>
+          <input id="pe-company-${e.id}" value="${escHtml(e.company||'')}" onblur="savePipelineField(${e.id},'company')" style="${inlineInputStyle}">
         </div>
         <div>
-          <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Applied date</label>
-          <input type="date" id="pe-date-${e.id}" value="${e.appliedDate||''}" onblur="savePipelineField(${e.id},'appliedDate')" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;">
+          <div style="${fieldLabelStyle}">Role</div>
+          <input id="pe-role-${e.id}" value="${escHtml(e.role||'')}" onblur="savePipelineField(${e.id},'role')" style="${inlineInputStyle}">
         </div>
-        <div>
-          <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Next step</label>
-          <input id="pe-next-${e.id}" value="${escHtml(e.nextStep||'')}" placeholder="e.g. Phone screen on April 5" onblur="savePipelineField(${e.id},'nextStep')" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Notes</label>
-          <textarea id="pe-notes-${e.id}" onblur="savePipelineField(${e.id},'notes')" style="width:100%;margin-top:4px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;resize:vertical;min-height:60px;">${escHtml(e.notes||'')}</textarea>
-        </div>
-        <button onclick="deletePipelineEntry(${e.id})" style="background:none;border:1px solid var(--border);color:var(--red);border-radius:7px;padding:7px;font-size:0.82rem;cursor:pointer;">Remove</button>
+      </div>
+      <div>
+        <div style="${fieldLabelStyle}">Applied date</div>
+        <input type="date" id="pe-date-${e.id}" value="${e.appliedDate||''}" onblur="savePipelineField(${e.id},'appliedDate')" style="${inlineInputStyle}">
+      </div>
+      <div>
+        <div style="${fieldLabelStyle}">Next step</div>
+        <input id="pe-next-${e.id}" value="${escHtml(e.nextStep||'')}" placeholder="e.g. Phone screen on April 5" onblur="savePipelineField(${e.id},'nextStep')" style="${inlineInputStyle}">
+      </div>
+      <div>
+        <div style="${fieldLabelStyle}">Notes</div>
+        <textarea id="pe-notes-${e.id}" onblur="savePipelineField(${e.id},'notes')" style="${inlineInputStyle}resize:vertical;min-height:60px;">${escHtml(e.notes||'')}</textarea>
+      </div>
+      <div>
+        <button class="contact-action-btn danger" onclick="deletePipelineEntry(${e.id})">Remove</button>
       </div>
     </div>` : ''}
   </div>`;
@@ -2420,32 +2423,26 @@ function savePipelineField(id, field) {
 function openAddPipelineEntry() {
   const today = new Date().toISOString().slice(0,10);
   const inner = document.getElementById('modal-inner');
+  const mFieldLabel = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  const mInput = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;`;
   inner.innerHTML = `
-    <div style="padding:4px 0;">
-      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:16px;">New Application</div>
-      <div style="display:grid;gap:12px;">
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-dim);font-weight:600;">Company *</label>
-          <input id="np-company" placeholder="Company name" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-dim);font-weight:600;">Role</label>
-          <input id="np-role" placeholder="Job title" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-dim);font-weight:600;">Stage</label>
-          <select id="np-stage" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--surface);">
-            ${PIPELINE_STAGES.filter(s=>!['rejected','withdrawn'].includes(s.key)).map(s=>`<option value="${s.key}">${s.label}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-dim);font-weight:600;">Applied date</label>
-          <input type="date" id="np-date" value="${today}" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;">
-        </div>
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">New Application</div>
+      <div>
+        <label style="${mFieldLabel}">Company *</label>
+        <input id="np-company" placeholder="Company name" style="${mInput}">
+        <label style="${mFieldLabel}">Role</label>
+        <input id="np-role" placeholder="Job title" style="${mInput}">
+        <label style="${mFieldLabel}">Stage</label>
+        <select id="np-stage" style="${mInput}-webkit-appearance:none;appearance:none;cursor:pointer;">
+          ${PIPELINE_STAGES.filter(s=>!['rejected','withdrawn'].includes(s.key)).map(s=>`<option value="${s.key}">${s.label}</option>`).join('')}
+        </select>
+        <label style="${mFieldLabel}">Applied date</label>
+        <input type="date" id="np-date" value="${today}" style="${mInput}">
       </div>
-      <div style="display:flex;gap:8px;margin-top:20px;">
-        <button onclick="closeModal()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:none;font-size:0.9rem;cursor:pointer;">Cancel</button>
-        <button onclick="saveNewPipelineEntry()" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">Add</button>
+      <div style="display:flex;gap:8px;margin-top:24px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveNewPipelineEntry()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Add</button>
       </div>
     </div>
   `;
@@ -2742,18 +2739,19 @@ function dismissWeekPrompt(type) {
 function renderWeekPlannerHTML() {
   const plan = getCurrentWeekPlan();
   const g = plan?.goals || ['','',''];
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-weight:700;font-size:0.95rem;color:var(--text);">This week's plan</div>
-      <button onclick="dismissWeekPrompt('plan')" style="background:none;border:none;color:var(--text-dim);font-size:1.1rem;cursor:pointer;padding:0;">\u00d7</button>
+  const wkInputStyle = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:8px 0;outline:none;box-sizing:border-box;`;
+  return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-label" style="margin-bottom:0;">This week's plan</div>
+      <button onclick="dismissWeekPrompt('plan')" style="background:none;border:none;color:var(--text-dim);font-size:0.9rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">\u00d7</button>
     </div>
-    <div style="display:grid;gap:8px;margin-bottom:12px;">
-      <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;width:100%;box-sizing:border-box;">
-      <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;width:100%;box-sizing:border-box;">
-      <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;width:100%;box-sizing:border-box;">
+    <div style="display:grid;gap:2px;margin-bottom:8px;">
+      <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="${wkInputStyle}">
+      <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="${wkInputStyle}">
+      <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="${wkInputStyle}">
     </div>
-    <input id="w-intention" placeholder="This week I want to feel..." value="${escHtml(plan?.intention||'')}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;width:100%;box-sizing:border-box;margin-bottom:12px;">
-    <button onclick="saveWeeklyPlan()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:0.88rem;cursor:pointer;">Save plan</button>
+    <input id="w-intention" placeholder="This week I want to feel..." value="${escHtml(plan?.intention||'')}" style="${wkInputStyle}margin-bottom:14px;">
+    <button onclick="saveWeeklyPlan()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save plan</button>
   </div>`;
 }
 
@@ -2761,34 +2759,35 @@ function renderWeekReviewHTML() {
   const stats = getWeekStats();
   const plan = getCurrentWeekPlan();
   const goals = plan?.goals?.filter(Boolean) || [];
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-weight:700;font-size:0.95rem;color:var(--text);">Week wrap-up</div>
-      <button onclick="dismissWeekPrompt('review')" style="background:none;border:none;color:var(--text-dim);font-size:1.1rem;cursor:pointer;padding:0;">\u00d7</button>
+  const wkTaStyle = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:8px 0;resize:none;min-height:56px;outline:none;box-sizing:border-box;line-height:1.6;`;
+  return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-label" style="margin-bottom:0;">Week wrap-up</div>
+      <button onclick="dismissWeekPrompt('review')" style="background:none;border:none;color:var(--text-dim);font-size:0.9rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">\u00d7</button>
     </div>
-    ${goals.length > 0 ? `<div style="margin-bottom:12px;">
-      <div style="font-size:0.75rem;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">This week's goals</div>
-      ${goals.map(g => `<div style="font-size:0.85rem;color:var(--text-mid);padding:3px 0;">\u00b7 ${escHtml(g)}</div>`).join('')}
+    ${goals.length > 0 ? `<div style="margin-bottom:14px;">
+      <div class="card-label" style="margin-bottom:6px;">This week's goals</div>
+      ${goals.map(g => `<div style="font-size:0.84rem;color:var(--text-mid);padding:3px 0;">\u00b7 ${escHtml(g)}</div>`).join('')}
     </div>` : ''}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-      <div style="text-align:center;padding:10px;background:var(--surface2);border-radius:8px;">
-        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);">${stats.tasksCompleted}</div>
-        <div style="font-size:0.72rem;color:var(--text-dim);">tasks done</div>
+    <div style="display:flex;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0;margin-bottom:14px;">
+      <div style="flex:1;padding:0 14px;border-right:1px solid var(--border);">
+        <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.tasksCompleted}</div>
+        <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">tasks done</div>
       </div>
-      <div style="text-align:center;padding:10px;background:var(--surface2);border-radius:8px;">
-        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);">${stats.applyCount}</div>
-        <div style="font-size:0.72rem;color:var(--text-dim);">applied</div>
+      <div style="flex:1;padding:0 14px;border-right:1px solid var(--border);">
+        <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.applyCount}</div>
+        <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">applied</div>
       </div>
-      <div style="text-align:center;padding:10px;background:var(--surface2);border-radius:8px;">
-        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);">${stats.networkCount}</div>
-        <div style="font-size:0.72rem;color:var(--text-dim);">networked</div>
+      <div style="flex:1;padding:0 14px;">
+        <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.networkCount}</div>
+        <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">networked</div>
       </div>
     </div>
-    <div style="display:grid;gap:8px;margin-bottom:12px;">
-      <textarea id="wr-well" placeholder="What went well this week..." style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;resize:vertical;min-height:60px;width:100%;box-sizing:border-box;"></textarea>
-      <textarea id="wr-carry" placeholder="What to carry forward..." style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;resize:vertical;min-height:60px;width:100%;box-sizing:border-box;"></textarea>
+    <div style="display:grid;gap:2px;margin-bottom:14px;">
+      <textarea id="wr-well" placeholder="What went well this week..." style="${wkTaStyle}"></textarea>
+      <textarea id="wr-carry" placeholder="What to carry forward..." style="${wkTaStyle}"></textarea>
     </div>
-    <button onclick="saveWeeklyReview()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:0.88rem;cursor:pointer;">Wrap the week</button>
+    <button onclick="saveWeeklyReview()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Wrap the week</button>
   </div>`;
 }
 
@@ -3507,12 +3506,12 @@ function renderContactCard(c) {
       </div>
 
       <div>
-        <label style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">Planned follow-up</label>
+        <div class="contact-detail-section-label">Planned follow-up</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-          <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;">
-          <button onclick="saveContactFollowup(${c.id})" style="padding:7px 12px;background:var(--amber);color:#fff;border:none;border-radius:7px;font-size:0.82rem;font-weight:600;cursor:pointer;">Save</button>
+          <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
+          <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
         </div>
-        <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" style="width:100%;margin-top:6px;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:0.85rem;box-sizing:border-box;">
+        <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
       </div>
 
       <div class="contact-action-row">
