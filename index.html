@@ -1365,6 +1365,12 @@ const PIPELINE_STAGES = [
   { key: 'withdrawn',  label: 'Withdrawn',    color: '#8c8880' },
 ];
 
+const COMPANY_STATUSES = [
+  { key: 'researching', label: 'Researching', color: '#8c8880' },
+  { key: 'targeting',   label: 'Targeting',   color: '#a07c08' },
+  { key: 'applied',     label: 'Applied',     color: '#2d6347' },
+];
+
 const ENERGY = {
   light:   { icon: '○', label: 'Light day',   sub: '1–2 focus items', xp: 5  },
   regular: { icon: '◎', label: 'Regular day', sub: '2–3 focus items', xp: 10 },
@@ -1384,27 +1390,27 @@ const LEVELS = [
 ];
 
 const ACHIEVEMENTS = [
-  { id: 'checkin_1',   icon: '☀️', name: 'Day One',          desc: 'Complete your first daily check-in',       check: s => s.showUpStreak >= 1 },
-  { id: 'checkin_5',   icon: '📅', name: 'Five Days',        desc: 'Check in 5 days in a row',                 check: s => s.maxShowUpStreak >= 5 },
-  { id: 'checkin_14',  icon: '🗓️', name: 'Two Weeks',        desc: 'Check in 14 days in a row',                check: s => s.maxShowUpStreak >= 14 },
-  { id: 'first_win',   icon: '⭐', name: 'First Win',        desc: 'Log your first daily win',                 check: s => s.totalWins >= 1 },
-  { id: 'wins_10',     icon: '🌟', name: 'Win Collector',    desc: 'Log 10 daily wins',                        check: s => s.totalWins >= 10 },
-  { id: 'outside_1',   icon: '🚶', name: 'Out the Door',     desc: 'Mark "got outside" for the first time',    check: s => s.totalOutside >= 1 },
-  { id: 'outside_7',   icon: '🌳', name: 'Fresh Air Habit',  desc: 'Got outside 7 times',                      check: s => s.totalOutside >= 7 },
-  { id: 'focus_5',     icon: '⏱',  name: 'Getting Focused',  desc: 'Complete 5 Pomodoro sessions',             check: s => s.totalFocusBlocks >= 5 },
-  { id: 'focus_25',    icon: '🧠', name: 'Going deep',        desc: 'Complete 25 focus sessions',               check: s => s.totalFocusBlocks >= 25 },
-  { id: 'apps_5',      icon: '📤', name: 'Taking action',    desc: 'Complete 5 applications',                  check: s => s.doneBy.apply >= 5 },
-  { id: 'apps_15',     icon: '🚀', name: 'Consistent effort',desc: 'Complete 15 applications',                 check: s => s.doneBy.apply >= 15 },
-  { id: 'network_3',   icon: '🤝', name: 'Making connections',desc: 'Complete 3 networking reach-outs',        check: s => s.doneBy.network >= 3 },
-  { id: 'network_10',  icon: '🕸️', name: 'Well connected',   desc: 'Complete 10 networking reach-outs',        check: s => s.doneBy.network >= 10 },
-  { id: 'rejection_1', icon: '🪨', name: 'Staying in it',    desc: 'Log your first rejection',                 check: s => s.rejections >= 1 },
-  { id: 'rejection_5', icon: '💪', name: '5 and still going',desc: 'Log 5 rejections and keep going',          check: s => s.rejections >= 5 },
-  { id: 'rest_1',      icon: '☁️', name: 'Permission Granted', desc: 'Honor a rest day',                               check: s => s.totalRestDays >= 1 },
-  { id: 'personal_5',  icon: '🌻', name: 'Whole Person',      desc: 'Complete 5 personal tasks',                      check: s => s.doneBy.personal >= 5 },
-  { id: 'balanced_1',  icon: '⚖️', name: 'Balanced Day',      desc: 'Complete both a job search and personal task',   check: s => s.doneBy.apply + s.doneBy.followup + s.doneBy.network + s.doneBy.research >= 1 && s.doneBy.personal >= 1 },
-  { id: 'lv3',         icon: '📜', name: 'Level 3',           desc: 'Reach Level 3',                                  check: s => s.level >= 3 },
-  { id: 'lv5',         icon: '🎯', name: 'Level 5',           desc: 'Reach Level 5',                           check: s => s.level >= 5 },
-  { id: 'lv8',         icon: '🏆', name: 'Still here',         desc: 'Reach level 8',                           check: s => s.level >= 8 },
+  { id: 'checkin_1',   icon: '◉', name: 'Day One',          desc: 'Complete your first daily check-in',       check: s => s.showUpStreak >= 1 },
+  { id: 'checkin_5',   icon: '|', name: 'Five Days',        desc: 'Check in 5 days in a row',                 check: s => s.maxShowUpStreak >= 5 },
+  { id: 'checkin_14',  icon: '∥', name: 'Two Weeks',        desc: 'Check in 14 days in a row',                check: s => s.maxShowUpStreak >= 14 },
+  { id: 'first_win',   icon: '◆', name: 'First Win',        desc: 'Log your first daily win',                 check: s => s.totalWins >= 1 },
+  { id: 'wins_10',     icon: '✦', name: 'Win Collector',    desc: 'Log 10 daily wins',                        check: s => s.totalWins >= 10 },
+  { id: 'outside_1',   icon: '◇', name: 'Out the Door',     desc: 'Mark "got outside" for the first time',    check: s => s.totalOutside >= 1 },
+  { id: 'outside_7',   icon: '◇', name: 'Fresh Air Habit',  desc: 'Got outside 7 times',                      check: s => s.totalOutside >= 7 },
+  { id: 'focus_5',     icon: '◎', name: 'Getting Focused',  desc: 'Complete 5 Pomodoro sessions',             check: s => s.totalFocusBlocks >= 5 },
+  { id: 'focus_25',    icon: '◎', name: 'Going deep',       desc: 'Complete 25 focus sessions',               check: s => s.totalFocusBlocks >= 25 },
+  { id: 'apps_5',      icon: '→', name: 'Taking action',    desc: 'Complete 5 applications',                  check: s => s.doneBy.apply >= 5 },
+  { id: 'apps_15',     icon: '→', name: 'Consistent effort',desc: 'Complete 15 applications',                 check: s => s.doneBy.apply >= 15 },
+  { id: 'network_3',   icon: '○', name: 'Making connections',desc: 'Complete 3 networking reach-outs',        check: s => s.doneBy.network >= 3 },
+  { id: 'network_10',  icon: '○', name: 'Well connected',   desc: 'Complete 10 networking reach-outs',        check: s => s.doneBy.network >= 10 },
+  { id: 'rejection_1', icon: '·', name: 'Staying in it',    desc: 'Log your first rejection',                 check: s => s.rejections >= 1 },
+  { id: 'rejection_5', icon: '·', name: '5 and still going',desc: 'Log 5 rejections and keep going',          check: s => s.rejections >= 5 },
+  { id: 'rest_1',      icon: '◎', name: 'Permission Granted', desc: 'Honor a rest day',                       check: s => s.totalRestDays >= 1 },
+  { id: 'personal_5',  icon: '◇', name: 'Whole Person',      desc: 'Complete 5 personal tasks',               check: s => s.doneBy.personal >= 5 },
+  { id: 'balanced_1',  icon: '◆', name: 'Balanced Day',      desc: 'Complete both a job search and personal task', check: s => s.doneBy.apply + s.doneBy.followup + s.doneBy.network + s.doneBy.research >= 1 && s.doneBy.personal >= 1 },
+  { id: 'lv3',         icon: '◆', name: 'Level 3',           desc: 'Reach Level 3',                           check: s => s.level >= 3 },
+  { id: 'lv5',         icon: '◆', name: 'Level 5',           desc: 'Reach Level 5',                           check: s => s.level >= 5 },
+  { id: 'lv8',         icon: '✦', name: 'Still here',        desc: 'Reach level 8',                           check: s => s.level >= 8 },
 ];
 
 // ── STATE ────────────────────────────────────────────────────
@@ -1449,6 +1455,11 @@ const DEFAULT_STATE = {
   weeklyPlans: [],
   nextWeeklyId: 1,
   weekPromptDismissed: null,
+  companies: [],
+  nextCompanyId: 1,
+  workoutLog: [],
+  workoutGoal: 10,
+  workedOutToday: false,
 };
 
 let S = loadState();
@@ -1460,6 +1471,8 @@ let journalSelectedDate = null;
 let networkFilter = 'all';
 let networkSearch = '';
 let networkOpenId = null;
+let networkStatusFilter = 'all';
+let networkSort = 'recent';
 let questsView = 'tasks';
 let pipelineOpenId = null;
 let _pendingImportRows = null;
@@ -1684,6 +1697,7 @@ function checkDayReset() {
     S.todayFocusIds     = [...(S.carryOverIds || [])];
     S.focusBlocksToday  = 0;
     S.gotOutsideToday   = false;
+    S.workedOutToday    = false;
     S.todaySealed       = false;
     S.carryOverIds      = [];
     S.todayCalEvents    = [];
@@ -1911,7 +1925,20 @@ function renderToday() {
       </div>
     `}
 
-    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()" style="margin-top:20px">
+    <div class="rhythm-row ${S.workedOutToday ? 'rhythm-done' : ''}" onclick="logWorkout()" style="margin-top:20px">
+      <div class="rhythm-left">
+        <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="opacity:0.55"><path d="M3 8h2l2-4 2 8 2-4h2"/></svg></div>
+        <div>
+          <div class="rhythm-label">Worked out today</div>
+          <div class="rhythm-sub">${getWorkoutsThisMonth()} of ${S.workoutGoal || 10} workouts this month</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="check-circle ${S.workedOutToday ? 'checked' : ''}">${S.workedOutToday ? '✓' : ''}</div>
+      </div>
+    </div>
+
+    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><circle cx="8" cy="2.5" r="1.3"/><path d="M8 3.8L6.8 8.5l-1.8 4"/><path d="M8 3.8L9.2 8.5l1.8 4"/><path d="M6.5 8.5h3"/></svg></div>
         <div>
@@ -2409,11 +2436,18 @@ function renderQuests() {
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
     <button class="view-toggle-btn ${questsView==='tasks'?'active':''}" onclick="questsView='tasks';renderQuests()">Tasks</button>
     <button class="view-toggle-btn ${questsView==='pipeline'?'active':''}" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
+    <button class="view-toggle-btn ${questsView==='companies'?'active':''}" onclick="questsView='companies';renderQuests()">Companies</button>
   </div>`;
 
   if (questsView === 'pipeline') {
     wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
     renderPipeline();
+    return;
+  }
+
+  if (questsView === 'companies') {
+    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
+    renderCompanies();
     return;
   }
 
@@ -2479,10 +2513,6 @@ function renderQuests() {
     </div>
     <div id="quest-list">${tasksHTML}</div>
     ${doneHTML}
-    <div style="margin-top:20px;padding-top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-      <button onclick="copyTasksList()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;display:flex;align-items:center;gap:5px;padding:2px 0;transition:color 0.15s;font-family:'DM Sans',sans-serif" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Copy all tasks to clipboard</button>
-      <span style="font-size:0.67rem;color:var(--text-dim)">or ask me to sync to Apple Notes →</span>
-    </div>
     </div>
   `;
 }
@@ -2583,6 +2613,7 @@ function renderPipeline() {
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
     <button class="view-toggle-btn" onclick="questsView='tasks';renderQuests()">Tasks</button>
     <button class="view-toggle-btn active" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
+    <button class="view-toggle-btn" onclick="questsView='companies';renderQuests()">Companies</button>
   </div>`;
 
   let html = toggleHTML;
@@ -2761,6 +2792,157 @@ function deletePipelineEntry(id) {
   renderQuests();
 }
 
+// ── COMPANIES ─────────────────────────────────────────────────
+function renderCompanies() {
+  const container = document.getElementById('questsContent');
+  if (!container) return;
+
+  const statuses = ['researching', 'targeting', 'applied'];
+
+  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+    <button class="view-toggle-btn" onclick="questsView='tasks';renderQuests()">Tasks</button>
+    <button class="view-toggle-btn" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
+    <button class="view-toggle-btn active" onclick="questsView='companies';renderQuests()">Companies</button>
+  </div>`;
+
+  let html = toggleHTML + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <span style="font-size:0.8rem;color:var(--text-dim)">${S.companies.length} companies</span>
+    <button onclick="openAddCompany()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
+  </div>`;
+
+  if (S.companies.length === 0) {
+    html += `<div style="text-align:center;padding:40px 20px;color:var(--text-dim);">
+      <div style="font-size:1.8rem;font-weight:100;font-family:'Montserrat',sans-serif;margin-bottom:8px;">◎</div>
+      <div style="font-weight:600;margin-bottom:4px;font-size:0.9rem;">No target companies yet</div>
+      <div style="font-size:0.82rem;">Research and track companies you want to work for.</div>
+      <button onclick="openAddCompany()" style="margin-top:16px;background:none;border:none;color:var(--amber);font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;">+ Add your first company</button>
+    </div>`;
+    container.innerHTML = html;
+    return;
+  }
+
+  statuses.forEach(statusKey => {
+    const cos = S.companies.filter(c => c.status === statusKey);
+    if (cos.length === 0) return;
+    const statusInfo = COMPANY_STATUSES.find(s => s.key === statusKey);
+    html += `<div style="margin-bottom:16px;">
+      <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${statusInfo.label} · ${cos.length}</div>
+      ${cos.map(c => renderCompanyRow(c)).join('')}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+let companyOpenId = null;
+
+function renderCompanyRow(c) {
+  const isOpen = companyOpenId === c.id;
+  const statusInfo = COMPANY_STATUSES.find(s => s.key === c.status) || COMPANY_STATUSES[0];
+  const linkedContacts = S.contacts.filter(ct => ct.company && ct.company.toLowerCase() === c.name.toLowerCase());
+
+  return `<div style="border-bottom:1px solid var(--border);">
+    <div onclick="toggleCompanyDetail(${c.id})" style="display:flex;align-items:center;gap:10px;padding:11px 0;cursor:pointer;">
+      <div style="width:7px;height:7px;border-radius:50%;background:${statusInfo.color};flex-shrink:0;opacity:0.7;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:0.88rem;color:var(--text);">${escHtml(c.name)}</div>
+        ${c.industry ? `<div style="font-size:0.75rem;color:var(--text-dim);">${escHtml(c.industry)}</div>` : ''}
+      </div>
+      ${linkedContacts.length > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${linkedContacts.length} contact${linkedContacts.length!==1?'s':''}</div>` : ''}
+      <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?180:0}deg);transition:transform 0.2s;flex-shrink:0;color:var(--text-dim);"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+    ${isOpen ? `<div style="padding-bottom:14px;">
+      <div style="display:grid;gap:10px;">
+        <div>
+          <div class="rej-field-label">Status</div>
+          <select onchange="updateCompanyStatus(${c.id}, this.value)" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">
+            ${COMPANY_STATUSES.map(s => `<option value="${s.key}" ${c.status===s.key?'selected':''}>${s.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div class="rej-field-label">Industry</div>
+          <input id="co-industry-${c.id}" value="${escHtml(c.industry||'')}" placeholder="e.g. Ad Tech, Media" onblur="saveCompanyField(${c.id},'industry')" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <div class="rej-field-label">Website</div>
+          <input id="co-website-${c.id}" value="${escHtml(c.website||'')}" placeholder="company.com" onblur="saveCompanyField(${c.id},'website')" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <div class="rej-field-label">Why I'm interested</div>
+          <textarea id="co-why-${c.id}" onblur="saveCompanyField(${c.id},'why')" placeholder="What excites you about this company?" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;resize:none;min-height:56px;box-sizing:border-box;">${escHtml(c.why||'')}</textarea>
+        </div>
+        <div>
+          <div class="rej-field-label">Research notes</div>
+          <textarea id="co-notes-${c.id}" onblur="saveCompanyField(${c.id},'notes')" placeholder="Key people, recent news, culture, etc." style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;resize:none;min-height:56px;box-sizing:border-box;">${escHtml(c.notes||'')}</textarea>
+        </div>
+        ${linkedContacts.length > 0 ? `<div>
+          <div class="rej-field-label">Contacts here</div>
+          ${linkedContacts.map(ct => `<div style="font-size:0.82rem;color:var(--text-mid);padding:4px 0;border-bottom:1px solid var(--border);">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role ? ` · ${escHtml(ct.role)}` : ''}</div>`).join('')}
+        </div>` : ''}
+        ${c.website ? `<a href="https://${c.website.replace(/^https?:\/\//,'')}" target="_blank" style="display:block;font-size:0.75rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;padding:4px 0;">Visit website →</a>` : ''}
+        <button onclick="deleteCompany(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;text-align:left;padding:4px 0;letter-spacing:0.03em;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Remove company</button>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function toggleCompanyDetail(id) {
+  companyOpenId = companyOpenId === id ? null : id;
+  renderCompanies();
+}
+
+function updateCompanyStatus(id, status) {
+  const c = S.companies.find(x => x.id === id);
+  if (c) { c.status = status; save(); renderCompanies(); }
+}
+
+function saveCompanyField(id, field) {
+  const c = S.companies.find(x => x.id === id);
+  if (!c) return;
+  const el = document.getElementById(`co-${field}-${id}`);
+  if (el) { c[field] = el.value.trim(); save(); }
+}
+
+function deleteCompany(id) {
+  S.companies = S.companies.filter(x => x.id !== id);
+  companyOpenId = null;
+  save();
+  renderCompanies();
+}
+
+function openAddCompany() {
+  showModal(`
+    <div style="text-align:left">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Add company</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:24px">Target company</div>
+      <div class="rej-field-label">Company name *</div>
+      <input class="rej-small-input" id="nc-coname" placeholder="e.g. Spotify">
+      <div class="rej-field-label">Industry <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></div>
+      <input class="rej-small-input" id="nc-coindustry" placeholder="e.g. Ad Tech, Streaming">
+      <div class="rej-field-label">Status</div>
+      <select id="nc-costatus" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;box-sizing:border-box;">
+        ${COMPANY_STATUSES.map(s => `<option value="${s.key}">${s.label}</option>`).join('')}
+      </select>
+      <button onclick="saveNewCompany()" style="margin-top:28px;width:100%;background:var(--text);color:var(--surface);border:none;padding:11px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border-radius:2px;transition:opacity 0.15s" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Add company</button>
+      <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Cancel</button>
+    </div>
+  `);
+}
+
+function saveNewCompany() {
+  const name = (document.getElementById('nc-coname')||{}).value?.trim();
+  if (!name) { showToast('Company name required'); return; }
+  const industry = (document.getElementById('nc-coindustry')||{}).value?.trim() || '';
+  const status = (document.getElementById('nc-costatus')||{}).value || 'researching';
+  if (!S.companies) S.companies = [];
+  if (!S.nextCompanyId) S.nextCompanyId = 1;
+  S.companies.push({ id: S.nextCompanyId++, name, industry, status, website: '', why: '', notes: '' });
+  save();
+  closeModal();
+  questsView = 'companies';
+  renderQuests();
+}
+
 let _rejQuote = null;
 
 function logRejection() {
@@ -2866,9 +3048,15 @@ function renderProgress() {
   };
   const achHTML = ACHIEVEMENTS.map(a => {
     const earned = a.check(achStats);
-    return `<div class="ach-item ${earned?'earned':''}">
-      <div class="ach-icon">${a.icon}</div>
-      <div class="ach-text-wrap"><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
+    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;border-radius:50%;border:1.5px solid ${earned ? 'var(--amber)' : 'var(--border)'};background:${earned ? 'var(--amber-lt)' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-size:0.9rem;color:${earned ? 'var(--amber)' : 'var(--border)'};font-family:'Montserrat',sans-serif;font-weight:700;">${a.icon}</span>
+      </div>
+      <div style="flex:1;${earned ? '' : 'opacity:0.45'}">
+        <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:2px;">${a.name}</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);">${a.desc}</div>
+      </div>
+      ${earned ? `<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:0.07em;color:var(--amber);font-weight:700;">✓</div>` : ''}
     </div>`;
   }).join('');
 
@@ -2889,6 +3077,9 @@ function renderProgress() {
     ${S.rejectionLog.length > 10 ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:10px">${S.rejectionLog.length - 10} more not shown</div>` : ''}
   </div>` : '';
 
+  const thisMonthWorkouts = getWorkoutsThisMonth();
+  const workoutPct = Math.min(100, Math.round((thisMonthWorkouts / (S.workoutGoal || 10)) * 100));
+
   wrap.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -2906,6 +3097,18 @@ function renderProgress() {
       <div class="stat-card">
         <div class="stat-value">${S.rejections}</div>
         <div class="stat-label">rejections = data</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:0;">
+      <div>
+        <div style="font-size:0.84rem;font-weight:500;color:var(--text);">Workouts this month</div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">${thisMonthWorkouts} of ${S.workoutGoal || 10} goal · ${workoutPct}%</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:80px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div style="width:${workoutPct}%;height:100%;background:var(--amber);border-radius:2px;transition:width 0.4s;"></div>
+        </div>
+        <span style="font-size:0.78rem;font-weight:600;font-family:'Montserrat',sans-serif;color:var(--text-dim);min-width:24px;text-align:right;">${thisMonthWorkouts}</span>
       </div>
     </div>
 
@@ -3213,16 +3416,43 @@ function scheduleJobSearchTime() {
   setTimeout(() => showToast('Calendar opened · tap + to log session when done'), 500);
 }
 
-// Copy active task list to clipboard (paste into Reminders, Notes, etc.)
-function copyTasksList() {
-  const active = S.tasks.filter(t => !t.done);
-  if (active.length === 0) { showToast('No active tasks to copy.'); return; }
-  const text = Object.keys(CATS).map(cat => {
-    const items = active.filter(t => t.cat === cat);
-    if (!items.length) return '';
-    return `${CATS[cat].icon} ${CATS[cat].label}\n${items.map(t => `  ☐ ${t.text}`).join('\n')}`;
-  }).filter(Boolean).join('\n\n');
-  navigator.clipboard.writeText(text).then(() => showToast('Copied! Paste into Reminders, Notes, or anywhere.'));
+
+// ── WORKOUT TRACKING ─────────────────────────────────────────
+function logWorkout() {
+  const today = new Date().toISOString().slice(0,10);
+  if (S.workedOutToday) {
+    S.workedOutToday = false;
+    S.workoutLog = (S.workoutLog || []).filter(d => d !== today);
+  } else {
+    S.workedOutToday = true;
+    if (!S.workoutLog) S.workoutLog = [];
+    if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
+  }
+  save();
+  renderToday();
+  if (S.workedOutToday) showToast('Workout logged ✓');
+}
+
+function getWorkoutsThisMonth() {
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return (S.workoutLog || []).filter(d => d.startsWith(prefix)).length;
+}
+
+function checkWorkoutImport() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('workout') === 'logged') {
+    window.history.replaceState({}, '', window.location.pathname);
+    const today = new Date().toISOString().slice(0,10);
+    if (!S.workedOutToday) {
+      S.workedOutToday = true;
+      if (!S.workoutLog) S.workoutLog = [];
+      if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
+      save();
+      renderToday();
+      showToast('Workout logged from calendar ✓');
+    }
+  }
 }
 
 function showToast(msg) {
@@ -3343,30 +3573,48 @@ function runContactImport(defaultType) {
   const { rows, hdrs } = _pendingImportRows;
   _pendingImportRows = null;
   const col = key => hdrs.findIndex(h => h.includes(key));
-  const typeI = col('type'), firstI = col('first'), lastI = col('last'),
-        compI = col('company'), emailI = col('email'),
-        lcI   = hdrs.findIndex(h => h.includes('last contact') || h.includes('last cont')),
-        methI = col('method'), resI = col('resume'), notesI = col('notes'),
-        nextI = hdrs.findIndex(h => h.includes('next step'));
+  const typeI  = col('type'),
+        firstI = col('first'), lastI = col('last'),
+        nameI  = hdrs.findIndex(h => h === 'contact name' || h === 'name' || h === 'full name'),
+        compI  = hdrs.findIndex(h => h.includes('company') || h === 'firm' || h === 'organization'),
+        roleI  = hdrs.findIndex(h => h === 'title' || h === 'role' || h.includes('job title')),
+        emailI = col('email'),
+        lcI    = hdrs.findIndex(h => h.includes('last contact') || h.includes('last cont')),
+        methI  = col('method'), resI = col('resume'),
+        notesI = hdrs.findIndex(h => h === 'notes' || h === 'note'),
+        specI  = hdrs.findIndex(h => h === 'specialty' || h === 'speciality' || h === 'specialties'),
+        nextI  = hdrs.findIndex(h => h.includes('next step'));
   let count = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    const first = firstI >= 0 ? (r[firstI]||'') : '';
-    const last  = lastI  >= 0 ? (r[lastI] ||'') : '';
+    let first = firstI >= 0 ? (r[firstI]||'').trim() : '';
+    let last  = lastI  >= 0 ? (r[lastI] ||'').trim() : '';
+    // Handle combined "Contact Name" or "Name" column
+    if (!first && !last && nameI >= 0 && (r[nameI]||'').trim()) {
+      const parts = (r[nameI]||'').trim().split(/\s+/);
+      first = parts[0] || '';
+      last  = parts.slice(1).join(' ') || '';
+    }
     if (!first && !last) continue;
+    // Merge notes + specialty
+    const notesVal    = notesI >= 0 ? (r[notesI]||'').trim() : '';
+    const specVal     = specI  >= 0 ? (r[specI] ||'').trim() : '';
+    const combinedNotes = [notesVal, specVal ? `Specialty: ${specVal}` : ''].filter(Boolean).join(' · ');
     const rawType = typeI >= 0 ? (r[typeI]||'') : '';
     S.contacts.push({
       id: S.nextContactId++,
       type: rawType ? mapContactType(rawType) : defaultType,
       first, last,
-      company: compI  >= 0 ? ((r[compI]||'') === '?' ? '' : (r[compI]||'')) : '',
-      email:   emailI >= 0 ? (r[emailI]||'') : '',
+      name: [first, last].filter(Boolean).join(' '),
+      company: compI  >= 0 ? ((r[compI]||'').trim() === '?' ? '' : (r[compI]||'').trim()) : '',
+      role:    roleI  >= 0 ? (r[roleI] ||'').trim() : '',
+      email:   emailI >= 0 ? (r[emailI]||'').trim() : '',
       lastContact: lcI >= 0 ? parseSheetDate(r[lcI]||'') : null,
-      preferredMethod: methI >= 0 ? (r[methI]||'') : '',
+      preferredMethod: methI >= 0 ? (r[methI]||'').trim() : '',
       resumeSent: resI >= 0 && !!(r[resI] && r[resI].trim()),
-      nextStep: nextI >= 0 ? (r[nextI]||'') : '',
+      nextStep: nextI >= 0 ? (r[nextI]||'').trim() : '',
       cadence: null,
-      notes: notesI >= 0 ? (r[notesI]||'') : '',
+      notes: combinedNotes,
       interactions: [],
       priority: false,
       nextContactDate: '',
@@ -3659,14 +3907,18 @@ function renderNetwork() {
   if (!wrap) return;
 
   const contacts = S.contacts || [];
-  const overdueCount = contacts.filter(c => getContactStatus(c) === 'overdue').length;
 
-  // Filter
+  // Type filter
   let filtered = contacts;
-  if (networkFilter === 'not-recently') filtered = contacts.filter(c => c.lastContact).sort((a, b) => new Date(a.lastContact) - new Date(b.lastContact));
+  if (networkFilter === 'not-recently') filtered = contacts.filter(c => c.lastContact);
   else if (networkFilter === 'priority') filtered = contacts.filter(c => c.priority);
   else if (['mentor','peer','mentee','recruiter'].includes(networkFilter))
     filtered = contacts.filter(c => c.type === networkFilter);
+
+  // Status filter
+  if (networkStatusFilter === 'overdue') filtered = filtered.filter(c => getContactStatus(c) === 'overdue');
+  else if (networkStatusFilter === 'due-soon') filtered = filtered.filter(c => getContactStatus(c) === 'due-soon');
+  else if (networkStatusFilter === 'no-date') filtered = filtered.filter(c => !c.lastContact);
 
   // Search
   const q = (networkSearch || '').toLowerCase();
@@ -3676,35 +3928,62 @@ function renderNetwork() {
     (c.notes || '').toLowerCase().includes(q)
   );
 
-  // Sort: overdue first (most overdue), then due-soon, then ok, then unset — within each, alphabetical
-  const order = { overdue: 0, 'due-soon': 1, ok: 2, unset: 3 };
-  filtered = [...filtered].sort((a, b) => {
-    const sa = order[getContactStatus(a)], sb = order[getContactStatus(b)];
-    if (sa !== sb) return sa - sb;
-    if (sa === 0) { // both overdue, most overdue first
-      const da = getDaysSince(a.lastContact) || 0;
-      const db = getDaysSince(b.lastContact) || 0;
-      return db - da;
-    }
-    return contactFullName(a).localeCompare(contactFullName(b));
-  });
+  // Sort
+  if (networkSort === 'alpha') {
+    filtered = [...filtered].sort((a, b) => contactFullName(a).localeCompare(contactFullName(b)));
+  } else if (networkSort === 'oldest') {
+    // oldest contact first (longest since contact), no-date contacts at top
+    filtered = [...filtered].sort((a, b) => {
+      if (!a.lastContact && !b.lastContact) return contactFullName(a).localeCompare(contactFullName(b));
+      if (!a.lastContact) return -1;
+      if (!b.lastContact) return 1;
+      return new Date(a.lastContact) - new Date(b.lastContact);
+    });
+  } else {
+    // 'recent' default: overdue first, then due-soon, then ok, then unset — within each, most recent first or alphabetical
+    const order = { overdue: 0, 'due-soon': 1, ok: 2, unset: 3 };
+    filtered = [...filtered].sort((a, b) => {
+      const sa = order[getContactStatus(a)], sb = order[getContactStatus(b)];
+      if (sa !== sb) return sa - sb;
+      if (sa === 0) {
+        const da = getDaysSince(a.lastContact) || 0;
+        const db = getDaysSince(b.lastContact) || 0;
+        return db - da;
+      }
+      if (a.lastContact && b.lastContact) return new Date(b.lastContact) - new Date(a.lastContact);
+      return contactFullName(a).localeCompare(contactFullName(b));
+    });
+  }
 
   const filterBtns = [
-    { key: 'all',       label: 'All',       badge: null },
-    { key: 'not-recently', label: 'Not recently', badge: null },
-    { key: 'priority',  label: '\u2605',    badge: null },
-    { key: 'mentor',    label: 'Mentors',   badge: null },
-    { key: 'peer',      label: 'Peers',     badge: null },
-    { key: 'mentee',    label: 'Mentees',   badge: null },
-    { key: 'recruiter', label: 'Recruiters',badge: null },
-  ].map(f => `<button class="net-filter ${networkFilter===f.key?'active':''}" onclick="setNetworkFilter('${f.key}')">${f.label}${f.badge ? `<span class="net-badge">${f.badge}</span>` : ''}</button>`).join('');
+    { key: 'all',       label: 'All' },
+    { key: 'not-recently', label: 'Not recently' },
+    { key: 'priority',  label: '\u2605' },
+    { key: 'mentor',    label: 'Mentors' },
+    { key: 'peer',      label: 'Peers' },
+    { key: 'mentee',    label: 'Mentees' },
+    { key: 'recruiter', label: 'Recruiters' },
+  ].map(f => `<button class="net-filter ${networkFilter===f.key?'active':''}" onclick="setNetworkFilter('${f.key}')">${f.label}</button>`).join('');
+
+  const statusBtns = [
+    { key: 'all',      label: 'All' },
+    { key: 'overdue',  label: 'Overdue' },
+    { key: 'due-soon', label: 'Due soon' },
+    { key: 'no-date',  label: 'No date yet' },
+  ].map(f => `<button class="net-filter ${networkStatusFilter===f.key?'active':''}" onclick="networkStatusFilter='${f.key}';renderNetwork()">${f.label}</button>`).join('');
+
+  const sortSelect = `<select onchange="networkSort=this.value;renderNetwork()" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text-dim);font-size:0.72rem;font-family:'DM Sans',sans-serif;padding:3px 0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;">
+    <option value="recent" ${networkSort==='recent'?'selected':''}>Recent first</option>
+    <option value="oldest" ${networkSort==='oldest'?'selected':''}>Oldest contact first</option>
+    <option value="alpha" ${networkSort==='alpha'?'selected':''}>Name A–Z</option>
+  </select>`;
 
   // Split into active (have lastContact) and aspirational (no lastContact)
-  // Only split when showing 'all' or 'not-recently' — for other filters, show as-is
+  // Only split when showing 'all' filter with no status filter override
   let activeContacts = filtered;
   let aspirationalContacts = [];
 
-  if (networkFilter === 'all' || networkFilter === 'not-recently') {
+  if ((networkFilter === 'all' || networkFilter === 'not-recently') && networkStatusFilter === 'all') {
     activeContacts = filtered.filter(c => c.lastContact);
     aspirationalContacts = filtered.filter(c => !c.lastContact);
   }
@@ -3745,6 +4024,13 @@ function renderNetwork() {
       </div>
     </div>
     <div class="net-filter-row">${filterBtns}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+      <div class="net-filter-row" style="margin-bottom:0;">${statusBtns}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Sort:</span>
+        ${sortSelect}
+      </div>
+    </div>
     <div class="contact-list">${listHTML}</div>
   `;
 }
@@ -4203,6 +4489,7 @@ function checkCalEventsImport() {
 initPin();
 checkURLImport();
 checkCalEventsImport();
+checkWorkoutImport();
 checkDayReset();
 // Show app immediately with local data (fast start)
 render();
