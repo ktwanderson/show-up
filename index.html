@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1004,6 +1007,20 @@
 </head>
 <body>
 
+<div id="signin-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
+  <div style="max-width:320px;width:100%;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;letter-spacing:-0.035em;color:var(--amber);font-family:'Montserrat',sans-serif;margin-bottom:4px;">Show Up</div>
+    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:48px;">Daily rhythm · Job search</div>
+    <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:8px;font-weight:500;">Sign in to sync across all your devices</div>
+    <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:32px;line-height:1.6;">Your data stays private and syncs automatically between your Mac and iPhone.</div>
+    <button id="google-signin-btn" onclick="signInWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;background:var(--surface);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.02em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border-hl)'" onmouseout="this.style.borderColor='var(--border)'">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      Continue with Google
+    </button>
+    <div id="signin-error" style="margin-top:12px;font-size:0.75rem;color:var(--red);display:none;"></div>
+  </div>
+</div>
+
 <div class="pin-overlay hidden" id="pinOverlay">
   <div class="pin-app-name">Show Up</div>
   <div class="pin-prompt" id="pinPrompt">Enter your PIN</div>
@@ -1083,6 +1100,168 @@
 </div>
 
 <script>
+// ── FIREBASE CONFIG ───────────────────────────────
+// Replace these placeholder values with your real Firebase config
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBew3tqZ2obdi3o86FHZXhhEe4HHLSAWsE",
+  authDomain: "show-up-33b6a.firebaseapp.com",
+  databaseURL: "https://show-up-33b6a-default-rtdb.firebaseio.com",
+  projectId: "show-up-33b6a",
+  storageBucket: "show-up-33b6a.firebasestorage.app",
+  messagingSenderId: "631975241080",
+  appId: "1:631975241080:web:483fce00a0ee5563c4d48d"
+};
+
+let firebaseApp = null;
+let firebaseAuth = null;
+let firebaseDb = null;
+let firebaseUser = null;
+let _saveTimeout = null;
+let _syncPaused = false;
+
+function initFirebase() {
+  if (FIREBASE_CONFIG.apiKey === 'PASTE_YOUR_API_KEY_HERE') {
+    console.log('Firebase not configured — running in local mode');
+    return; // app already rendered with localStorage data
+  }
+  try {
+    firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseAuth = firebase.auth();
+    firebaseDb = firebase.database();
+
+    firebaseAuth.onAuthStateChanged(async (user) => {
+      if (user) {
+        firebaseUser = user;
+        hideSignInScreen();
+        await loadFromFirebase();
+        startFirebaseSync();
+      } else {
+        firebaseUser = null;
+        showSignInScreen();
+      }
+    });
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    // Fall back to localStorage-only mode
+    hideSignInScreen();
+    render();
+  }
+}
+
+function showSignInScreen() {
+  const el = document.getElementById('signin-screen');
+  if (el) { el.style.display = 'flex'; }
+}
+
+function hideSignInScreen() {
+  const el = document.getElementById('signin-screen');
+  if (el) { el.style.display = 'none'; }
+}
+
+function signInWithGoogle() {
+  const btn = document.getElementById('google-signin-btn');
+  const errEl = document.getElementById('signin-error');
+  if (btn) { btn.textContent = 'Signing in\u2026'; btn.disabled = true; }
+  if (errEl) { errEl.style.display = 'none'; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebaseAuth.signInWithPopup(provider).catch((err) => {
+    console.error('Sign-in error:', err);
+    if (btn) { btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg> Continue with Google`; btn.disabled = false; }
+    if (errEl) { errEl.textContent = 'Sign-in failed. Please try again.'; errEl.style.display = 'block'; }
+  });
+}
+
+function signOutUser() {
+  if (firebaseAuth) {
+    firebaseAuth.signOut().then(() => {
+      showSignInScreen();
+    });
+  }
+}
+
+async function loadFromFirebase() {
+  if (!firebaseUser || !firebaseDb) return;
+  return new Promise((resolve) => {
+    firebaseDb.ref(`users/${firebaseUser.uid}/state`).once('value', (snapshot) => {
+      const cloudData = snapshot.val();
+      if (cloudData) {
+        // Cloud has data — use it
+        _syncPaused = true;
+        S = Object.assign({}, DEFAULT_STATE, cloudData);
+        localStorage.setItem('jhc3', JSON.stringify(S));
+        _syncPaused = false;
+        render();
+        checkDayReset();
+        resolve();
+      } else {
+        // No cloud data yet — check if localStorage has data to migrate
+        const localRaw = localStorage.getItem('jhc3') || localStorage.getItem('jhc2');
+        if (localRaw) {
+          try {
+            const localData = Object.assign({}, DEFAULT_STATE, JSON.parse(localRaw));
+            showMigrationOffer(localData);
+          } catch(e) {
+            render();
+            checkDayReset();
+          }
+        } else {
+          render();
+          checkDayReset();
+        }
+        resolve();
+      }
+    });
+  });
+}
+
+function showMigrationOffer(localData) {
+  render();
+  checkDayReset();
+  setTimeout(() => {
+    showModal(`
+      <div style="text-align:left">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Upload your data?</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">We found existing Show Up data on this device. Upload it to your account so it syncs everywhere?</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Start fresh</button>
+          <button onclick="closeModal();doMigrateToFirebase()" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Upload my data</button>
+        </div>
+      </div>
+    `);
+  }, 600);
+  // Store for use in doMigrateToFirebase
+  window._pendingMigrationData = localData;
+}
+
+function doMigrateToFirebase() {
+  if (!window._pendingMigrationData || !firebaseUser || !firebaseDb) return;
+  S = window._pendingMigrationData;
+  window._pendingMigrationData = null;
+  save();
+  render();
+  showToast('Data uploaded \u2713');
+}
+
+function startFirebaseSync() {
+  if (!firebaseUser || !firebaseDb) return;
+  // Listen for changes from other devices
+  firebaseDb.ref(`users/${firebaseUser.uid}/state`).on('value', (snapshot) => {
+    if (_syncPaused) return;
+    const cloudData = snapshot.val();
+    if (!cloudData) return;
+    // Only update if the cloud version is newer (has higher nextId)
+    const localNextId = S.nextId || 0;
+    const cloudNextId = cloudData.nextId || 0;
+    if (cloudNextId > localNextId) {
+      _syncPaused = true;
+      S = Object.assign({}, DEFAULT_STATE, cloudData);
+      localStorage.setItem('jhc3', JSON.stringify(S));
+      _syncPaused = false;
+      render();
+    }
+  });
+}
+
 // ── CONSTANTS ────────────────────────────────────────────────
 
 const NOTES = [
@@ -1453,7 +1632,17 @@ function loadState() {
   return Object.assign({}, DEFAULT_STATE);
 }
 
-function save() { localStorage.setItem('jhc3', JSON.stringify(S)); }
+function save() {
+  localStorage.setItem('jhc3', JSON.stringify(S));
+  if (firebaseUser && firebaseDb && !_syncPaused) {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => {
+      firebaseDb.ref(`users/${firebaseUser.uid}/state`).set(S).catch(err => {
+        console.error('Firebase save failed:', err);
+      });
+    }, 800);
+  }
+}
 
 function saveUserName() {
   const inp = document.getElementById('user-name-input');
@@ -3852,6 +4041,10 @@ function renderAccount() {
           onblur="saveUserName()">
         <span style="font-size:0.72rem;color:var(--text-dim)">Used in your daily greeting</span>
       </div>
+      <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px;">
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:4px;">${firebaseUser ? `Signed in as ${firebaseUser.email}` : 'Not signed in'}</div>
+        ${firebaseUser ? `<button onclick="signOutUser()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Sign out \u2192</button>` : `<button onclick="signInWithGoogle()" style="background:none;border:none;color:var(--amber);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Sign in with Google \u2192</button>`}
+      </div>
     </div>`;
   wrap.innerHTML = nameSection + `
     <div style="margin-bottom:28px">
@@ -3949,8 +4142,11 @@ function completeInReminders(text) {
 initPin();
 checkURLImport();
 checkDayReset();
+// Show app immediately with local data (fast start)
 render();
 fetchWeather();
+// Then init Firebase — will update with cloud data if newer
+initFirebase();
 </script>
 </body>
 </html>
