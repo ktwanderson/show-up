@@ -1439,6 +1439,7 @@ const DEFAULT_STATE = {
   gotOutsideToday: false,
   todaySealed: false,
   carryOverIds: [],
+  todayCalEvents: [],
   dailySnapshots: [],
   contacts: [],
   nextContactId: 1,
@@ -1685,6 +1686,7 @@ function checkDayReset() {
     S.gotOutsideToday   = false;
     S.todaySealed       = false;
     S.carryOverIds      = [];
+    S.todayCalEvents    = [];
     save();
   }
 }
@@ -1844,6 +1846,38 @@ function renderToday() {
 
   wrap.innerHTML = `
     ${weekPlannerHtml}${weekReviewHtml}
+    ${(function() {
+      if (!(S.todayCalEvents && S.todayCalEvents.length > 0)) return '';
+      const now2 = new Date();
+      const currentMins = now2.getHours() * 60 + now2.getMinutes();
+      const rows = S.todayCalEvents.map(function(e) {
+        let isPast = false;
+        try {
+          const t = e.time.replace(/\./g, '').toUpperCase();
+          const match = t.match(/(\d+):(\d+)\s*(AM|PM)/);
+          if (match) {
+            let h = parseInt(match[1]);
+            const m = parseInt(match[2]);
+            const ampm = match[3];
+            if (ampm === 'PM' && h !== 12) h += 12;
+            if (ampm === 'AM' && h === 12) h = 0;
+            isPast = (h * 60 + m) < currentMins;
+          }
+        } catch(err) {}
+        return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);' + (isPast ? 'opacity:0.45;' : '') + '">'
+          + '<div style="font-size:0.72rem;color:var(--text-dim);font-family:\'Montserrat\',sans-serif;min-width:58px;letter-spacing:0.01em;">' + escHtml(e.time) + '</div>'
+          + '<div style="font-size:0.85rem;color:' + (isPast ? 'var(--text-mid)' : 'var(--text)') + ';flex:1;line-height:1.3;">' + escHtml(e.title) + '</div>'
+          + (!isPast ? '<div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;opacity:0.6;"></div>' : '')
+          + '</div>';
+      }).join('');
+      return '<div style="margin-bottom:20px;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+        + '<div class="card-label">Today\'s schedule</div>'
+        + '<button onclick="S.todayCalEvents=[];save();renderToday()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-dim)\'">Clear</button>'
+        + '</div>'
+        + rows
+        + '</div>';
+    })()}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div>
         <div style="font-size:0.76rem;color:var(--text-dim)">${dateStr}</div>
@@ -4138,9 +4172,37 @@ function completeInReminders(text) {
   window.location.href = `shortcuts://run-shortcut?name=Complete%20in%20Reminders&input=${encodeURIComponent(text.trim())}`;
 }
 
+// ── CALENDAR EVENTS BRIDGE ────────────────────────────────────
+function checkCalEventsImport() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('calevents');
+  if (!raw) return;
+  try {
+    const decoded = decodeURIComponent(raw);
+    const lines = decoded.split('\n').filter(Boolean);
+    const events = lines.map(line => {
+      const pipeIdx = line.indexOf('|');
+      if (pipeIdx === -1) return null;
+      const time = line.slice(0, pipeIdx).trim();
+      const title = line.slice(pipeIdx + 1).trim();
+      return (time && title) ? { time, title } : null;
+    }).filter(Boolean);
+    if (events.length > 0) {
+      S.todayCalEvents = events;
+      save();
+      window.history.replaceState({}, '', window.location.pathname);
+      renderToday();
+      showToast(`${events.length} event${events.length !== 1 ? 's' : ''} loaded from calendar`);
+    }
+  } catch(e) {
+    console.error('Cal events import error:', e);
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 initPin();
 checkURLImport();
+checkCalEventsImport();
 checkDayReset();
 // Show app immediately with local data (fast start)
 render();
