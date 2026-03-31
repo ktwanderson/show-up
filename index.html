@@ -1477,6 +1477,7 @@ let networkStatusFilter = 'all';
 let networkSort = 'recent';
 let questsView = 'tasks';
 let pipelineOpenId = null;
+let networkView = 'people';
 let _pendingImportRows = null;
 let pendingReminderImport = null;
 
@@ -2464,24 +2465,6 @@ function renderQuests() {
   const wrap = document.getElementById('quests-wrap');
   if (!wrap) return;
 
-  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
-    <button class="view-toggle-btn ${questsView==='tasks'?'active':''}" onclick="questsView='tasks';renderQuests()">Tasks</button>
-    <button class="view-toggle-btn ${questsView==='pipeline'?'active':''}" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
-    <button class="view-toggle-btn ${questsView==='companies'?'active':''}" onclick="questsView='companies';renderQuests()">Companies</button>
-  </div>`;
-
-  if (questsView === 'pipeline') {
-    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
-    renderPipeline();
-    return;
-  }
-
-  if (questsView === 'companies') {
-    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
-    renderCompanies();
-    return;
-  }
-
   const active = S.tasks.filter(t => !t.done);
   const catTabsHTML = ['all', ...Object.keys(CATS)].map(c => {
     const count = c === 'all' ? active.length : active.filter(t => t.cat === c).length;
@@ -2641,14 +2624,7 @@ function renderPipeline() {
   const closed = S.pipeline.filter(e => ['rejected','withdrawn'].includes(e.stage));
 
 
-  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
-    <button class="view-toggle-btn" onclick="questsView='tasks';renderQuests()">Tasks</button>
-    <button class="view-toggle-btn active" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
-    <button class="view-toggle-btn" onclick="questsView='companies';renderQuests()">Companies</button>
-  </div>`;
-
-  let html = toggleHTML;
-  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;">${active.length} active · ${closed.length} closed</span>
     <button onclick="openAddPipelineEntry()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
   </div>`;
@@ -2742,7 +2718,7 @@ function renderPipelineEntry(e) {
         const linkedContacts = (S.contacts||[]).filter(ct => ct.company && ct.company.toLowerCase() === e.company.toLowerCase());
         const coHTML = linkedCo ? `<div>
           <div style="${fieldLabelStyle}">Target company</div>
-          <div onclick="questsView='companies';setTimeout(()=>{companyOpenId=${linkedCo.id};renderQuests();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(linkedCo.name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>
+          <div onclick="networkView='companies';switchTab('network');setTimeout(()=>{companyOpenId=${linkedCo.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(linkedCo.name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>
         </div>` : '';
         const ctHTML = linkedContacts.length > 0 ? `<div>
           <div style="${fieldLabelStyle}">Contacts here</div>
@@ -2759,7 +2735,7 @@ function renderPipelineEntry(e) {
 
 function togglePipelineDetail(id) {
   pipelineOpenId = pipelineOpenId === id ? null : id;
-  renderQuests();
+  renderNetwork();
 }
 
 function updatePipelineStage(id, stage) {
@@ -2767,7 +2743,7 @@ function updatePipelineStage(id, stage) {
   if (!e) return;
   e.stage = stage;
   save();
-  renderQuests();
+  renderNetwork();
 }
 
 function savePipelineField(id, field) {
@@ -2825,15 +2801,15 @@ function saveNewPipelineEntry() {
   S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, nextStep: '', notes: '' });
   save();
   closeModal();
-  questsView = 'pipeline';
-  renderQuests();
+  networkView = 'pipeline';
+  switchTab('network');
 }
 
 function deletePipelineEntry(id) {
   S.pipeline = S.pipeline.filter(x => x.id !== id);
   pipelineOpenId = null;
   save();
-  renderQuests();
+  renderNetwork();
 }
 
 // ── COMPANIES ─────────────────────────────────────────────────
@@ -2843,13 +2819,7 @@ function renderCompanies() {
 
   const statuses = ['researching', 'targeting', 'applied'];
 
-  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
-    <button class="view-toggle-btn" onclick="questsView='tasks';renderQuests()">Tasks</button>
-    <button class="view-toggle-btn" onclick="questsView='pipeline';renderQuests()">Pipeline</button>
-    <button class="view-toggle-btn active" onclick="questsView='companies';renderQuests()">Companies</button>
-  </div>`;
-
-  let html = toggleHTML + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <span style="font-size:0.8rem;color:var(--text-dim)">${S.companies.length} companies</span>
     <button onclick="openAddCompany()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
   </div>`;
@@ -2925,7 +2895,7 @@ function renderCompanyRow(c) {
         </div>` : ''}
         ${(() => { const linkedJobs = (S.pipeline||[]).filter(j => j.company && j.company.toLowerCase() === c.name.toLowerCase()); return linkedJobs.length > 0 ? `<div>
           <div class="rej-field-label">Applied jobs</div>
-          ${linkedJobs.map(j => { const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0]; return `<div onclick="switchTab('quests');questsView='pipeline';setTimeout(()=>{pipelineOpenId=${j.id};renderQuests();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'"><span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>${escHtml(j.role||'Role TBD')}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${st.label} →</span></div>`; }).join('')}
+          ${linkedJobs.map(j => { const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0]; return `<div onclick="networkView='pipeline';switchTab('network');setTimeout(()=>{pipelineOpenId=${j.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'"><span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>${escHtml(j.role||'Role TBD')}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${st.label} →</span></div>`; }).join('')}
         </div>` : ''; })()}
         ${c.website ? `<a href="https://${c.website.replace(/^https?:\/\//,'')}" target="_blank" style="display:block;font-size:0.75rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;padding:4px 0;">Visit website →</a>` : ''}
         <button onclick="deleteCompany(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;text-align:left;padding:4px 0;letter-spacing:0.03em;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Remove company</button>
@@ -2987,8 +2957,8 @@ function saveNewCompany() {
   S.companies.push({ id: S.nextCompanyId++, name, industry, status, website: '', why: '', notes: '' });
   save();
   closeModal();
-  questsView = 'companies';
-  renderQuests();
+  networkView = 'companies';
+  switchTab('network');
 }
 
 let _rejQuote = null;
@@ -3986,6 +3956,24 @@ function renderNetwork() {
   const wrap = document.getElementById('network-wrap');
   if (!wrap) return;
 
+  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+    <button class="view-toggle-btn ${networkView==='people'?'active':''}" onclick="networkView='people';renderNetwork()">People</button>
+    <button class="view-toggle-btn ${networkView==='pipeline'?'active':''}" onclick="networkView='pipeline';renderNetwork()">Pipeline</button>
+    <button class="view-toggle-btn ${networkView==='companies'?'active':''}" onclick="networkView='companies';renderNetwork()">Companies</button>
+  </div>`;
+
+  if (networkView === 'pipeline') {
+    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
+    renderPipeline();
+    return;
+  }
+
+  if (networkView === 'companies') {
+    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
+    renderCompanies();
+    return;
+  }
+
   const contacts = S.contacts || [];
 
   // Type filter
@@ -4091,6 +4079,7 @@ function renderNetwork() {
     : activeHTML + aspirationalHTML;
 
   wrap.innerHTML = `
+    ${toggleHTML}
     <div class="net-add-row">
       <button class="net-add-btn primary" onclick="openAddContactForm()">+ Add contact</button>
       <button class="net-add-btn" onclick="importContactsCSV()">Import from CSV</button>
