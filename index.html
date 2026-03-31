@@ -1460,6 +1460,8 @@ const DEFAULT_STATE = {
   workoutLog: [],
   workoutGoal: 10,
   workedOutToday: false,
+  journalLog: [],
+  journaledToday: false,
 };
 
 let S = loadState();
@@ -1698,6 +1700,7 @@ function checkDayReset() {
     S.focusBlocksToday  = 0;
     S.gotOutsideToday   = false;
     S.workedOutToday    = false;
+    S.journaledToday    = false;
     S.todaySealed       = false;
     S.carryOverIds      = [];
     S.todayCalEvents    = [];
@@ -1712,9 +1715,16 @@ function touchStreak(energy) {
     S.showUpDays[S.showUpDays.length - 1].date === today;
 
   if (!alreadyToday) {
-    const yest = new Date(Date.now() - 86400000).toDateString();
-    const hadYest = S.showUpDays.some(d => d.date === yest);
-    S.showUpStreak = hadYest ? S.showUpStreak + 1 : 1;
+    // Find the previous required day, skipping weekends (Sat=6, Sun=0)
+    let prevMs = Date.now() - 86400000;
+    let prevDay = new Date(prevMs);
+    while (prevDay.getDay() === 0 || prevDay.getDay() === 6) {
+      prevMs -= 86400000;
+      prevDay = new Date(prevMs);
+    }
+    const prevRequired = prevDay.toDateString();
+    const hadPrev = S.showUpDays.some(d => d.date === prevRequired);
+    S.showUpStreak = hadPrev ? S.showUpStreak + 1 : 1;
     S.maxShowUpStreak = Math.max(S.maxShowUpStreak, S.showUpStreak);
     S.showUpDays.push({ date: today, energy });
     if (S.showUpDays.length > 28) S.showUpDays.shift();
@@ -1952,6 +1962,19 @@ function renderToday() {
       </div>
     </div>
 
+    <div class="rhythm-row ${S.journaledToday ? 'rhythm-done' : ''}" onclick="toggleJournal()">
+      <div class="rhythm-left">
+        <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg></div>
+        <div>
+          <div class="rhythm-label">Journaled today</div>
+          <div class="rhythm-sub">${getJournalsThisWeek()} of 5 days this week · empty your mind, start fresh</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="check-circle ${S.journaledToday ? 'checked' : ''}">${S.journaledToday ? '✓' : ''}</div>
+      </div>
+    </div>
+
     ${!isRest ? `
     <div class="rhythm-row" onclick="switchTab('focus')" style="cursor:pointer">
       <div class="rhythm-left">
@@ -2027,10 +2050,18 @@ function renderToday() {
 }
 
 function makeFocusItemHTML(task) {
+  let textHTML = escHtml(task.text);
+  if (task.contactId) {
+    const c = S.contacts.find(x => x.id === task.contactId);
+    if (c) {
+      const name = escHtml(contactFullName(c));
+      textHTML = textHTML.replace(name, `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;">${name}</span>`);
+    }
+  }
   return `
     <div class="focus-item ${task.done ? 'focus-done' : ''}">
       <div class="check-circle ${task.done ? 'checked' : ''}" onclick="completeFocusTask(${task.id},event)" style="cursor:pointer">${task.done ? '✓' : ''}</div>
-      <div class="focus-text">${escHtml(task.text)}</div>
+      <div class="focus-text">${textHTML}</div>
       ${catDot(task.cat, '18px')}
       <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
     </div>`;
@@ -2706,6 +2737,19 @@ function renderPipelineEntry(e) {
         <div style="${fieldLabelStyle}">Notes</div>
         <textarea id="pe-notes-${e.id}" onblur="savePipelineField(${e.id},'notes')" style="${inlineInputStyle}resize:vertical;min-height:60px;">${escHtml(e.notes||'')}</textarea>
       </div>
+      ${(() => {
+        const linkedCo = (S.companies||[]).find(co => co.name && co.name.toLowerCase() === e.company.toLowerCase());
+        const linkedContacts = (S.contacts||[]).filter(ct => ct.company && ct.company.toLowerCase() === e.company.toLowerCase());
+        const coHTML = linkedCo ? `<div>
+          <div style="${fieldLabelStyle}">Target company</div>
+          <div onclick="questsView='companies';setTimeout(()=>{companyOpenId=${linkedCo.id};renderQuests();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(linkedCo.name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>
+        </div>` : '';
+        const ctHTML = linkedContacts.length > 0 ? `<div>
+          <div style="${fieldLabelStyle}">Contacts here</div>
+          ${linkedContacts.map(ct => `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role?`<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>`:''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
+        </div>` : '';
+        return coHTML + ctHTML;
+      })()}
       <div>
         <button class="contact-action-btn danger" onclick="deletePipelineEntry(${e.id})">Remove</button>
       </div>
@@ -2877,8 +2921,12 @@ function renderCompanyRow(c) {
         </div>
         ${linkedContacts.length > 0 ? `<div>
           <div class="rej-field-label">Contacts here</div>
-          ${linkedContacts.map(ct => `<div style="font-size:0.82rem;color:var(--text-mid);padding:4px 0;border-bottom:1px solid var(--border);">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role ? ` · ${escHtml(ct.role)}` : ''}</div>`).join('')}
+          ${linkedContacts.map(ct => `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role ? `<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>` : ''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
         </div>` : ''}
+        ${(() => { const linkedJobs = (S.pipeline||[]).filter(j => j.company && j.company.toLowerCase() === c.name.toLowerCase()); return linkedJobs.length > 0 ? `<div>
+          <div class="rej-field-label">Applied jobs</div>
+          ${linkedJobs.map(j => { const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0]; return `<div onclick="switchTab('quests');questsView='pipeline';setTimeout(()=>{pipelineOpenId=${j.id};renderQuests();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'"><span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>${escHtml(j.role||'Role TBD')}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${st.label} →</span></div>`; }).join('')}
+        </div>` : ''; })()}
         ${c.website ? `<a href="https://${c.website.replace(/^https?:\/\//,'')}" target="_blank" style="display:block;font-size:0.75rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;padding:4px 0;">Visit website →</a>` : ''}
         <button onclick="deleteCompany(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;text-align:left;padding:4px 0;letter-spacing:0.03em;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Remove company</button>
       </div>
@@ -3439,6 +3487,36 @@ function getWorkoutsThisMonth() {
   return (S.workoutLog || []).filter(d => d.startsWith(prefix)).length;
 }
 
+function getJournalsThisWeek() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+  const daysFromMon = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysFromMon);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return (S.journalLog || []).filter(d => {
+    const dt = new Date(d).getTime();
+    return dt >= monday.getTime() && dt <= sunday.getTime();
+  }).length;
+}
+
+function toggleJournal() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (S.journaledToday) {
+    S.journaledToday = false;
+    S.journalLog = (S.journalLog || []).filter(d => d !== today);
+  } else {
+    S.journaledToday = true;
+    if (!S.journalLog) S.journalLog = [];
+    if (!S.journalLog.includes(today)) S.journalLog.push(today);
+  }
+  save();
+  renderToday();
+}
+
 function checkWorkoutImport() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('workout') === 'logged') {
@@ -3797,6 +3875,7 @@ function openEditContact(contactId) {
       </div>
       <input class="contact-inline-input" id="ec-company" placeholder="Company" value="${escHtml(c.company||'')}" style="margin-bottom:8px">
       <input class="contact-inline-input" id="ec-email" placeholder="Email" value="${escHtml(c.email||'')}" style="margin-bottom:8px">
+      <input class="contact-inline-input" id="ec-linkedin" placeholder="LinkedIn URL" value="${escHtml(c.linkedin||'')}" style="margin-bottom:8px">
       <select class="contact-inline-input" id="ec-type" style="margin-bottom:8px">
         ${['peer','mentor','mentee','recruiter'].map(t =>
           `<option value="${t}" ${c.type===t?'selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`
@@ -3826,6 +3905,7 @@ function saveEditContact(contactId) {
   c.last    = document.getElementById('ec-last').value.trim();
   c.company = document.getElementById('ec-company').value.trim();
   c.email   = document.getElementById('ec-email').value.trim();
+  c.linkedin = document.getElementById('ec-linkedin').value.trim();
   c.type    = document.getElementById('ec-type').value;
   c.preferredMethod = document.getElementById('ec-method').value;
   c.resumeSent = document.getElementById('ec-resume').checked;
@@ -4101,6 +4181,11 @@ function renderContactCard(c) {
         ${c.email ? `<div style="margin-top:10px;">
           <div class="contact-detail-section-label">Email</div>
           <div style="font-size:0.8rem;color:var(--text-mid)">${escHtml(c.email)}</div>
+        </div>` : ''}
+
+        ${c.linkedin ? `<div style="margin-top:10px;">
+          <div class="contact-detail-section-label">LinkedIn</div>
+          <a href="${escHtml(c.linkedin.startsWith('http') ? c.linkedin : 'https://' + c.linkedin)}" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--amber);text-decoration:none;word-break:break-all;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escHtml(c.linkedin)}</a>
         </div>` : ''}
 
         <div style="margin-top:10px;">
