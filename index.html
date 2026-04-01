@@ -1415,7 +1415,168 @@ const ACHIEVEMENTS = [
   { id: 'lv3',         icon: '◆', name: 'Level 3',           desc: 'Reach Level 3',                           check: s => s.level >= 3 },
   { id: 'lv5',         icon: '◆', name: 'Level 5',           desc: 'Reach Level 5',                           check: s => s.level >= 5 },
   { id: 'lv8',         icon: '✦', name: 'Still here',        desc: 'Reach level 8',                           check: s => s.level >= 8 },
+  { id: 'skill_first',    icon: '◈', name: 'First Session',    desc: 'Log your first skill-building session',    check: s => (s.totalSkillSessions||0) >= 1 },
+  { id: 'skill_aware',    icon: '◈', name: 'Getting Aware',    desc: 'Reach Level 1 on any skill',               check: s => (s.maxSkillLevel||0) >= 1 },
+  { id: 'skill_familiar', icon: '◈', name: 'Getting Familiar', desc: 'Reach Level 2 on any skill',               check: s => (s.maxSkillLevel||0) >= 2 },
+  { id: 'skill_fluent',   icon: '◈', name: 'Fluent',           desc: 'Reach Level 3 (Fluent) on any skill',      check: s => (s.maxSkillLevel||0) >= 3 },
+  { id: 'skill_five',     icon: '◈', name: 'Learning Stack',   desc: 'Activate 5 skills',                        check: s => (s.activeSkillCount||0) >= 5 },
 ];
+
+// ── SKILLS ───────────────────────────────────────────────────
+const SKILL_LIBRARY = [
+  { key: 'ortb',           name: 'OpenRTB',            category: 'adtech'    },
+  { key: 'header_bidding', name: 'Header Bidding',      category: 'adtech'    },
+  { key: 'auction_dyn',    name: 'Auction Dynamics',    category: 'adtech'    },
+  { key: 'bid_shading',    name: 'Bid Shading',         category: 'adtech'    },
+  { key: 'prog_basics',    name: 'Programmatic Basics', category: 'adtech'    },
+  { key: 'clean_rooms',    name: 'Clean Rooms',         category: 'adtech'    },
+  { key: 'sql',            name: 'SQL',                 category: 'data_code' },
+  { key: 'python',         name: 'Python Basics',       category: 'data_code' },
+  { key: 'apis',           name: 'APIs',                category: 'data_code' },
+  { key: 'sdks',           name: 'SDKs',                category: 'data_code' },
+  { key: 'automation',     name: 'Automation',          category: 'data_code' },
+  { key: 'ai_tools',       name: 'AI Tools',            category: 'data_code' },
+  { key: 'agile',          name: 'Agile / Scrum',       category: 'product'   },
+  { key: 'sprint',         name: 'Sprint Planning',     category: 'product'   },
+  { key: 'jira',           name: 'Jira',                category: 'product'   },
+  { key: 'roadmapping',    name: 'Roadmapping',         category: 'product'   },
+  { key: 'gam',            name: 'Google Ad Manager',   category: 'platforms' },
+  { key: 'ttd',            name: 'The Trade Desk',      category: 'platforms' },
+  { key: 'liveramp',       name: 'LiveRamp',            category: 'platforms' },
+];
+
+const SKILL_CATEGORIES = {
+  adtech:    { label: 'Ad Tech' },
+  data_code: { label: 'Data & Code' },
+  product:   { label: 'Product & Process' },
+  platforms: { label: 'Platforms' },
+};
+
+const SKILL_LEVELS = [
+  { level: 0, label: 'Not started', minSessions: 0  },
+  { level: 1, label: 'Aware',       minSessions: 1  },
+  { level: 2, label: 'Familiar',    minSessions: 5  },
+  { level: 3, label: 'Fluent',      minSessions: 10 },
+];
+
+const SKILL_CONTENT = {
+  ortb: {
+    1: `OpenRTB is the industry standard protocol for real-time programmatic auctions. Think of it as the language that publishers and advertisers use to transact in milliseconds. In a standard ad call, a publisher's ad server sends a bid request (a JSON object) to multiple DSPs simultaneously — they have ~100ms to respond with a bid or pass. At AMC Networks, every digital impression on AMC.com went through this pipeline.`,
+    2: `A bid request contains: the impression object (ad sizes, floor price, position), site/app context (URL, content category), and user signals (segments, frequency data). DSPs parse this and respond with a bid response containing CPM and creative. Key fields to know: imp[].bidfloor, site.page, user.buyeruid. Understanding this schema helps you speak fluently with ad ops, yield, and engineering.`,
+    3: `At fluency you can read a raw bid request JSON, identify why a DSP would or wouldn't bid (targeting mismatch, below floor, freq cap hit, timeout), and diagnose fill rate issues. You can explain auction mechanics: first-price vs second-price, win/loss notifications, and how bid shading layers on top. You can also articulate the role of auction timeouts in overall yield and why lower timeouts hurt fill but improve UX.`,
+  },
+  header_bidding: {
+    1: `Header bidding lets publishers offer inventory to multiple demand sources simultaneously before calling the primary ad server. It replaced the old "waterfall" model where demand was tried sequentially — first Google, then others — which left money on the table. Publishers like AMC Networks adopted header bidding to increase CPMs by creating real competition for every impression.`,
+    2: `Prebid.js is the dominant open-source header bidding wrapper. It runs in the browser, collects bids from configured adapters (each adapter = one DSP/SSP relationship), and passes the highest bid to Google Ad Manager via key-value targeting. The ad server then decides: take the header bid, or serve a direct campaign? Server-side header bidding (S2S via Prebid Server) reduces page latency at the cost of some signal loss.`,
+    3: `At fluency: you can evaluate adapter configurations and timeout settings, explain why too-short timeouts reduce fill and too-long ones hurt page speed, debug CPM discrepancies between Prebid and GAM, and articulate the identity layer — how UID 2.0, RampID, and first-party data plug into the bid request for audience targeting in a cookieless world.`,
+  },
+  auction_dyn: {
+    1: `Ad auctions determine who wins an impression and at what price. Most programmatic auctions today are first-price: the winner pays exactly what they bid. Understanding how auctions work helps you explain why CPMs vary, why floor prices matter, and why the same inventory can yield very different results across buyers.`,
+    2: `First-price auctions: winner pays their bid. Second-price (now rare): winner pays $0.01 above second-highest bid. Publishers set floor prices to prevent inventory from clearing too cheaply. Soft floors trigger second-price dynamics above a threshold; hard floors reject bids below them entirely. Price floors are a key lever in yield management.`,
+    3: `At fluency: you understand how bid shading, soft floors, and dynamic floors interact. You can explain why a publisher raising floors too aggressively reduces fill and why too-low floors give away revenue. You can read auction analytics — win rate vs. clearing price curves — and identify optimization opportunities for a yield or rev ops team.`,
+  },
+  bid_shading: {
+    1: `Bid shading is a DSP-side optimization for first-price auctions. When auctions moved from second-price to first-price, buyers who used to bid their true value started overpaying. Bid shading algorithms reduce the submitted bid to something closer to the expected clearing price — saving the buyer money while still winning the impression.`,
+    2: `DSPs use historical win/loss data and clearing prices to predict the minimum bid needed to win a given impression. They shade the bid down to just above that threshold. The risk: shade too aggressively and you lose impressions; shade too little and you overpay. Different DSPs have different shading models — this is a competitive differentiator.`,
+    3: `At fluency: you can explain the publisher-side impact (bid shading compresses CPMs on the sell side, which is why publishers push for transparency), the relationship between shading and price floors, and how SSPs have responded with their own bid optimization tools. You can discuss this intelligently with both buy-side and sell-side stakeholders.`,
+  },
+  prog_basics: {
+    1: `Programmatic advertising is the automated buying and selling of digital ad inventory through technology platforms. Instead of direct insertion orders negotiated by humans, programmatic uses DSPs (demand-side platforms), SSPs (supply-side platforms), and DMPs (data management platforms) to transact in real time. It now accounts for the majority of digital display, video, and CTV spending.`,
+    2: `The supply chain: Publisher → SSP → Ad Exchange → DSP → Advertiser. Key deal types: Open Auction (anyone can bid), Private Marketplace/PMP (invited buyers, floor price), Preferred Deal (fixed price, first look), Programmatic Guaranteed (fixed price, guaranteed volume). Each has different CPM dynamics and controls for publishers and buyers.`,
+    3: `At fluency: you can map a full programmatic transaction from impression opportunity to creative render, explain where data signals are added or lost, identify supply chain transparency issues (made-for-advertising sites, domain spoofing, SSAI in CTV), and discuss how the deprecation of third-party cookies is reshaping the landscape.`,
+  },
+  clean_rooms: {
+    1: `Data clean rooms are privacy-safe environments where two parties (e.g., a publisher and an advertiser) can match and analyze their first-party data without either party exposing raw PII to the other. They're increasingly important as cookies go away and privacy regulations tighten. Examples: Google Ads Data Hub, Amazon Marketing Cloud, InfoSum, LiveRamp Data Collaboration.`,
+    2: `A typical clean room use case: AMC Networks uploads its subscriber data, a CPG advertiser uploads its CRM list, the clean room finds the overlap (matched households) without revealing individual records, and outputs aggregated insights: reach, frequency, conversion lift. The publisher gets to prove audience value; the advertiser gets better attribution.`,
+    3: `At fluency: you can explain the technical approaches (trusted execution environments, differential privacy, secure multi-party computation), articulate the business value to both publisher and advertiser, and discuss which clean room platform makes sense for which use case. You can also speak to the interoperability challenge between walled gardens and how neutral clean rooms like InfoSum address it.`,
+  },
+  sql: {
+    1: `SQL (Structured Query Language) is how you retrieve and analyze data from relational databases. The four core operations: SELECT (read columns), FROM (choose table), WHERE (filter rows), GROUP BY (aggregate). Nearly every ad tech platform exposes data via SQL — BigQuery, Snowflake, Redshift, and even The Trade Desk's reporting API uses SQL-like queries.`,
+    2: `Intermediate SQL: JOINs (INNER joins matching rows in both tables; LEFT joins keep all rows from the left table even without a match), subqueries, GROUP BY with HAVING, and window functions like ROW_NUMBER(), RANK(), and LAG(). In ad ops you'd use these to reconcile impression counts across platforms, calculate pacing, or identify campaigns with abnormal CPM trends.`,
+    3: `Advanced: CTEs (WITH clauses for readable multi-step queries), query optimization (understanding how indexes speed lookups, avoiding SELECT *), and writing reusable views. At this level you can independently pull campaign performance reports from a data warehouse, build QBR decks from raw tables, and collaborate with data engineering without needing hand-holding on every query.`,
+  },
+  python: {
+    1: `Python is a general-purpose programming language that's widely used in data analysis, automation, and API work. It's the most beginner-friendly language for non-engineers. You're already reading JavaScript (this app is built in JS) — Python is even more readable. A basic Python script can automate a task you'd normally do manually in Excel.`,
+    2: `Key Python concepts: variables, lists, dictionaries, for loops, functions, and importing libraries. The most useful libraries for your world: pandas (data manipulation, like Excel but in code), requests (calling APIs), and csv (reading/writing spreadsheets). A script that fetches campaign data from an API and writes it to a CSV is a realistic 2-hour project at this level.`,
+    3: `At fluency: you can write scripts to automate repetitive reporting tasks, call ad platform APIs (Google Ad Manager, The Trade Desk), parse and transform JSON responses, and produce clean output files. You don't need to build apps — you need to be the person on the team who can automate the manual stuff and do light data analysis without waiting for a data analyst.`,
+  },
+  apis: {
+    1: `An API (Application Programming Interface) is a way for two software systems to talk to each other. When you use a weather app, it calls a weather API to get data. In ad tech, everything has an API: Google Ad Manager, The Trade Desk, Salesforce, LinkedIn. Knowing how APIs work lets you automate data pulls, build integrations, and speak credibly with engineering teams.`,
+    2: `Most modern APIs are REST APIs — they use HTTP requests (GET to read data, POST to create, PUT to update, DELETE to remove). Responses come back as JSON. You authenticate with an API key or OAuth token passed in a header. Tools: Postman lets you test API calls without writing code; Python's requests library lets you script them. The TTD API, for example, lets you pull campaign spend data programmatically.`,
+    3: `At fluency: you can read API documentation, authenticate and make calls, handle pagination (APIs often return data in pages), parse nested JSON responses, and build simple scripts that chain API calls. You can evaluate an API's capabilities in a vendor conversation and ask informed questions about rate limits, webhooks, and data freshness.`,
+  },
+  sdks: {
+    1: `An SDK (Software Development Kit) is a pre-packaged set of tools that makes it easier to integrate a product into an app or website. Publishers integrate ad SDKs (like Google's IMA SDK) into their apps to enable ad serving. Measurement SDKs (like Moat, IAS) attach to ads to track viewability. Knowing what SDKs do helps you manage publisher relationships and diagnose integration issues.`,
+    2: `In CTV/streaming, SDK integrations are critical — ad serving on Roku, FireTV, and Apple TV all happen through platform SDKs. A common publisher challenge: the ad SDK, the measurement SDK, and the player SDK all need to work together without conflicts. When AMC Networks launched a streaming product, SDK integration was a key technical dependency for monetization.`,
+    3: `At fluency: you can walk through what an SDK integration involves (developer effort, testing, certification), explain the difference between client-side and server-side ad insertion (CSAI vs SSAI) and the tradeoffs for measurement, and articulate SDK requirements to a publisher tech team or evaluate a vendor's SDK documentation.`,
+  },
+  automation: {
+    1: `Automation means using technology to do repetitive tasks without manual effort. In media and ad operations, common automation targets include: pulling daily campaign reports, sending performance alerts, updating pacing trackers, and reconciling invoices. Even basic automation — a scheduled Python script, a Zapier workflow, a Google Apps Script — can save hours per week.`,
+    2: `Tools by complexity: Zapier/Make (no-code, connects apps), Google Apps Script (JavaScript in Google Sheets/Docs), Python scripts (most flexible), and workflow platforms like Airflow (data pipelines). A realistic first automation project: a Python script that pulls last week's campaign performance from an API and emails a formatted summary every Monday morning.`,
+    3: `At fluency: you identify automation opportunities proactively, scope the build vs. buy decision, and can implement or manage implementation of moderate-complexity automations. You can speak to API rate limits, error handling, scheduling, and monitoring — and you've shipped at least one automation that other people rely on.`,
+  },
+  ai_tools: {
+    1: `AI tools like Claude, ChatGPT, Gemini, and Perplexity are now practical productivity tools for business professionals. They can draft emails, summarize documents, explain complex topics, write and debug code, and research companies. Being fluent with AI tools is on almost every job description right now — it's a multiplier skill, not a standalone one.`,
+    2: `Advanced AI tool usage: prompt engineering (being specific about role, format, and constraints gets much better outputs), using AI to analyze data (paste a table, ask for insights), using coding assistants like GitHub Copilot or Claude for light scripting, and understanding what AI is and isn't reliable for (great at drafting and summarizing; unreliable for precise facts and math).`,
+    3: `At fluency: you use AI tools as a natural part of your workflow, you know when to trust and when to verify outputs, you can write effective prompts for complex multi-step tasks, and you can articulate to a non-technical audience how AI tools are changing the role of knowledge workers — including in ad tech and media.`,
+  },
+  agile: {
+    1: `Agile is a project management philosophy built around iterative work, flexibility, and continuous feedback. Instead of planning everything upfront (waterfall), Agile teams work in short cycles (sprints), ship incrementally, and adapt based on what they learn. Scrum is the most common Agile framework. Product managers, engineers, and increasingly operations teams all work in Agile environments.`,
+    2: `Scrum ceremonies: Sprint Planning (what do we build this sprint?), Daily Standup (what did I do, what will I do, any blockers?), Sprint Review (demo what was built), Sprint Retrospective (what went well, what didn't?). Roles: Product Owner (prioritizes backlog), Scrum Master (facilitates process), Development Team (does the work). Sprints are typically 1-2 weeks.`,
+    3: `At fluency: you can participate productively in all Scrum ceremonies, write user stories with clear acceptance criteria, understand the difference between the product backlog and sprint backlog, and articulate tradeoffs in sprint scope without needing to be the PM. You can also explain why Agile works better for uncertain, evolving problems than for stable, predictable ones.`,
+  },
+  sprint: {
+    1: `Sprint planning is the Scrum ceremony where a team decides what work to complete in the next sprint (usually 2 weeks). The Product Owner presents the prioritized backlog; the team estimates effort and commits to a sprint goal. As a non-engineer in a product-adjacent role, understanding sprint planning helps you collaborate more effectively with engineering and anticipate timelines.`,
+    2: `Key concepts: story points (relative effort estimates, not hours), velocity (how many points a team typically completes per sprint), and the sprint goal (the overarching objective, not just a list of tasks). In sprint planning, the team also breaks down large stories into smaller ones that can actually be completed within the sprint.`,
+    3: `At fluency: you can write well-sized user stories, participate in estimation conversations, and understand when to push back on scope creep mid-sprint. You know what makes a sprint goal good (specific, achievable, meaningful) vs. bad (just a list of everything in the backlog). You can also facilitate a sprint planning meeting if needed.`,
+  },
+  jira: {
+    1: `Jira is the most widely used project management tool for software teams. It's where user stories, bugs, and tasks (called "issues") are tracked through a workflow (To Do → In Progress → Done). Even if you're not an engineer, you'll likely use Jira in any product, operations, or technical role to track work, report on progress, and manage priorities.`,
+    2: `Key Jira concepts: Epic (large feature or initiative), Story (user-facing functionality), Task (technical work), Bug (defect). Boards: Scrum boards show sprint work; Kanban boards show continuous flow. JQL (Jira Query Language) lets you build custom filters — e.g., find all open bugs assigned to a specific person on a specific project.`,
+    3: `At fluency: you can create and manage a project board, write clear issue descriptions with acceptance criteria, use JQL for reporting, build simple dashboards showing team velocity and backlog health, and configure basic workflows. You can navigate Jira confidently in a team setting without needing a tutorial from engineering.`,
+  },
+  roadmapping: {
+    1: `A product roadmap communicates what a team is building, why, and roughly when. It's a strategic planning tool — not a detailed project plan. Good roadmaps are organized around outcomes (what problem are we solving?) rather than outputs (what feature are we building?). Understanding roadmapping helps you contribute to product conversations and evaluate company priorities in interviews.`,
+    2: `Common roadmap formats: Now/Next/Later (prioritized by urgency, no dates), quarterly roadmaps (commitments by quarter), and release plans (specific features per release). Tools: Productboard, Aha!, Notion, or even a well-structured Google Sheet. The hardest part of roadmapping isn't the tool — it's ruthless prioritization and saying no.`,
+    3: `At fluency: you can build and maintain a roadmap, facilitate stakeholder alignment conversations, explain the tradeoff between committing to dates vs. staying flexible, and translate business goals into prioritized product initiatives. You can articulate what belongs on a roadmap (strategic bets) vs. what belongs in a sprint backlog (tactical execution).`,
+  },
+  gam: {
+    1: `Google Ad Manager (GAM) is the industry-standard ad server for large publishers. It manages the full ad delivery workflow: trafficking creatives, setting targeting rules, managing direct sold campaigns, and running the programmatic auction. Most major media companies, including AMC Networks, use GAM as their primary ad server.`,
+    2: `GAM core concepts: Orders (the campaign container), Line Items (specific targeting + delivery settings), Creatives (the actual ad), and Ad Units (the inventory slots on your site/app). Line item types: Sponsorship (share of voice), Standard (impressions/clicks goal), Network (fills remnant), and Programmatic (passes to the RTB auction). Priority determines which line item wins the auction.`,
+    3: `At fluency: you can traffic a campaign from scratch, set up programmatic demand (AdX, PMP deals), configure frequency capping and targeting rules, read delivery and discrepancy reports, and diagnose delivery issues (underpacing, creative rejection, targeting conflicts). You can also explain how GAM's unified auction works with header bidding.`,
+  },
+  ttd: {
+    1: `The Trade Desk (TTD) is one of the largest demand-side platforms (DSPs) — the tool advertisers and agencies use to buy programmatic advertising. It's known for its data capabilities, reach across CTV/streaming/display/audio, and transparency. Many of the advertisers that bought inventory at AMC Networks were doing so through The Trade Desk.`,
+    2: `TTD's platform: Campaigns → Ad Groups → Ads hierarchy. Key levers: CPM bidding strategies (fixed, dynamic), audience targeting (first-party data upload, third-party segments, lookalikes), contextual targeting, frequency capping, and supply path optimization (choosing preferred SSPs). The Koa AI system provides automated bid optimization recommendations.`,
+    3: `At fluency: you can set up and optimize a campaign in TTD, interpret the reporting dashboards (win rate, CPM trends, reach/frequency), configure PMP deals, and use UID 2.0 for cookieless targeting. You can also evaluate TTD vs. other DSPs (DV360, Amazon DSP) for specific use cases and have an informed conversation with a buyer about their campaign setup.`,
+  },
+  liveramp: {
+    1: `LiveRamp is a data connectivity platform — it helps companies connect their first-party data to advertising platforms in a privacy-safe way. Their core product, RampID, is a persistent, privacy-compliant identifier that can replace the third-party cookie for audience targeting and measurement. Publishers, advertisers, and data providers all use LiveRamp to make their data interoperable.`,
+    2: `Key LiveRamp products: Data Marketplace (buy/sell audience data), Authenticated Traffic Solution (ATS, for publishers to pass RampIDs on authenticated users), and Data Collaboration (clean room-like matching). For a publisher like AMC Networks, LiveRamp enables selling authenticated audiences to programmatic buyers at premium CPMs — a key revenue strategy in a cookieless world.`,
+    3: `At fluency: you can explain the LiveRamp identity graph, articulate how ATS works on the publisher side (user logs in → LiveRamp hashes the email → RampID attached to bid request), evaluate LiveRamp vs. competing identity solutions (UID 2.0, ID5), and discuss the clean room use cases where LiveRamp adds value vs. where a more neutral solution is better.`,
+  },
+};
+
+function getSkillContent(key, level) {
+  const skillData = SKILL_CONTENT[key];
+  const lv = Math.max(level, 1);
+  if (!skillData || !skillData[lv]) return `You're building your foundation in this skill. Log more sessions and notes to track what you're learning. Deeper content unlocks as you progress.`;
+  return skillData[lv];
+}
+
+function calcSkillLevel(sessions) {
+  if (sessions >= 10) return 3;
+  if (sessions >= 5)  return 2;
+  if (sessions >= 1)  return 1;
+  return 0;
+}
+
+function sessionsToNextLevel(currentSessions) {
+  if (currentSessions >= 10) return { next: null, needed: 0, pct: 100 };
+  if (currentSessions >= 5)  return { next: 3, needed: 10 - currentSessions, pct: Math.round(((currentSessions - 5) / 5) * 100) };
+  if (currentSessions >= 1)  return { next: 2, needed: 5  - currentSessions, pct: Math.round(((currentSessions - 1) / 4) * 100) };
+  return { next: 1, needed: 1, pct: 0 };
+}
 
 // ── STATE ────────────────────────────────────────────────────
 const DEFAULT_STATE = {
@@ -1466,6 +1627,8 @@ const DEFAULT_STATE = {
   workedOutToday: false,
   journalLog: [],
   journaledToday: false,
+  skills: [],
+  nextSkillId: 1,
 };
 
 let S = loadState();
@@ -1482,6 +1645,7 @@ let networkSort = 'recent';
 let questsView = 'tasks';
 let pipelineOpenId = null;
 let networkView = 'people';
+let focusView = 'timer';
 let _pendingImportRows = null;
 let pendingReminderImport = null;
 
@@ -2322,6 +2486,17 @@ function renderFocusTimer() {
   const wrap = document.getElementById('focus-wrap');
   if (!wrap) return;
 
+  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+    <button class="view-toggle-btn ${focusView==='timer'?'active':''}" onclick="focusView='timer';renderFocusTimer()">Timer</button>
+    <button class="view-toggle-btn ${focusView==='skills'?'active':''}" onclick="focusView='skills';renderFocusTimer()">Skills</button>
+  </div>`;
+
+  if (focusView === 'skills') {
+    wrap.innerHTML = `<div>${toggleHTML}</div>`;
+    renderSkills();
+    return;
+  }
+
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(t => t && !t.done);
   const mins = String(Math.floor(timer.remaining / 60)).padStart(2, '0');
   const secs = String(timer.remaining % 60).padStart(2, '0');
@@ -2333,7 +2508,7 @@ function renderFocusTimer() {
     ? 'One focused session at a time. You don\'t need to solve everything today.'
     : randomPick(BREAK_NOTES);
 
-  wrap.innerHTML = `
+  wrap.innerHTML = toggleHTML + `
     <div class="card" style="text-align:center;border-top:none;padding-top:0">
       <div class="timer-mode-row">
         <button class="timer-mode-btn ${timer.mode==='work'?'active':''}" onclick="setTimerMode('work')">Focus</button>
@@ -2381,6 +2556,188 @@ function renderFocusTimer() {
       </div>
     </div>
   `;
+}
+
+// ── SKILLS ───────────────────────────────────────────────────
+function renderSkills() {
+  const wrap = document.getElementById('focus-wrap');
+  if (!wrap) return;
+  const container = wrap.querySelector('div');
+  if (!container) return;
+
+  const activeSkills = (S.skills || []).filter(sk => sk.active);
+  const catLabelMap = { adtech: 'Ad Tech', data_code: 'Data & Code', product: 'Product & Process', platforms: 'Platforms' };
+
+  const levelColors = ['var(--text-dim)', 'var(--text-mid)', 'var(--amber)', '#2d8a5e'];
+
+  const skillCardHTML = (sk) => {
+    const progress = sessionsToNextLevel(sk.sessionsTotal);
+    const barWidth = progress.next ? progress.pct : 100;
+    const levelLabel = SKILL_LEVELS[sk.level]?.label || 'Not started';
+    const catLabel = catLabelMap[sk.category] || sk.category;
+    const lvColor = levelColors[sk.level] || 'var(--text-dim)';
+    return `
+      <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.86rem;font-weight:600;color:var(--text);">${escHtml(sk.name)}</div>
+            <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">${catLabel}</div>
+          </div>
+          <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:${lvColor};flex-shrink:0;">Lv ${sk.level} · ${levelLabel}</span>
+          <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${sk.sessionsTotal} session${sk.sessionsTotal!==1?'s':''}</div>
+        </div>
+        <div style="height:2px;background:var(--border);border-radius:1px;margin-bottom:8px;overflow:hidden;">
+          <div style="width:${barWidth}%;height:100%;background:var(--amber);border-radius:1px;transition:width 0.4s;"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="font-size:0.68rem;color:var(--text-dim);">
+            ${progress.next ? `${progress.needed} session${progress.needed!==1?'s':''} to Level ${progress.next}` : '✦ Max level reached'}
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="openSkillContent(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Learn →</button>
+            <button onclick="logSkillSession(${sk.id})" style="background:var(--surface2);border:none;border-radius:2px;padding:5px 12px;font-size:0.72rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Log session</button>
+          </div>
+        </div>
+      </div>`;
+  };
+
+  const activeHTML = activeSkills.length > 0
+    ? activeSkills.map(skillCardHTML).join('')
+    : `<div style="padding:20px 0;font-size:0.8rem;color:var(--text-dim);line-height:1.6;">No active skills yet.<br>Add one below to start tracking your learning.</div>`;
+
+  container.insertAdjacentHTML('beforeend', `
+    <div class="card-label" style="margin-top:4px;">Active skills</div>
+    <div id="skills-list">${activeHTML}</div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+      <button onclick="openSkillLibrary()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">+ Add a skill</button>
+    </div>
+  `);
+}
+
+function logSkillSession(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  showModal(`
+    <div style="text-align:left;">
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">${escHtml(skill.name)}</div>
+      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px;">Level ${skill.level} · Log a session</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Notes (optional)</div>
+      <textarea id="skill-session-notes" placeholder="What did you study or practice? What clicked?" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;resize:none;outline:none;line-height:1.6;min-height:72px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:20px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveSkillSession(${skillId})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save session</button>
+      </div>
+    </div>
+  `);
+}
+
+function saveSkillSession(skillId) {
+  const notesEl = document.getElementById('skill-session-notes');
+  const notes = notesEl ? notesEl.value.trim() : '';
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) { closeModal(); return; }
+
+  skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
+  if (!skill.sessionLog) skill.sessionLog = [];
+  skill.sessionLog.push({ date: new Date().toISOString().slice(0,10), notes });
+
+  const oldLevel = skill.level;
+  skill.level = calcSkillLevel(skill.sessionsTotal);
+
+  // Create a completed task so it shows in today's activity
+  const taskText = `Study: ${skill.name} — Level ${skill.level}`;
+  const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now() };
+  S.tasks.unshift(newTask);
+  S.totalAdded++;
+  S.totalDone++;
+  if (S.doneBy.research !== undefined) S.doneBy.research++;
+  if (!S.todayFocusIds.includes(newTask.id)) S.todayFocusIds.push(newTask.id);
+
+  gainXP(20);
+  save();
+  closeModal();
+  updateHeader();
+  renderFocusTimer();
+  checkAchievements();
+
+  const levelUpMsg = skill.level > oldLevel ? ` · Level ${skill.level} unlocked!` : '';
+  showToast(`Session logged ✓${levelUpMsg}`);
+}
+
+function openSkillLibrary() {
+  if (!S.skills) S.skills = [];
+  const activeKeys = new Set(S.skills.filter(sk => sk.active).map(sk => sk.key));
+
+  const grouped = Object.entries(SKILL_CATEGORIES).map(([catKey, catMeta]) => {
+    const skills = SKILL_LIBRARY.filter(s => s.category === catKey);
+    const rows = skills.map(s => {
+      const isActive = activeKeys.has(s.key);
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:0.84rem;color:${isActive ? 'var(--text-dim)' : 'var(--text)'};">${escHtml(s.name)}</div>
+        ${isActive
+          ? `<span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--green);">Active ✓</span>`
+          : `<button onclick="addSkillFromLibrary('${s.key}')" style="background:none;border:1px solid var(--border);border-radius:2px;font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-dim);padding:4px 10px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">+ Add</button>`
+        }
+      </div>`;
+    }).join('');
+    return `
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);padding:14px 0 4px;">${catMeta.label}</div>
+      ${rows}`;
+  }).join('');
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Add a skill</div>
+      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:12px;">Choose skills to track</div>
+      <div style="max-height:60vh;overflow-y:auto;">${grouped}</div>
+      <button onclick="closeModal()" style="margin-top:20px;width:100%;padding:10px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+    </div>
+  `);
+}
+
+function addSkillFromLibrary(key) {
+  if (!S.skills) S.skills = [];
+  if (!S.nextSkillId) S.nextSkillId = 1;
+  const libEntry = SKILL_LIBRARY.find(s => s.key === key);
+  if (!libEntry) return;
+  if (S.skills.find(sk => sk.key === key)) { showToast('Already added'); return; }
+  S.skills.push({
+    id: S.nextSkillId++,
+    key: libEntry.key,
+    name: libEntry.name,
+    category: libEntry.category,
+    level: 0,
+    sessionsTotal: 0,
+    sessionLog: [],
+    active: true,
+  });
+  save();
+  checkAchievements();
+  showToast(`${libEntry.name} added ✓`);
+  openSkillLibrary(); // re-open so user can add more
+}
+
+function openSkillContent(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  const displayLevel = Math.max(skill.level, 1);
+  const content = getSkillContent(skill.key, displayLevel);
+  const levelLabel = SKILL_LEVELS[displayLevel]?.label || '';
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;">${escHtml(skill.name)}</div>
+        <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--amber);">Lv ${skill.level}</span>
+      </div>
+      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:16px;">${levelLabel}</div>
+      <div style="border-left:2px solid var(--amber);padding:4px 0 4px 14px;margin-bottom:20px;">
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.75;">${escHtml(content)}</div>
+      </div>
+      <button onclick="closeModal();logSkillSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Log a session +20 XP</button>
+      <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
+    </div>
+  `);
 }
 
 function toggleTimer() {
@@ -2520,7 +2877,6 @@ function renderQuests() {
 
   wrap.innerHTML = `
     <div id="questsContent">
-    ${toggleHTML}
     <div class="cat-tabs">${catTabsHTML}</div>
     ${rejHtml}
     <div class="add-form">
@@ -3067,6 +3423,9 @@ function renderProgress() {
     rejections: S.rejections,
     totalRestDays: S.totalRestDays || 0,
     level: lv.num,
+    totalSkillSessions: (S.skills||[]).reduce((acc, sk) => acc + (sk.sessionsTotal||0), 0),
+    maxSkillLevel:      (S.skills||[]).reduce((acc, sk) => Math.max(acc, sk.level||0), 0),
+    activeSkillCount:   (S.skills||[]).filter(sk => sk.active).length,
   };
   const achHTML = ACHIEVEMENTS.map(a => {
     const earned = a.check(achStats);
@@ -3321,6 +3680,9 @@ function checkAchievements() {
     rejections: S.rejections,
     totalRestDays: S.totalRestDays || 0,
     level: lv.num,
+    totalSkillSessions: (S.skills||[]).reduce((acc, sk) => acc + (sk.sessionsTotal||0), 0),
+    maxSkillLevel:      (S.skills||[]).reduce((acc, sk) => Math.max(acc, sk.level||0), 0),
+    activeSkillCount:   (S.skills||[]).filter(sk => sk.active).length,
   };
   ACHIEVEMENTS.forEach(a => {
     if (!S.earned.includes(a.id) && a.check(stats)) {
