@@ -1628,6 +1628,7 @@ const DEFAULT_STATE = {
   journaledToday: false,
   skills: [],
   nextSkillId: 1,
+  weeklyCapacity: 20,
 };
 
 let S = loadState();
@@ -1859,6 +1860,10 @@ function saveDaySnapshot(sealed) {
 
 // ── DAY RESET ────────────────────────────────────────────────
 function checkDayReset() {
+  // Migrate existing tasks to have points
+  if (S.tasks) {
+    S.tasks.forEach(t => { if (t.points === undefined) t.points = 1; });
+  }
   const today = new Date().toDateString();
   if (S.todayDate !== today) {
     saveDaySnapshot(S.todaySealed || false); // capture yesterday before clearing
@@ -2085,9 +2090,14 @@ function renderToday() {
       </div>
     ` : `
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-label" style="margin-bottom:0">Today's focus</div>
-        </div>
+        ${(() => {
+          const focusActiveTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(t => t && !t.done);
+          const focusPts = focusActiveTasks.reduce((sum, t) => sum + (t.points||1), 0);
+          return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-label" style="margin-bottom:0">Today's focus</div>
+            ${focusPts > 0 ? `<span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${focusPts} pt${focusPts!==1?'s':''}</span>` : ''}
+          </div>`;
+        })()}
         <div id="focus-list">
           ${focusTasks.length > 0
             ? focusTasks.map(t => makeFocusItemHTML(t)).join('')
@@ -2221,10 +2231,14 @@ function makeFocusItemHTML(task) {
       textHTML = textHTML.replace(name, `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;">${name}</span>`);
     }
   }
+  const pts = task.points || 1;
+  const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
+  const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
   return `
     <div class="focus-item ${task.done ? 'focus-done' : ''}">
       <div class="check-circle ${task.done ? 'checked' : ''}" onclick="completeFocusTask(${task.id},event)" style="cursor:pointer">${task.done ? '✓' : ''}</div>
       <div class="focus-text">${textHTML}</div>
+      ${!task.done ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
       ${catDot(task.cat, '18px')}
       <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
     </div>`;
@@ -2261,7 +2275,7 @@ function quickAddFocus() {
   if (!inp) return;
   const text = inp.value.trim();
   if (!text) return;
-  const task = { id: S.nextId++, text, cat: 'todo', done: false, createdAt: Date.now() };
+  const task = { id: S.nextId++, text, cat: 'todo', done: false, createdAt: Date.now(), points: 1 };
   S.tasks.unshift(task);
   S.totalAdded++;
   S.todayFocusIds.push(task.id);
@@ -2640,7 +2654,7 @@ function saveSkillSession(skillId) {
 
   // Create a completed task so it shows in today's activity
   const taskText = `Study: ${skill.name} — Level ${skill.level}`;
-  const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now() };
+  const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now(), points: 1 };
   S.tasks.unshift(newTask);
   S.totalAdded++;
   S.totalDone++;
@@ -2815,6 +2829,37 @@ function resetTimer() {
   renderFocusTimer();
 }
 
+// ── CAPACITY BAR ─────────────────────────────────────────────
+function renderCapacityBar() {
+  const ws = getWeekStart();
+  const wEnd = new Date(ws);
+  wEnd.setDate(wEnd.getDate() + 6);
+  const wEndStr = wEnd.toISOString().slice(0,10);
+
+  const activeTasks = S.tasks.filter(t => !t.done);
+  const committedPts = activeTasks.reduce((sum, t) => sum + (t.points || 1), 0);
+
+  const completedThisWeek = S.tasks.filter(t => t.done && t.doneDate >= ws && t.doneDate <= wEndStr);
+  const donePts = completedThisWeek.reduce((sum, t) => sum + (t.points || 1), 0);
+
+  const capacity = S.weeklyCapacity || 20;
+  const loadPct = Math.min(100, Math.round((committedPts / capacity) * 100));
+  const isOver = committedPts > capacity;
+
+  return `<div style="margin-bottom:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;">Sprint</div>
+      <div style="font-size:0.72rem;color:${isOver ? 'var(--red)' : 'var(--text-dim)'};font-family:'Montserrat',sans-serif;">
+        <span style="font-weight:700;color:${isOver ? 'var(--red)' : 'var(--text)'}">${committedPts}</span> / ${capacity} pts${isOver ? ' · over capacity' : ''}
+      </div>
+    </div>
+    <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;">
+      <div style="height:100%;width:${loadPct}%;background:${isOver ? 'var(--red)' : 'var(--amber)'};border-radius:2px;transition:width 0.3s;"></div>
+    </div>
+    ${donePts > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px;">${donePts} pts completed this week</div>` : ''}
+  </div>`;
+}
+
 // ── QUESTS TAB ───────────────────────────────────────────────
 function renderQuests() {
   const wrap = document.getElementById('quests-wrap');
@@ -2854,6 +2899,13 @@ function renderQuests() {
       ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
     </select>` : '';
 
+  const pointsSelectHTML = `<select id="task-points-sel" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.72rem;color:var(--text-dim);padding:4px 0;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;width:32px;text-align:center;">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="5">5</option>
+  </select>`;
+
   const emptyMsg = currentQuestCat === 'all'
     ? 'No tasks yet. Add something to work on.'
     : `No ${CATS[currentQuestCat]?.label || currentQuestCat} tasks yet.`;
@@ -2875,22 +2927,39 @@ function renderQuests() {
     ${rejHtml}
     <div class="add-form">
       ${catSelectHTML}
+      ${pointsSelectHTML}
       <input class="add-input" id="quest-input" placeholder="${ph}" onkeydown="if(event.key==='Enter')addQuestTask()">
       <button class="add-btn" onclick="addQuestTask()" title="Add to Show Up">+</button>
       <button class="add-btn" onclick="(function(){const v=document.getElementById('quest-input').value.trim();if(!v)return;addQuestTask();pushToReminders(v);})()" title="Add to Show Up + Reminders" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap">+R</button>
     </div>
+    ${renderCapacityBar()}
     <div id="quest-list">${tasksHTML}</div>
     ${doneHTML}
     </div>
   `;
 }
 
+function cycleTaskPoints(id, event) {
+  event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const cycle = [1, 2, 3, 5];
+  const idx = cycle.indexOf(task.points || 1);
+  task.points = cycle[(idx + 1) % cycle.length];
+  save();
+  renderQuests();
+}
+
 function makeQuestTaskHTML(task, showCat) {
   const cat = CATS[task.cat] || {};
   const isPinned = S.todayFocusIds.includes(task.id);
+  const pts = task.points || 1;
+  const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
+  const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
   return `
     <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
+      ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
       <div class="task-text">${escHtml(task.text)}</div>
       <div class="task-meta">
         ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
@@ -2954,7 +3023,9 @@ function addQuestTask() {
   const cat = currentQuestCat === 'all'
     ? (document.getElementById('quick-cat')?.value || 'admin')
     : currentQuestCat;
-  S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now() });
+  const pointsSel = document.getElementById('task-points-sel');
+  const pts = parseInt(pointsSel?.value || '1');
+  S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now(), points: pts });
   S.totalAdded++;
   save();
   inp.value = '';
@@ -3494,6 +3565,14 @@ function renderProgress() {
   const thisMonthWorkouts = getWorkoutsThisMonth();
   const workoutPct = Math.min(100, Math.round((thisMonthWorkouts / (S.workoutGoal || 10)) * 100));
 
+  const ws = getWeekStart();
+  const wEnd = new Date(ws);
+  wEnd.setDate(wEnd.getDate() + 6);
+  const wEndStr = wEnd.toISOString().slice(0,10);
+  const ptsThisWeek = S.tasks
+    .filter(t => t.done && t.doneDate >= ws && t.doneDate <= wEndStr)
+    .reduce((sum, t) => sum + (t.points||1), 0);
+
   wrap.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -3509,8 +3588,8 @@ function renderProgress() {
         <div class="stat-label">focus sessions</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${S.rejections}</div>
-        <div class="stat-label">rejections = data</div>
+        <div class="stat-value">${ptsThisWeek}</div>
+        <div class="stat-label">pts this week</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:0;">
@@ -3649,6 +3728,9 @@ function renderWeekPlannerHTML() {
   const plan = getCurrentWeekPlan();
   const g = plan?.goals || ['','',''];
   const wkInputStyle = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:8px 0;outline:none;box-sizing:border-box;`;
+  const activePts = S.tasks.filter(t => !t.done).reduce((sum, t) => sum + (t.points||1), 0);
+  const capacity = S.weeklyCapacity || 20;
+  const isOver = activePts > capacity;
   return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 8px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="card-label" style="margin-bottom:0;">This week's plan</div>
@@ -3658,6 +3740,15 @@ function renderWeekPlannerHTML() {
       <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="${wkInputStyle}">
       <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="${wkInputStyle}">
       <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="${wkInputStyle}">
+    </div>
+    <div style="padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:0.72rem;color:var(--text-dim);">Active sprint load</div>
+        <div style="font-size:0.78rem;font-weight:700;color:${isOver ? 'var(--red)' : 'var(--amber)'};">${activePts} / ${capacity} pts${isOver ? ' ⚠' : ''}</div>
+      </div>
+      <div style="height:2px;background:var(--surface2);border-radius:2px;margin-top:5px;overflow:hidden;">
+        <div style="height:100%;width:${Math.min(100,Math.round(activePts/capacity*100))}%;background:${isOver ? 'var(--red)' : 'var(--amber)'};border-radius:2px;"></div>
+      </div>
     </div>
     <input id="w-intention" placeholder="This week I want to feel..." value="${escHtml(plan?.intention||'')}" style="${wkInputStyle}margin-bottom:14px;">
     <button onclick="saveWeeklyPlan()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save plan</button>
@@ -4189,7 +4280,7 @@ function addContactToToday(contactId) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
   const text = `Reach out to ${contactFullName(c)}`;
-  const task = { id: S.nextId++, text, cat: 'network', done: false, createdAt: Date.now(), contactId };
+  const task = { id: S.nextId++, text, cat: 'network', done: false, createdAt: Date.now(), points: 1, contactId };
   S.tasks.unshift(task);
   S.totalAdded++;
   if (!S.todayFocusIds.includes(task.id)) S.todayFocusIds.push(task.id);
@@ -4859,6 +4950,20 @@ function renderAccount() {
         </div>
       </div>
     </div>
+    <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
+      <div class="card-label" style="margin-bottom:16px">Sprint</div>
+      <div style="margin-bottom:16px;">
+        <div class="card-label" style="margin-bottom:6px;">Weekly sprint capacity</div>
+        <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px;">How many points you can realistically complete in a week.</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="number" id="capacity-input" value="${S.weeklyCapacity||20}" min="5" max="100"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:6px 0 8px;outline:none;width:60px;text-align:center;">
+          <span style="font-size:0.78rem;color:var(--text-dim);">points / week</span>
+          <button onclick="S.weeklyCapacity=parseInt(document.getElementById('capacity-input').value)||20;save();renderAccount();showToast('Capacity updated ✓')"
+            style="background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save</button>
+        </div>
+      </div>
+    </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Security</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -4909,7 +5014,7 @@ function showReminderImportModal() {
 function confirmReminderImport() {
   if (!pendingReminderImport) return;
   pendingReminderImport.forEach(text => {
-    S.tasks.unshift({ id: S.nextId++, text, cat: 'personal', done: false, createdAt: Date.now(), fromReminders: true });
+    S.tasks.unshift({ id: S.nextId++, text, cat: 'personal', done: false, createdAt: Date.now(), points: 1, fromReminders: true });
     S.totalAdded++;
   });
   const count = pendingReminderImport.length;
