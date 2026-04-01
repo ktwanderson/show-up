@@ -2996,7 +2996,7 @@ function renderPipeline() {
       <div style="margin-top:4px;font-size:0.78rem;">Track your interview pipeline here.</div>
       <button onclick="openAddPipelineEntry()" style="margin-top:14px;background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add Application</button>
     </div>`;
-    container.innerHTML = html;
+    container.insertAdjacentHTML('beforeend', html);
     return;
   }
 
@@ -3018,7 +3018,7 @@ function renderPipeline() {
     </div>`;
   }
 
-  container.innerHTML = html;
+  container.insertAdjacentHTML('beforeend', html);
 }
 
 function renderPipelineEntry(e) {
@@ -3191,7 +3191,7 @@ function renderCompanies() {
       <div style="font-size:0.82rem;">Research and track companies you want to work for.</div>
       <button onclick="openAddCompany()" style="margin-top:16px;background:none;border:none;color:var(--amber);font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;">+ Add your first company</button>
     </div>`;
-    container.innerHTML = html;
+    container.insertAdjacentHTML('beforeend', html);
     return;
   }
 
@@ -3205,7 +3205,7 @@ function renderCompanies() {
     </div>`;
   });
 
-  container.innerHTML = html;
+  container.insertAdjacentHTML('beforeend', html);
 }
 
 let companyOpenId = null;
