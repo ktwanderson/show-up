@@ -1348,13 +1348,12 @@ const REJECTION_QUOTES = [
 ];
 
 const CATS = {
-  apply:    { label: 'Apply',      abbr: 'A', color: '#2d6347', xp: 50, ph: 'Company + role, e.g. Acme · Product Designer' },
+  apply:    { label: 'Apply',      abbr: 'A', color: '#2d6347', xp: 50, ph: 'Company + role, e.g. OpenWeb · Dir. Account Management' },
   followup: { label: 'Follow Up',  abbr: 'F', color: '#a07c08', xp: 30, ph: 'Who + re: what (e.g. Sarah @ Acme re: interview)' },
   network:  { label: 'Network',    abbr: 'N', color: '#4a6b8a', xp: 35, ph: 'Name + context (how you know them, why to reach out)' },
-  research: { label: 'Research',   abbr: 'R', color: '#7a5c8a', xp: 20, ph: 'Company + what to look into' },
-  outside:  { label: 'Outside',    abbr: 'O', color: '#8a6540', xp: 25, ph: 'Walk, errand, coffee shop, anything that gets you out' },
-  personal: { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Errand, health, home, finances, anything life needs from you' },
-  todo:     { label: 'To-Do',      abbr: 'T', color: '#6b6560', xp: 15, ph: 'Job search admin, resume, interview prep...' },
+  research: { label: 'Research',   abbr: 'R', color: '#7a5c8a', xp: 20, ph: 'Company, role, or topic to look into' },
+  admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 15, ph: 'Appointments, bills, forms, errands, logistics' },
+  personal: { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Health, family, home, anything life needs from you' },
 };
 
 const PIPELINE_STAGES = [
@@ -1586,7 +1585,7 @@ const DEFAULT_STATE = {
   nextId: 1,
   totalAdded: 0,
   totalDone: 0,
-  doneBy: { apply:0, followup:0, network:0, research:0, outside:0, personal:0, todo:0 },
+  doneBy: { apply:0, followup:0, network:0, research:0, admin:0, personal:0 },
   rejections: 0,
   rejectionLog: [],
   nextRejectionId: 1,
@@ -1807,7 +1806,7 @@ function loadState() {
         nextId: p.nextId || 1,
         totalAdded: p.totalAdded || 0,
         totalDone:  p.totalDone  || 0,
-        doneBy: Object.assign({ apply:0, followup:0, network:0, research:0, outside:0, personal:0, todo:0 }, p.doneBy || {}),
+        doneBy: Object.assign({ apply:0, followup:0, network:0, research:0, admin:0, personal:0 }, p.doneBy || {}),
         rejections: p.rejections || 0,
         xp: p.xp || 0,
         earned: p.earned || [],
@@ -2088,19 +2087,14 @@ function renderToday() {
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-label" style="margin-bottom:0">Today's focus</div>
-          <button onclick="openFocusPicker()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Pick from tasks →</button>
         </div>
         <div id="focus-list">
           ${focusTasks.length > 0
             ? focusTasks.map(t => makeFocusItemHTML(t)).join('')
-            : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Add 1–${S.todayEnergy === 'light' ? 2 : 3} things to work on today.</div>`
+            : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Pull 1–${S.todayEnergy === 'light' ? 2 : 3} things from your backlog below.</div>`
           }
         </div>
-        <div class="add-form" style="margin-top:8px;margin-bottom:0">
-          <input class="add-input" id="focus-quick-input" placeholder="Quick add a focus item..." onkeydown="if(event.key==='Enter')quickAddFocus()">
-          <button class="add-btn" onclick="quickAddFocus()" title="Add to Show Up">+</button>
-          <button class="add-btn" onclick="(function(){const v=document.getElementById('focus-quick-input').value.trim();if(!v)return;quickAddFocus();pushToReminders(v);})()" title="Add to Show Up + Reminders" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap">+R</button>
-        </div>
+        <button onclick="switchTab('quests')" style="margin-top:12px;width:100%;padding:9px;background:var(--surface2);border:none;border-radius:2px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Plan from backlog →</button>
       </div>
     `}
 
@@ -2895,7 +2889,7 @@ function makeQuestTaskHTML(task, showCat) {
   const cat = CATS[task.cat] || {};
   const isPinned = S.todayFocusIds.includes(task.id);
   return `
-    <div class="task ${task.done?'done':''}">
+    <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
       <div class="task-text">${escHtml(task.text)}</div>
       <div class="task-meta">
@@ -2903,9 +2897,48 @@ function makeQuestTaskHTML(task, showCat) {
         ${showCat ? catDot(task.cat, '18px') : ''}
         ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
         ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.75rem;padding:0 2px;line-height:1;opacity:0.6;">✏️</button>` : ''}
       </div>
       <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
     </div>`;
+}
+
+function openEditTask(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const row = document.getElementById('task-row-' + id);
+  if (!row) return;
+  const catOptions = Object.entries(CATS).map(([k, v]) =>
+    `<option value="${k}" ${task.cat === k ? 'selected' : ''}>${v.label}</option>`
+  ).join('');
+  row.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center;width:100%;flex-wrap:wrap;padding:4px 0;">
+      <input id="edit-task-text-${id}" type="text" value="${escHtml(task.text)}"
+        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:0.85rem;font-family:'Montserrat',sans-serif;"
+        onkeydown="if(event.key==='Enter')saveEditTask(${id});if(event.key==='Escape')renderQuests();" />
+      <select id="edit-task-cat-${id}"
+        style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:0.8rem;font-family:'Montserrat',sans-serif;">
+        ${catOptions}
+      </select>
+      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
+      <button onclick="renderQuests()" style="padding:5px 10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Cancel</button>
+    </div>`;
+  const inp = document.getElementById('edit-task-text-' + id);
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function saveEditTask(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const textEl = document.getElementById('edit-task-text-' + id);
+  const catEl  = document.getElementById('edit-task-cat-' + id);
+  const newText = textEl ? textEl.value.trim() : '';
+  const newCat  = catEl  ? catEl.value : task.cat;
+  if (!newText) return;
+  task.text = newText;
+  task.cat  = newCat;
+  save();
+  renderQuests();
 }
 
 function switchQuestCat(cat) {
@@ -2919,7 +2952,7 @@ function addQuestTask() {
   const text = inp.value.trim();
   if (!text) return;
   const cat = currentQuestCat === 'all'
-    ? (document.getElementById('quick-cat')?.value || 'todo')
+    ? (document.getElementById('quick-cat')?.value || 'admin')
     : currentQuestCat;
   S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now() });
   S.totalAdded++;
@@ -3035,8 +3068,8 @@ function renderPipelineEntry(e) {
     <div onclick="togglePipelineDetail(${e.id})" style="display:flex;align-items:center;gap:10px;padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
       <div style="width:7px;height:7px;border-radius:50%;background:${stageInfo.color};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:0.84rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.company)}</div>
-        <div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role || '\u2014')}</div>
+        <div style="font-size:0.84rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role || '—')}</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.company)}</div>
       </div>
       <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);font-weight:600;white-space:nowrap;">${stageInfo.label}</div>
       ${e.jdUrl ? `<a href="${escHtml(e.jdUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open job posting" style="flex-shrink:0;color:var(--text-dim);line-height:1;opacity:0.6;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2H2v8h8V7"/><path d="M7 2h3v3"/><path d="M10 2L5.5 6.5"/></svg></a>` : ''}
