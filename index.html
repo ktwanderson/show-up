@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Show Up</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23e8b800'/%3E%3Cg stroke='%23e8b800' stroke-width='2.2' stroke-linecap='round'%3E%3Cline x1='16' y1='1.5' x2='16' y2='6'/%3E%3Cline x1='16' y1='26' x2='16' y2='30.5'/%3E%3Cline x1='1.5' y1='16' x2='6' y2='16'/%3E%3Cline x1='26' y1='16' x2='30.5' y2='16'/%3E%3Cline x1='5' y1='5' x2='8.2' y2='8.2'/%3E%3Cline x1='23.8' y1='23.8' x2='27' y2='27'/%3E%3Cline x1='27' y1='5' x2='23.8' y2='8.2'/%3E%3Cline x1='8.2' y1='23.8' x2='5' y2='27'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" id="apple-touch-icon-link">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Show Up">
+  <script>
+    (function() {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 180; c.height = 180;
+        const x = c.getContext('2d');
+        x.fillStyle = '#ede9e1'; x.fillRect(0,0,180,180);
+        x.fillStyle = '#e8b800'; x.beginPath(); x.arc(90,90,42,0,Math.PI*2); x.fill();
+        x.strokeStyle = '#e8b800'; x.lineWidth = 11; x.lineCap = 'round';
+        [[90,8,90,38],[90,142,90,172],[8,90,38,90],[142,90,172,90],
+         [28,28,49,49],[131,131,152,152],[152,28,131,49],[49,131,28,152]
+        ].forEach(([x1,y1,x2,y2]) => { x.beginPath(); x.moveTo(x1,y1); x.lineTo(x2,y2); x.stroke(); });
+        document.getElementById('apple-touch-icon-link').href = c.toDataURL('image/png');
+      } catch(e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -41,6 +61,21 @@
       --text:       #1a1a1a;
       --text-dim:   #8a857a;
       --text-mid:   #504c46;
+
+      /* ── Type scale ─────────────────────────────────────
+         fs-label  : tiny UPPERCASE metadata labels
+         fs-meta   : secondary text, dates, badges
+         fs-ui     : tabs, buttons, nav elements
+         fs-body   : primary reading text
+         ls-caps   : letter-spacing for all-caps labels
+         ls-ui     : letter-spacing for UI nav/button text
+      ──────────────────────────────────────────────────── */
+      --fs-label:  0.62rem;
+      --fs-meta:   0.72rem;
+      --fs-ui:     0.68rem;
+      --fs-body:   0.84rem;
+      --ls-caps:   0.07em;
+      --ls-ui:     0.05em;
     }
 
     body {
@@ -132,11 +167,11 @@
       border-bottom: none;
       color: var(--text-dim);
       cursor: pointer;
-      font-size: 0.7rem;
+      font-size: var(--fs-ui);
       font-family: 'Montserrat', sans-serif;
       white-space: nowrap;
       transition: color 0.15s;
-      letter-spacing: 0.08em;
+      letter-spacing: var(--ls-caps);
       text-transform: uppercase;
     }
     .tab:hover { color: var(--text-mid); }
@@ -157,11 +192,11 @@
       margin-bottom: 0;
     }
     .card-label {
-      font-size: 0.68rem;
+      font-size: var(--fs-ui);
       font-weight: 600;
       color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: var(--ls-caps);
       margin-bottom: 12px;
       font-family: 'Montserrat', sans-serif;
     }
@@ -185,7 +220,7 @@
       padding: 20px 6px 16px;
       background: var(--surface);
       border: none;
-      border-radius: 10px;
+      border-radius: 3px;
       cursor: pointer;
       text-align: center;
       transition: background 0.15s;
@@ -312,7 +347,7 @@
       border: none;
       border-bottom: 1px solid var(--border);
       border-radius: 0;
-      padding: 11px 0;
+      padding: 13px 0;
       display: flex;
       align-items: center;
       gap: 9px;
@@ -330,7 +365,7 @@
     .progress-btn.active { opacity:1;color:var(--amber); }
     .task:hover .progress-btn { opacity:0.55; }
     .task:hover .progress-btn.active { opacity:1; }
-    .task-text { flex: 1; font-size: 0.86rem; line-height: 1.4; color: var(--text); word-break: break-word; }
+    .task-text { flex: 1; font-size: 0.86rem; line-height: 1.55; color: var(--text); word-break: break-word; }
     .task-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
     .xp-badge {
       font-size: 0.63rem; color: var(--text-dim);
@@ -350,7 +385,7 @@
     .del-btn {
       background: none; border: none; color: var(--text-dim);
       cursor: pointer; font-size: 0.73rem; padding: 2px 5px;
-      border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+      border-radius: 2px; opacity: 0; transition: opacity 0.15s, color 0.15s;
     }
     .del-btn:hover { opacity: 1 !important; color: var(--red); }
 
@@ -397,10 +432,10 @@
       padding: 0 0 10px; border-radius: 0;
       border: none; border-bottom: 2px solid transparent;
       background: transparent;
-      font-size: 0.68rem; cursor: pointer; color: var(--text-dim);
+      font-size: var(--fs-ui); cursor: pointer; color: var(--text-dim);
       white-space: nowrap; transition: color 0.15s, border-color 0.15s;
       display: flex; align-items: center; gap: 5px;
-      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-caps);
       text-transform: uppercase; margin-bottom: -1px;
     }
     .cat-tab:hover { color: var(--text-mid); }
@@ -454,17 +489,18 @@
       padding: 0 0 12px; border-radius: 0;
       border: none; border-bottom: 2px solid transparent;
       background: transparent; margin-bottom: -1px;
-      font-size: 0.68rem; cursor: pointer; color: var(--text-dim);
+      font-size: var(--fs-ui); cursor: pointer; color: var(--text-dim);
       transition: color 0.15s, border-color 0.15s;
-      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-caps);
       text-transform: uppercase;
     }
     .timer-mode-btn:hover { color: var(--text-mid); }
     .timer-mode-btn.active { color: var(--text); border-bottom-color: var(--text); font-weight: 700; }
     .timer-controls { display: flex; gap: 8px; justify-content: center; }
     .timer-btn {
-      padding: 11px 26px; border-radius: 9px; border: none;
-      cursor: pointer; font-size: 0.875rem; font-weight: 600;
+      padding: 11px 26px; border-radius: 2px; border: none;
+      cursor: pointer; font-size: 0.84rem; font-weight: 600;
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-ui);
       transition: opacity 0.15s;
     }
     .timer-btn.primary { background: var(--text); color: var(--surface); }
@@ -498,7 +534,7 @@
     .stat-card:first-child { padding-left: 0; }
     .stat-card:last-child { border-right: none; }
     .stat-value { font-size: 2rem; font-weight: 200; color: var(--text); font-family: 'Montserrat', sans-serif; line-height: 1; letter-spacing: -0.02em; }
-    .stat-label { font-size: 0.58rem; color: var(--text-dim); margin-top: 6px; line-height: 1.3; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 0.07em; }
+    .stat-label { font-size: var(--fs-label); color: var(--text-dim); margin-top: 6px; line-height: 1.3; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: var(--ls-caps); }
 
     /* ── WEEK GRID ───────────────────────────────────── */
     .week-grid {
@@ -535,8 +571,8 @@
     .view-toggle-btn {
       padding: 0 0 10px; border: none; border-bottom: 2px solid transparent;
       background: transparent; color: var(--text-dim); font-weight: 400;
-      font-size: 0.68rem; cursor: pointer; font-family: 'Montserrat', sans-serif;
-      letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: -1px;
+      font-size: var(--fs-ui); cursor: pointer; font-family: 'Montserrat', sans-serif;
+      letter-spacing: var(--ls-caps); text-transform: uppercase; margin-bottom: -1px;
       transition: color 0.15s, border-color 0.15s;
     }
     .view-toggle-btn.active {
@@ -554,21 +590,22 @@
     .overlay.show { opacity: 1; pointer-events: all; }
     .modal {
       background: var(--surface); border: none;
-      border-radius: 3px; padding: 36px 32px; text-align: center;
+      border-radius: 2px; padding: 44px 36px; text-align: center;
       max-width: 340px; width: 90%;
       box-shadow: none;
       animation: popIn 0.28s cubic-bezier(0.34,1.5,0.64,1);
       max-height: 85vh; overflow-y: auto;
     }
     @keyframes popIn { from { transform: scale(0.72); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .modal-big-icon { font-size: 2.8rem; margin-bottom: 9px; }
-    .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Montserrat', sans-serif; }
-    .modal-body { font-size: 0.86rem; color: var(--text-mid); margin-bottom: 20px; line-height: 1.55; }
+    .modal-big-icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; font-family: 'Montserrat', sans-serif; letter-spacing: -0.01em; }
+    .modal-body { font-size: var(--fs-body); color: var(--text-mid); margin-bottom: 24px; line-height: 1.65; }
     .modal-btn {
       background: var(--text); color: var(--surface);
-      border: none; padding: 10px 26px; border-radius: 8px;
-      cursor: pointer; font-weight: 600; font-size: 0.875rem;
-      transition: opacity 0.15s;
+      border: none; padding: 10px 28px; border-radius: 2px;
+      cursor: pointer; font-weight: 600; font-size: var(--fs-ui);
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-ui);
+      text-transform: uppercase; transition: opacity 0.15s;
     }
     .modal-btn:hover { opacity: 0.72; }
 
@@ -647,8 +684,8 @@
       margin-bottom: 24px;
     }
     .journal-day-label {
-      font-size: 0.56rem; text-align: center; color: var(--text-dim);
-      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      font-size: var(--fs-label); text-align: center; color: var(--text-dim);
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-caps);
       padding-bottom: 6px; text-transform: uppercase;
     }
     .journal-day {
@@ -690,7 +727,7 @@
       letter-spacing: -0.02em; line-height: 1;
     }
     .journal-stat-lbl {
-      font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-caps);
       color: var(--text-dim); margin-top: 4px; font-family: 'Montserrat', sans-serif;
     }
 
@@ -812,7 +849,7 @@
 .contact-row:first-child { border-top: 1px solid var(--border); }
 .contact-row-main {
   display: flex; align-items: center; gap: 10px;
-  padding: 13px 0; cursor: pointer;
+  padding: 15px 0; cursor: pointer;
 }
 .contact-row-main:hover { opacity: 0.75; }
 .contact-status-dot {
@@ -846,13 +883,13 @@
 }
 .contact-today-btn:hover { border-color: var(--amber); color: var(--amber); }
 .contact-detail {
-  padding: 0 0 16px 17px;
+  padding: 4px 0 20px 17px;
   border-top: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 14px;
+  display: flex; flex-direction: column; gap: 16px;
 }
 .contact-detail-section-label {
-  font-size: 0.58rem; font-family: 'Montserrat', sans-serif;
-  letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: var(--fs-label); font-family: 'Montserrat', sans-serif;
+  letter-spacing: var(--ls-caps); text-transform: uppercase;
   color: var(--text-dim); margin-bottom: 4px;
 }
 .contact-inline-input {
@@ -863,8 +900,8 @@
 }
 .contact-inline-input:focus { outline: 1px solid var(--border-hl); }
 .contact-interaction-entry {
-  font-size: 0.76rem; color: var(--text-mid); line-height: 1.5;
-  padding: 5px 0; border-bottom: 1px solid var(--border);
+  font-size: 0.76rem; color: var(--text-mid); line-height: 1.6;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
 }
 .contact-interaction-entry:last-child { border-bottom: none; }
 .contact-interaction-date {
@@ -941,9 +978,9 @@
   margin-bottom: 24px;
 }
 .rej-field-label {
-  font-size: 0.62rem;
+  font-size: var(--fs-label);
   font-family: 'Montserrat', sans-serif;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
   color: var(--text-dim);
   margin-bottom: 6px;
@@ -3077,16 +3114,34 @@ function completeQuestTask(id, event) {
   updateHeader();
   const newLv = getLvl(S.xp).num;
   if (newLv > oldLv) showLevelUp(newLv); else checkAchievements();
-  if (task.fromReminders) {
-    setTimeout(() => {
-      const toast = document.getElementById('toast');
-      if (toast) {
-        toast.innerHTML = `Marked done · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Also complete in Reminders →</span>`;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 5000);
-      }
-    }, 800);
-  }
+  // Show undo toast (delay slightly so it appears after XP float)
+  setTimeout(() => {
+    const toast = document.getElementById('toast');
+    if (toast) {
+      const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
+      toast.innerHTML = `Done ✓ · <span onclick="undoCompleteTask(${id},${xp})" style="text-decoration:underline;cursor:pointer">Undo</span>${remindersLink}`;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 4500);
+    }
+  }, 300);
+}
+
+function undoCompleteTask(id, xp) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || !task.done) return;
+  task.done = false;
+  delete task.doneAt;
+  task.inProgress = false;
+  S.xp = Math.max(0, (S.xp || 0) - xp);
+  S.totalDone = Math.max(0, (S.totalDone || 0) - 1);
+  if (S.doneBy && S.doneBy[task.cat] !== undefined) S.doneBy[task.cat] = Math.max(0, S.doneBy[task.cat] - 1);
+  save();
+  renderQuests();
+  if (currentTab === 'today') renderToday();
+  updateHeader();
+  const toast = document.getElementById('toast');
+  if (toast) toast.classList.remove('show');
+  showToast('Task restored \u21a9');
 }
 
 function markTaskInProgress(id, event) {
@@ -3409,12 +3464,12 @@ function renderCompanyRow(c) {
 
 function toggleCompanyDetail(id) {
   companyOpenId = companyOpenId === id ? null : id;
-  renderCompanies();
+  renderNetwork();
 }
 
 function updateCompanyStatus(id, status) {
   const c = S.companies.find(x => x.id === id);
-  if (c) { c.status = status; save(); renderCompanies(); }
+  if (c) { c.status = status; save(); renderNetwork(); }
 }
 
 function saveCompanyField(id, field) {
@@ -3428,7 +3483,7 @@ function deleteCompany(id) {
   S.companies = S.companies.filter(x => x.id !== id);
   companyOpenId = null;
   save();
-  renderCompanies();
+  renderNetwork();
 }
 
 function openAddCompany() {
