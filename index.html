@@ -1074,6 +1074,73 @@
   </div>
 </div>
 
+<div id="onboarding-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:495;overflow-y:auto;padding:48px 24px 80px;">
+  <div style="max-width:380px;margin:0 auto;">
+    <div style="font-size:1.8rem;font-weight:800;letter-spacing:-0.035em;color:var(--amber);font-family:'Montserrat',sans-serif;margin-bottom:4px;">Show Up</div>
+    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:40px;">Let's set up your account</div>
+
+    <div style="margin-bottom:32px;">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Montserrat',sans-serif;color:var(--text-dim);margin-bottom:8px;">Your name</div>
+      <input type="text" id="onboarding-name" class="add-input" placeholder="First name..." style="width:100%;">
+    </div>
+
+    <div style="margin-bottom:36px;">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Montserrat',sans-serif;color:var(--text-dim);margin-bottom:4px;">What do you want to track?</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:20px;">Choose the habits that matter to you.</div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+          <input type="checkbox" id="ob-workout" checked onchange="obToggleGoal('workout')" style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer;">
+          <span style="font-size:0.9rem;font-weight:600;color:var(--text);">Working out</span>
+        </label>
+        <div id="ob-workout-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
+          <input type="number" id="ob-workout-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
+          <select id="ob-workout-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+            <option value="week">week</option>
+            <option value="month">month</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+          <input type="checkbox" id="ob-journal" checked onchange="obToggleGoal('journal')" style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer;">
+          <span style="font-size:0.9rem;font-weight:600;color:var(--text);">Journaling</span>
+        </label>
+        <div id="ob-journal-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
+          <input type="number" id="ob-journal-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
+          <select id="ob-journal-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+            <option value="week">week</option>
+            <option value="month">month</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+          <input type="checkbox" id="ob-outside" checked onchange="obToggleGoal('outside')" style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer;">
+          <span style="font-size:0.9rem;font-weight:600;color:var(--text);">Getting outside</span>
+        </label>
+        <div id="ob-outside-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
+          <input type="number" id="ob-outside-target" value="5" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
+          <select id="ob-outside-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+            <option value="week">week</option>
+            <option value="month">month</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="completeOnboarding()" style="width:100%;padding:14px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Let's go →</button>
+  </div>
+</div>
+
 <div class="pin-overlay hidden" id="pinOverlay">
   <div class="pin-app-name">Show Up</div>
   <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.6;font-style:italic;text-align:center;margin-bottom:24px;">"Eighty percent of success is showing up."<br><span style="font-style:normal;font-size:var(--fs-label);letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;text-transform:uppercase;">— Woody Allen</span></div>
@@ -1246,6 +1313,10 @@ async function loadFromFirebase() {
         // Cloud has data — use it
         _syncPaused = true;
         S = Object.assign({}, DEFAULT_STATE, cloudData);
+        // Existing users predate onboarding — mark complete so it never shows
+        if (cloudData.onboardingComplete === undefined) {
+          S.onboardingComplete = true;
+        }
         localStorage.setItem('jhc3', JSON.stringify(S));
         _syncPaused = false;
         render();
@@ -1257,14 +1328,17 @@ async function loadFromFirebase() {
         if (localRaw) {
           try {
             const localData = Object.assign({}, DEFAULT_STATE, JSON.parse(localRaw));
+            localData.onboardingComplete = true; // existing local data — skip onboarding
             showMigrationOffer(localData);
           } catch(e) {
             render();
             checkDayReset();
           }
         } else {
+          // Brand new user — show onboarding
           render();
           checkDayReset();
+          showOnboardingScreen();
         }
         resolve();
       }
@@ -1294,10 +1368,95 @@ function showMigrationOffer(localData) {
 function doMigrateToFirebase() {
   if (!window._pendingMigrationData || !firebaseUser || !firebaseDb) return;
   S = window._pendingMigrationData;
+  S.onboardingComplete = true; // existing data — skip onboarding
   window._pendingMigrationData = null;
   save();
   render();
   showToast('Data uploaded \u2713');
+}
+
+// ── ONBOARDING ────────────────────────────────────────────────
+function showOnboardingScreen() {
+  const el = document.getElementById('onboarding-screen');
+  if (el) { el.style.display = 'block'; }
+  // Pre-fill name if available
+  const nameInput = document.getElementById('onboarding-name');
+  if (nameInput && firebaseUser && firebaseUser.displayName) {
+    nameInput.value = firebaseUser.displayName.split(' ')[0];
+  }
+  // Sync checkboxes and goals with current S state
+  ['workout', 'journal', 'outside'].forEach(h => {
+    const cb = document.getElementById(`ob-${h}`);
+    if (cb) cb.checked = (S.trackedHabits || []).includes(h);
+    obToggleGoal(h);
+  });
+}
+
+function hideOnboardingScreen() {
+  const el = document.getElementById('onboarding-screen');
+  if (el) { el.style.display = 'none'; }
+}
+
+function obToggleGoal(habit) {
+  const cb = document.getElementById(`ob-${habit}`);
+  const goalRow = document.getElementById(`ob-${habit}-goal`);
+  if (!cb || !goalRow) return;
+  goalRow.style.display = cb.checked ? 'flex' : 'none';
+}
+
+function acctToggleHabit(habit) {
+  const cb = document.getElementById(`acct-${habit}`);
+  const goalRow = document.getElementById(`acct-${habit}-goal`);
+  if (!cb || !goalRow) return;
+  goalRow.style.display = cb.checked ? 'flex' : 'none';
+}
+
+function saveHabitGoals() {
+  const tracked = ['workout', 'journal', 'outside'].filter(h => {
+    const cb = document.getElementById(`acct-${h}`);
+    return cb && cb.checked;
+  });
+  S.trackedHabits = tracked;
+
+  const goalKeys = { workout: 'workoutGoal', journal: 'journalGoal', outside: 'outsideGoal' };
+  const periodKeys = { workout: 'workoutGoalPeriod', journal: 'journalGoalPeriod', outside: 'outsideGoalPeriod' };
+  const defaults = { workout: 3, journal: 3, outside: 5 };
+  ['workout', 'journal', 'outside'].forEach(h => {
+    S[goalKeys[h]] = parseInt(document.getElementById(`acct-${h}-target`)?.value) || defaults[h];
+    S[periodKeys[h]] = document.getElementById(`acct-${h}-period`)?.value || 'week';
+  });
+
+  save();
+  showToast('Habits updated \u2713');
+}
+
+function completeOnboarding() {
+  const nameVal = (document.getElementById('onboarding-name')?.value || '').trim();
+  if (nameVal) S.userName = nameVal;
+
+  const tracked = ['workout', 'journal', 'outside'].filter(h => {
+    const cb = document.getElementById(`ob-${h}`);
+    return cb && cb.checked;
+  });
+  S.trackedHabits = tracked;
+
+  if (tracked.includes('workout')) {
+    S.workoutGoal = parseInt(document.getElementById('ob-workout-target')?.value) || 3;
+    S.workoutGoalPeriod = document.getElementById('ob-workout-period')?.value || 'week';
+  }
+  if (tracked.includes('journal')) {
+    S.journalGoal = parseInt(document.getElementById('ob-journal-target')?.value) || 3;
+    S.journalGoalPeriod = document.getElementById('ob-journal-period')?.value || 'week';
+  }
+  if (tracked.includes('outside')) {
+    S.outsideGoal = parseInt(document.getElementById('ob-outside-target')?.value) || 5;
+    S.outsideGoalPeriod = document.getElementById('ob-outside-period')?.value || 'week';
+  }
+
+  S.onboardingComplete = true;
+  save();
+  hideOnboardingScreen();
+  render();
 }
 
 function syncFromCloud() {
@@ -1695,10 +1854,17 @@ const DEFAULT_STATE = {
   companies: [],
   nextCompanyId: 1,
   workoutLog: [],
-  workoutGoal: 10,
+  workoutGoal: 3,
+  workoutGoalPeriod: 'week',
   workedOutToday: false,
   journalLog: [],
   journaledToday: false,
+  journalGoal: 3,
+  journalGoalPeriod: 'week',
+  outsideGoal: 5,
+  outsideGoalPeriod: 'week',
+  trackedHabits: ['workout', 'journal', 'outside'],
+  onboardingComplete: false,
   skills: [],
   nextSkillId: 1,
   weeklyCapacity: 20,
@@ -5436,6 +5602,37 @@ function renderAccount() {
           <button onclick="importData()" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Import</button>
         </div>
       </div>
+    </div>
+    <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
+      <div class="card-label" style="margin-bottom:16px">Habits &amp; Goals</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:16px;">Choose what to track and set your targets.</div>
+      ${['workout','journal','outside'].map(h => {
+        const labels = { workout: 'Working out', journal: 'Journaling', outside: 'Getting outside' };
+        const goalKey = h === 'workout' ? 'workoutGoal' : h === 'journal' ? 'journalGoal' : 'outsideGoal';
+        const periodKey = h === 'workout' ? 'workoutGoalPeriod' : h === 'journal' ? 'journalGoalPeriod' : 'outsideGoalPeriod';
+        const checked = (S.trackedHabits||[]).includes(h);
+        const goal = S[goalKey] || (h==='outside'?5:3);
+        const period = S[periodKey] || 'week';
+        return `
+        <div style="margin-bottom:18px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;">
+            <input type="checkbox" id="acct-${h}" ${checked?'checked':''} onchange="acctToggleHabit('${h}')" style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;">
+            <span style="font-size:0.85rem;font-weight:600;color:var(--text);">${labels[h]}</span>
+          </label>
+          <div id="acct-${h}-goal" style="padding-left:25px;display:${checked?'flex':'none'};align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:0.75rem;color:var(--text-mid);">Goal:</span>
+            <input type="number" id="acct-${h}-target" value="${goal}" min="1" max="31"
+              style="width:46px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+            <span style="font-size:0.75rem;color:var(--text-mid);">times per</span>
+            <select id="acct-${h}-period"
+              style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+              <option value="week" ${period==='week'?'selected':''}>week</option>
+              <option value="month" ${period==='month'?'selected':''}>month</option>
+            </select>
+          </div>
+        </div>`;
+      }).join('')}
+      <button onclick="saveHabitGoals()" style="margin-top:4px;background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save changes</button>
     </div>
     <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Sprint</div>
