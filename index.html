@@ -1861,6 +1861,7 @@ const DEFAULT_STATE = {
   journaledToday: false,
   journalGoal: 3,
   journalGoalPeriod: 'week',
+  outsideLog: [],
   outsideGoal: 5,
   outsideGoalPeriod: 'week',
   trackedHabits: ['workout', 'journal', 'outside'],
@@ -2394,25 +2395,28 @@ function renderToday() {
       </div>
     `}
 
+    ${(S.trackedHabits||['workout','journal','outside']).includes('workout') ? `
     <div class="rhythm-row ${S.workedOutToday ? 'rhythm-done' : ''}" onclick="logWorkout()" style="margin-top:20px">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="opacity:0.55"><path d="M3 8h2l2-4 2 8 2-4h2"/></svg></div>
         <div>
           <div class="rhythm-label">Worked out today</div>
-          <div class="rhythm-sub">${getWorkoutsThisMonth()} of ${S.workoutGoal || 10} workouts this month</div>
+          <div class="rhythm-sub">${(S.workoutGoalPeriod||'week')==='week' ? getWorkoutsThisWeek() : getWorkoutsThisMonth()} of ${S.workoutGoal||3} this ${S.workoutGoalPeriod||'week'}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="check-circle ${S.workedOutToday ? 'checked' : ''}">${S.workedOutToday ? '✓' : ''}</div>
       </div>
     </div>
+    ` : ''}
 
-    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()">
+    ${(S.trackedHabits||['workout','journal','outside']).includes('outside') ? `
+    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()" ${!(S.trackedHabits||['workout']).includes('workout') ? 'style="margin-top:20px"' : ''}>
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><circle cx="8" cy="2.5" r="1.3"/><path d="M8 3.8L6.8 8.5l-1.8 4"/><path d="M8 3.8L9.2 8.5l1.8 4"/><path d="M6.5 8.5h3"/></svg></div>
         <div>
           <div class="rhythm-label">Got outside today</div>
-          <div class="rhythm-sub">Even a short walk counts. Fresh air matters.</div>
+          <div class="rhythm-sub">${getOutsideThisPeriod()} of ${S.outsideGoal||5} this ${S.outsideGoalPeriod||'week'} · even a short walk counts</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -2420,19 +2424,24 @@ function renderToday() {
         <div class="check-circle ${S.gotOutsideToday ? 'checked' : ''}">${S.gotOutsideToday ? '✓' : ''}</div>
       </div>
     </div>
+    ` : ''}
 
-    <div class="rhythm-row ${S.journaledToday ? 'rhythm-done' : ''}" onclick="toggleJournal()">
+    ${(S.trackedHabits||['workout','journal','outside']).includes('journal') ? `
+    <div class="rhythm-row ${S.journaledToday ? 'rhythm-done' : ''}
+      ${ !(S.trackedHabits||['workout','outside']).includes('workout') && !(S.trackedHabits||['workout','outside']).includes('outside') ? 'style="margin-top:20px"' : '' }"
+      onclick="toggleJournal()">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg></div>
         <div>
           <div class="rhythm-label">Journaled today</div>
-          <div class="rhythm-sub">${getJournalsThisWeek()} of 5 days this week · empty your mind, start fresh</div>
+          <div class="rhythm-sub">${(S.journalGoalPeriod||'week')==='week' ? getJournalsThisWeek() : getJournalsThisMonth()} of ${S.journalGoal||3} this ${S.journalGoalPeriod||'week'}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="check-circle ${S.journaledToday ? 'checked' : ''}">${S.journaledToday ? '✓' : ''}</div>
       </div>
     </div>
+    ` : ''}
 
     ${!isRest ? `
     <div class="rhythm-row" onclick="switchTab('focus')" style="cursor:pointer">
@@ -2609,6 +2618,9 @@ function toggleOutside() {
   if (S.gotOutsideToday) return;
   S.gotOutsideToday = true;
   S.totalOutside = (S.totalOutside || 0) + 1;
+  if (!S.outsideLog) S.outsideLog = [];
+  const today = new Date().toISOString().slice(0, 10);
+  if (!S.outsideLog.includes(today)) S.outsideLog.push(today);
   gainXP(20);
   save();
   updateHeader();
@@ -4616,6 +4628,37 @@ function getJournalsThisWeek() {
   }).length;
 }
 
+function getWorkoutsThisWeek() {
+  const now = new Date();
+  const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysFromMon);
+  monday.setHours(0, 0, 0, 0);
+  return (S.workoutLog || []).filter(d => new Date(d + 'T00:00:00') >= monday).length;
+}
+
+function getJournalsThisMonth() {
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return (S.journalLog || []).filter(d => d.startsWith(prefix)).length;
+}
+
+function getOutsideThisPeriod() {
+  const log = S.outsideLog || [];
+  const period = S.outsideGoalPeriod || 'week';
+  if (period === 'month') {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    return log.filter(d => d.startsWith(prefix)).length;
+  }
+  const now = new Date();
+  const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysFromMon);
+  monday.setHours(0, 0, 0, 0);
+  return log.filter(d => new Date(d + 'T00:00:00') >= monday).length;
+}
+
 function toggleJournal() {
   const today = new Date().toISOString().slice(0, 10);
   if (S.journaledToday) {
@@ -5617,15 +5660,15 @@ function renderAccount() {
         <div style="margin-bottom:18px;">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;">
             <input type="checkbox" id="acct-${h}" ${checked?'checked':''} onchange="acctToggleHabit('${h}')" style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;">
-            <span style="font-size:0.85rem;font-weight:600;color:var(--text);">${labels[h]}</span>
+            <span style="font-size:0.84rem;font-weight:500;color:var(--text);">${labels[h]}</span>
           </label>
           <div id="acct-${h}-goal" style="padding-left:25px;display:${checked?'flex':'none'};align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:0.75rem;color:var(--text-mid);">Goal:</span>
+            <span style="font-size:0.72rem;color:var(--text-mid);">Goal:</span>
             <input type="number" id="acct-${h}-target" value="${goal}" min="1" max="31"
-              style="width:46px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
-            <span style="font-size:0.75rem;color:var(--text-mid);">times per</span>
+              style="width:46px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+            <span style="font-size:0.72rem;color:var(--text-mid);">times per</span>
             <select id="acct-${h}-period"
-              style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+              style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
               <option value="week" ${period==='week'?'selected':''}>week</option>
               <option value="month" ${period==='month'?'selected':''}>month</option>
             </select>
