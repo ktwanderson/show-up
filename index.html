@@ -12,15 +12,25 @@
   <script>
     (function() {
       try {
+        const s = 512;
         const c = document.createElement('canvas');
-        c.width = 180; c.height = 180;
+        c.width = s; c.height = s;
         const x = c.getContext('2d');
-        x.fillStyle = '#ede9e1'; x.fillRect(0,0,180,180);
-        x.fillStyle = '#e8b800'; x.beginPath(); x.arc(90,90,42,0,Math.PI*2); x.fill();
-        x.strokeStyle = '#e8b800'; x.lineWidth = 11; x.lineCap = 'round';
-        [[90,8,90,38],[90,142,90,172],[8,90,38,90],[142,90,172,90],
-         [28,28,49,49],[131,131,152,152],[152,28,131,49],[49,131,28,152]
-        ].forEach(([x1,y1,x2,y2]) => { x.beginPath(); x.moveTo(x1,y1); x.lineTo(x2,y2); x.stroke(); });
+        // Warm background from palette
+        x.fillStyle = '#e8e0d4'; x.fillRect(0,0,s,s);
+        // Sun center
+        const cx = s/2, cy = s/2, r = s * 0.22;
+        x.fillStyle = '#e8b800'; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill();
+        // Rays
+        x.strokeStyle = '#e8b800'; x.lineWidth = s * 0.055; x.lineCap = 'round';
+        const rayIn = r + s*0.06, rayOut = r + s*0.16;
+        for (let i = 0; i < 8; i++) {
+          const a = (Math.PI * 2 * i) / 8 - Math.PI/2;
+          x.beginPath();
+          x.moveTo(cx + Math.cos(a)*rayIn, cy + Math.sin(a)*rayIn);
+          x.lineTo(cx + Math.cos(a)*rayOut, cy + Math.sin(a)*rayOut);
+          x.stroke();
+        }
         document.getElementById('apple-touch-icon-link').href = c.toDataURL('image/png');
       } catch(e) {}
     })();
@@ -1066,6 +1076,7 @@
 
 <div class="pin-overlay hidden" id="pinOverlay">
   <div class="pin-app-name">Show Up</div>
+  <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.6;font-style:italic;text-align:center;margin-bottom:24px;">"Eighty percent of success is showing up."<br><span style="font-style:normal;font-size:var(--fs-label);letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;text-transform:uppercase;">— Woody Allen</span></div>
   <div class="pin-prompt" id="pinPrompt">Enter your PIN</div>
   <div class="pin-dots" id="pinDots">
     <div class="pin-dot" id="pd0"></div>
@@ -1089,7 +1100,6 @@
   </div>
   <div class="pin-error-msg" id="pinError"></div>
   <div class="pin-footer" id="pinFooter"></div>
-  <div style="margin-top:48px;font-size:0.72rem;color:var(--text-dim);line-height:1.6;font-style:italic;text-align:center;">"Eighty percent of success is showing up."<br><span style="font-style:normal;font-size:var(--fs-label);letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;text-transform:uppercase;">— Woody Allen</span></div>
 </div>
 
 <div class="top-bar">
@@ -1097,14 +1107,14 @@
   <div class="header-top">
     <div>
       <div class="game-title">Show Up</div>
-      <div class="hero-level-title" id="levelTitle">Lv 1 · Rookie Applicant 🌱</div>
+      <div class="header-weather" id="headerWeather"></div>
+      <div class="streak-pill" id="streakPill" style="margin-top:4px;">🔥 0-day streak</div>
     </div>
     <div style="text-align:right">
-      <div class="streak-pill" id="streakPill">🔥 0-day streak</div>
+      <div class="hero-level-title" id="levelTitle">Lv 1 · Rookie Applicant 🌱</div>
       <div class="xp-total" id="xpTotal">0 XP</div>
     </div>
   </div>
-  <div class="header-weather" id="headerWeather"></div>
   <div class="xp-bar-wrap">
     <div class="xp-bar-track">
       <div class="xp-bar-fill" id="xpBar" style="width:0%"></div>
@@ -1731,6 +1741,13 @@ function initPin() {
     updatePinUI('Enter your PIN');
     overlay.classList.remove('hidden');
   }
+  // Keyboard support for PIN
+  document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('pinOverlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+    if (e.key >= '0' && e.key <= '9') { pinPress(e.key); e.preventDefault(); }
+    else if (e.key === 'Backspace') { pinBack(); e.preventDefault(); }
+  });
 }
 
 function pinPress(digit) {
@@ -1836,8 +1853,10 @@ function fetchWeather() {
 
   el.textContent = dateStr;
 
-  // Fixed coordinates for 11372 (Jackson Heights, Queens, NY)
-  const lat = 40.7465, lon = -73.8830;
+  // Use saved location or default to Jackson Heights, Queens, NY
+  const savedLoc = JSON.parse(localStorage.getItem('showup_weather_location') || 'null');
+  const lat = savedLoc?.lat || 40.7465;
+  const lon = savedLoc?.lon || -73.8830;
   fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`)
     .then(r => r.json())
     .then(d => {
@@ -1846,6 +1865,42 @@ function fetchWeather() {
       el.textContent = `${dateStr}  ·  ${temp}°  ·  ${cond}`;
     })
     .catch(() => {}); // date already shown if fetch fails
+}
+
+function searchWeatherLocation() {
+  const input = document.getElementById('location-search-input');
+  const resultsDiv = document.getElementById('location-results');
+  if (!input || !resultsDiv) return;
+  const query = input.value.trim();
+  if (!query) return;
+  resultsDiv.innerHTML = '<div style="font-size:0.72rem;color:var(--text-dim);">Searching...</div>';
+  fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.results || data.results.length === 0) {
+        resultsDiv.innerHTML = '<div style="font-size:0.72rem;color:var(--text-dim);">No results found.</div>';
+        return;
+      }
+      resultsDiv.innerHTML = data.results.map((r, i) => {
+        const label = `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}${r.country ? ', ' + r.country : ''}`;
+        return `<button onclick="selectWeatherLocation(${r.latitude},${r.longitude},'${label.replace(/'/g, "\\'")}')"
+          style="display:block;width:100%;text-align:left;padding:8px 0;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;color:var(--text-mid);cursor:pointer;font-family:'DM Sans',sans-serif;transition:color 0.15s;"
+          onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${label}</button>`;
+      }).join('');
+    })
+    .catch(() => {
+      resultsDiv.innerHTML = '<div style="font-size:0.72rem;color:var(--text-dim);">Search failed. Try again.</div>';
+    });
+}
+
+function selectWeatherLocation(lat, lon, name) {
+  localStorage.setItem('showup_weather_location', JSON.stringify({ lat, lon, name }));
+  const input = document.getElementById('location-search-input');
+  const resultsDiv = document.getElementById('location-results');
+  if (input) input.value = name;
+  if (resultsDiv) resultsDiv.innerHTML = '';
+  fetchWeather();
+  showToast(`Location set to ${name} ✓`);
 }
 
 // ── CAT DOT ──────────────────────────────────────────────────
@@ -3249,7 +3304,7 @@ function renderCapacityBar() {
   const loadPct = Math.min(100, Math.round((committedPts / capacity) * 100));
   const isOver = committedPts > capacity;
 
-  return `<div style="margin-bottom:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;">
+  return `<div style="margin-top:8px;margin-bottom:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
       <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;">Sprint</div>
       <div style="font-size:0.72rem;color:${isOver ? 'var(--red)' : 'var(--text-dim)'};font-family:'Montserrat',sans-serif;">
@@ -3370,7 +3425,7 @@ function makeQuestTaskHTML(task, showCat) {
         ${showCat ? catDot(task.cat, '18px') : ''}
         ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
         ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
-        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.75rem;padding:0 2px;line-height:1;opacity:0.6;">✏️</button>` : ''}
+        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
       </div>
       <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
     </div>`;
@@ -5395,6 +5450,20 @@ function renderAccount() {
             style="background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save</button>
         </div>
       </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:16px">Location</div>
+      <div style="font-size:0.84rem;color:var(--text);font-weight:500">Weather location</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;margin-bottom:10px">Used for the weather display in the header. Search for a city name.</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="location-search-input" class="add-input"
+          value="${(JSON.parse(localStorage.getItem('showup_weather_location') || 'null'))?.name || 'Jackson Heights, NY'}"
+          placeholder="Search a city..."
+          style="width:100%;font-size:0.82rem;"
+          onkeydown="if(event.key==='Enter')searchWeatherLocation()">
+        <button onclick="searchWeatherLocation()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Search</button>
+      </div>
+      <div id="location-results" style="margin-top:8px;"></div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">AI Coach</div>
