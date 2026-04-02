@@ -324,6 +324,12 @@
     .task:hover .del-btn { opacity: 0.6; }
     .task.done { opacity: 0.38; }
     .task.done .task-text { text-decoration: line-through; }
+    .task.in-progress { border-left: 2px solid var(--amber); padding-left: 7px; }
+    .task.in-progress .task-text { color: var(--text); }
+    .progress-btn { background:none;border:none;cursor:pointer;font-size:0.78rem;padding:0 2px;line-height:1;flex-shrink:0;opacity:0.25;transition:opacity 0.15s;color:var(--text-dim); }
+    .progress-btn.active { opacity:1;color:var(--amber); }
+    .task:hover .progress-btn { opacity:0.55; }
+    .task:hover .progress-btn.active { opacity:1; }
     .task-text { flex: 1; font-size: 0.86rem; line-height: 1.4; color: var(--text); word-break: break-word; }
     .task-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
     .xp-badge {
@@ -1246,6 +1252,23 @@ function doMigrateToFirebase() {
   showToast('Data uploaded \u2713');
 }
 
+function syncFromCloud() {
+  if (!firebaseUser || !firebaseDb) { showToast('Not signed in'); return; }
+  const btn = document.getElementById('sync-now-btn');
+  if (btn) btn.textContent = 'Syncing...';
+  firebaseDb.ref(`users/${firebaseUser.uid}/state`).once('value', (snapshot) => {
+    const cloudData = snapshot.val();
+    if (!cloudData) { showToast('No cloud data found'); if (btn) btn.textContent = 'Sync now'; return; }
+    _syncPaused = true;
+    S = Object.assign({}, DEFAULT_STATE, cloudData);
+    localStorage.setItem('jhc3', JSON.stringify(S));
+    _syncPaused = false;
+    render();
+    showToast('Synced \u2713');
+    if (btn) btn.textContent = 'Sync now';
+  });
+}
+
 function startFirebaseSync() {
   if (!firebaseUser || !firebaseDb) return;
   // Listen for changes from other devices
@@ -1253,10 +1276,12 @@ function startFirebaseSync() {
     if (_syncPaused) return;
     const cloudData = snapshot.val();
     if (!cloudData) return;
-    // Only update if the cloud version is newer (has higher nextId)
+    // Only update if the cloud version is newer (use lastModified timestamp; falls back to nextId for legacy data)
+    const localVer = S.lastModified || 0;
+    const cloudVer = cloudData.lastModified || 0;
     const localNextId = S.nextId || 0;
     const cloudNextId = cloudData.nextId || 0;
-    if (cloudNextId > localNextId) {
+    if (cloudVer > localVer || (cloudVer === 0 && cloudNextId > localNextId)) {
       _syncPaused = true;
       S = Object.assign({}, DEFAULT_STATE, cloudData);
       localStorage.setItem('jhc3', JSON.stringify(S));
@@ -1629,6 +1654,7 @@ const DEFAULT_STATE = {
   skills: [],
   nextSkillId: 1,
   weeklyCapacity: 20,
+  lastModified: 0,
 };
 
 let S = loadState();
@@ -1818,6 +1844,7 @@ function loadState() {
 }
 
 function save() {
+  S.lastModified = Date.now();
   localStorage.setItem('jhc3', JSON.stringify(S));
   if (firebaseUser && firebaseDb && !_syncPaused) {
     clearTimeout(_saveTimeout);
@@ -2957,9 +2984,10 @@ function makeQuestTaskHTML(task, showCat) {
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
   return `
-    <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
+    <div class="task ${task.done?'done':task.inProgress?'in-progress':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
       ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
+      ${!task.done ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
       <div class="task-text">${escHtml(task.text)}</div>
       <div class="task-meta">
         ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
@@ -3058,6 +3086,16 @@ function completeQuestTask(id, event) {
       }
     }, 800);
   }
+}
+
+function markTaskInProgress(id, event) {
+  if (event) event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || task.done) return;
+  task.inProgress = !task.inProgress;
+  save();
+  renderQuests();
+  if (currentTab === 'today') renderToday();
 }
 
 function deleteQuestTask(id) {
@@ -4250,7 +4288,11 @@ function openLogInteraction(contactId) {
           `<option ${c.preferredMethod===m?'selected':''}>${m}</option>`).join('')}
       </select>
       <div class="contact-detail-section-label">Notes</div>
-      <textarea class="contact-inline-input" id="li-notes" rows="3" placeholder="What did you discuss? Any next steps?" style="margin-bottom:12px"></textarea>
+      <textarea class="contact-inline-input" id="li-notes" rows="3" placeholder="What did you discuss? Any next steps?" style="margin-bottom:10px"></textarea>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:0.8rem;color:var(--text-mid)">
+        <input type="checkbox" id="li-resume">
+        <label for="li-resume">Resume sent with this interaction</label>
+      </div>
       <div style="display:flex;gap:8px">
         <button onclick="saveLogInteraction(${contactId})" class="net-add-btn primary" style="flex:1">Log it</button>
         <button onclick="closeModal()" class="net-add-btn">Cancel</button>
@@ -4268,7 +4310,8 @@ function saveLogInteraction(contactId) {
   c.lastContact = date;
   if (method) c.preferredMethod = method;
   if (!c.interactions) c.interactions = [];
-  c.interactions.unshift({ date, method, notes });
+  const resumeSent = !!(document.getElementById('li-resume') && document.getElementById('li-resume').checked);
+  c.interactions.unshift({ date, method, notes, ...(resumeSent && { resumeSent: true }) });
   save();
   closeModal();
   networkOpenId = contactId;
@@ -4346,10 +4389,6 @@ function openEditContact(contactId) {
         ${['Email','LinkedIn','In person','Zoom','Phone','Text','Other'].map(m =>
           `<option ${c.preferredMethod===m?'selected':''}>${m}</option>`).join('')}
       </select>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:0.8rem;color:var(--text-mid)">
-        <input type="checkbox" id="ec-resume" ${c.resumeSent?'checked':''}>
-        <label for="ec-resume">Resume sent</label>
-      </div>
       <div style="display:flex;gap:8px">
         <button onclick="saveEditContact(${contactId})" class="net-add-btn primary" style="flex:1">Save</button>
         <button onclick="closeModal()" class="net-add-btn">Cancel</button>
@@ -4368,7 +4407,6 @@ function saveEditContact(contactId) {
   c.linkedin = document.getElementById('ec-linkedin').value.trim();
   c.type    = document.getElementById('ec-type').value;
   c.preferredMethod = document.getElementById('ec-method').value;
-  c.resumeSent = document.getElementById('ec-resume').checked;
   save();
   closeModal();
   networkOpenId = contactId;
@@ -4578,7 +4616,7 @@ function renderNetwork() {
     <div class="network-toolbar">
       <div style="position:relative;flex:1;min-width:140px;">
         <input class="network-search" id="net-search-input" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
-          oninput="networkSearch=this.value;renderNetwork()" style="width:100%;padding-right:${networkSearch?'24px':'2px'};">
+          oninput="networkSearch=this.value;renderNetwork();const _si=document.getElementById('net-search-input');if(_si){const _p=_si.value.length;_si.focus();_si.setSelectionRange(_p,_p);}" style="width:100%;padding-right:${networkSearch?'24px':'2px'};">
         ${networkSearch ? `<button onclick="networkSearch='';renderNetwork()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.9rem;padding:2px 4px;line-height:1;">×</button>` : ''}
       </div>
     </div>
@@ -4614,7 +4652,7 @@ function renderContactCard(c) {
   const historyHTML = hasRealHistory
     ? c.interactions.slice(0, 8).map(ix => `
         <div class="contact-interaction-entry">
-          <span class="contact-interaction-date">${new Date(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}</span>
+          <span class="contact-interaction-date">${new Date(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}${ix.resumeSent ? ' <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.6rem;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;font-family:\'Montserrat\',sans-serif;vertical-align:middle;">RESUME</span>' : ''}</span>
           ${ix.notes ? `<br>${escHtml(ix.notes)}` : ''}
         </div>`).join('')
     : hasSyntheticEntry
@@ -4927,7 +4965,7 @@ function renderAccount() {
       </div>
       <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px;">
         <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:4px;">${firebaseUser ? `Signed in as ${firebaseUser.email}` : 'Not signed in'}</div>
-        ${firebaseUser ? `<button onclick="signOutUser()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Sign out \u2192</button>` : `<button onclick="signInWithGoogle()" style="background:none;border:none;color:var(--amber);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Sign in with Google \u2192</button>`}
+        ${firebaseUser ? `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><button onclick="signOutUser()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Sign out \u2192</button><button id="sync-now-btn" onclick="syncFromCloud()" style="background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:4px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">Sync now</button></div>` : `<button onclick="signInWithGoogle()" style="background:none;border:none;color:var(--amber);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Sign in with Google \u2192</button>`}
       </div>
     </div>`;
   wrap.innerHTML = nameSection + `
