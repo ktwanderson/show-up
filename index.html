@@ -2667,7 +2667,7 @@ function renderSkills() {
             ${progress.next ? `${progress.needed} session${progress.needed!==1?'s':''} to Level ${progress.next}` : '✦ Max level reached'}
           </div>
           <div style="display:flex;gap:8px;">
-            <button onclick="openSkillContent(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Learn →</button>
+            <button onclick="openSkillAICoach(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">AI Coach →</button>
             <button onclick="logSkillSession(${sk.id})" style="background:var(--surface2);border:none;border-radius:2px;padding:5px 12px;font-size:0.72rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Log session</button>
           </div>
         </div>
@@ -2782,12 +2782,350 @@ function addSkillFromLibrary(key) {
     level: 0,
     sessionsTotal: 0,
     sessionLog: [],
+    learningHistory: [],
     active: true,
   });
   save();
   checkAchievements();
   showToast(`${libEntry.name} added ✓`);
   openSkillLibrary(); // re-open so user can add more
+}
+
+// ── AI COACH (Claude Integration) ────────────────────────────
+function saveClaudeApiKey() {
+  const input = document.getElementById('claude-api-key-input');
+  if (!input) return;
+  const key = input.value.trim();
+  if (key) {
+    localStorage.setItem('showup_claude_api_key', key);
+  } else {
+    localStorage.removeItem('showup_claude_api_key');
+  }
+}
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('claude-api-key-input');
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function callClaude(prompt, options = {}) {
+  const apiKey = localStorage.getItem('showup_claude_api_key');
+  if (!apiKey) {
+    return { error: 'no_key', message: 'No API key configured. Add one in Account settings.' };
+  }
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: options.model || 'claude-sonnet-4-20250514',
+        max_tokens: options.maxTokens || 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      return { error: 'api_error', message: `API error (${resp.status}): ${errBody}` };
+    }
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    // Try to parse JSON from the response
+    const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (jsonMatch) {
+      try {
+        return { ok: true, text, json: JSON.parse(jsonMatch[0]) };
+      } catch (e) {
+        return { ok: true, text, json: null };
+      }
+    }
+    return { ok: true, text, json: null };
+  } catch (e) {
+    return { error: 'network', message: `Network error: ${e.message}` };
+  }
+}
+
+let _aiCoachState = {};  // tracks current quiz state
+
+async function openSkillAICoach(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+
+  const apiKey = localStorage.getItem('showup_claude_api_key');
+  if (!apiKey) {
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">API Key Required</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use AI Coach, add your Claude API key in Account settings.</div>
+        <button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account</button>
+        <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+      </div>
+    `);
+    return;
+  }
+
+  // Show loading state
+  showModal(`
+    <div style="text-align:center;padding:40px 0;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Generating diagnostic questions...</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
+    </div>
+  `);
+
+  const prompt = `You are a learning coach. Generate 4 diagnostic questions to assess a user's knowledge of "${skill.name}" in the context of ad tech, digital media, and product management.
+
+Each question should test a different depth of knowledge — from basic awareness to applied understanding.
+
+Return ONLY valid JSON, no other text:
+[
+  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
+  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
+  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
+  {"id": 4, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"}
+]`;
+
+  const result = await callClaude(prompt);
+
+  if (result.error) {
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Something went wrong</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${escHtml(result.message)}</div>
+        <button onclick="openSkillAICoach(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
+      </div>
+    `);
+    return;
+  }
+
+  const questions = Array.isArray(result.json) ? result.json : null;
+  if (!questions || questions.length === 0) {
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Claude's response wasn't in the expected format. Try again or use static content.</div>
+        <button onclick="openSkillAICoach(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
+      </div>
+    `);
+    return;
+  }
+
+  _aiCoachState = { skillId, questions, answers: {}, currentQ: 0 };
+  displayDiagnosticQuestion();
+}
+
+function displayDiagnosticQuestion() {
+  const { skillId, questions, answers, currentQ } = _aiCoachState;
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill || !questions) return;
+
+  const q = questions[currentQ];
+  const total = questions.length;
+  const selected = answers[q.id] || null;
+
+  const optionsHTML = (q.options || []).map((opt, i) => {
+    const isSelected = selected === opt;
+    return `<button onclick="_aiCoachState.answers[${q.id}]='${opt.replace(/'/g, "\\'")}';displayDiagnosticQuestion()"
+      style="display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border:1px solid ${isSelected ? 'var(--amber)' : 'var(--border)'};background:${isSelected ? 'rgba(232,184,0,0.06)' : 'transparent'};border-radius:2px;font-size:0.82rem;color:${isSelected ? 'var(--text)' : 'var(--text-mid)'};cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.5;transition:all 0.15s;"
+      onmouseover="if(!${isSelected})this.style.borderColor='var(--text-dim)'"
+      onmouseout="if(!${isSelected})this.style.borderColor='var(--border)'">${escHtml(opt)}</button>`;
+  }).join('');
+
+  const progressDots = questions.map((_, i) =>
+    `<div style="width:8px;height:8px;border-radius:50%;background:${i < currentQ ? 'var(--amber)' : i === currentQ ? 'var(--text-mid)' : 'var(--border)'};transition:background 0.3s;"></div>`
+  ).join('');
+
+  const isLast = currentQ === total - 1;
+  const hasAnswer = !!_aiCoachState.answers[q.id];
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentQ + 1} / ${total}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">${progressDots}</div>
+      <div style="font-size:0.92rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:18px;">${escHtml(q.question)}</div>
+      ${optionsHTML}
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        ${currentQ > 0 ? `<button onclick="_aiCoachState.currentQ--;displayDiagnosticQuestion()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Back</button>` : ''}
+        <button onclick="${isLast ? `submitDiagnosticAnswers()` : `_aiCoachState.currentQ++;displayDiagnosticQuestion()`}"
+          style="flex:2;padding:10px;background:${hasAnswer ? 'var(--amber)' : 'var(--surface2)'};color:${hasAnswer ? '#fff' : 'var(--text-dim)'};border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;"
+          ${!hasAnswer ? 'disabled' : ''}>${isLast ? 'Get results' : 'Next'}</button>
+      </div>
+    </div>
+  `);
+}
+
+async function submitDiagnosticAnswers() {
+  const { skillId, questions, answers } = _aiCoachState;
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+
+  // Show loading
+  showModal(`
+    <div style="text-align:center;padding:40px 0;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Analyzing your answers...</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);">Generating personalized recommendations</div>
+    </div>
+  `);
+
+  const answersText = questions.map(q =>
+    `Q: ${q.question}\nAnswer: ${answers[q.id] || 'No answer'}`
+  ).join('\n\n');
+
+  const prompt = `You are a learning coach analyzing a user's knowledge of "${skill.name}" in ad tech / digital media / product management.
+
+Here are their diagnostic answers:
+${answersText}
+
+Based on these answers, provide a personalized learning assessment. Return ONLY valid JSON:
+{
+  "levelAssessment": "Beginner|Intermediate|Advanced",
+  "levelSummary": "A friendly 1-2 sentence assessment of where they stand",
+  "focusAreas": [
+    {"topic": "...", "why": "Brief reason this matters for them"},
+    {"topic": "...", "why": "Brief reason this matters for them"},
+    {"topic": "...", "why": "Brief reason this matters for them"}
+  ],
+  "nextStep": "One specific, actionable thing they should do next to level up",
+  "encouragement": "A brief motivational note acknowledging what they already know"
+}`;
+
+  const result = await callClaude(prompt);
+
+  if (result.error) {
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Analysis failed</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${escHtml(result.message)}</div>
+        <button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
+      </div>
+    `);
+    return;
+  }
+
+  const analysis = result.json;
+  if (!analysis || !analysis.levelAssessment) {
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse results</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:12px;">Here's what Claude said:</div>
+        <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.6;padding:12px;background:var(--surface2);border-radius:2px;margin-bottom:20px;white-space:pre-wrap;">${escHtml(result.text)}</div>
+        <button onclick="closeModal()" style="width:100%;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Close</button>
+      </div>
+    `);
+    return;
+  }
+
+  _aiCoachState.analysis = analysis;
+  displayAnalysisResults();
+}
+
+function displayAnalysisResults() {
+  const { skillId, questions, answers, analysis } = _aiCoachState;
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill || !analysis) return;
+
+  const levelColors = { 'Beginner': 'var(--text-dim)', 'Intermediate': 'var(--amber)', 'Advanced': '#2d8a5e' };
+  const lvColor = levelColors[analysis.levelAssessment] || 'var(--text-mid)';
+
+  const focusHTML = (analysis.focusAreas || []).map(area => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:3px;">${escHtml(area.topic)}</div>
+      <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;">${escHtml(area.why)}</div>
+    </div>
+  `).join('');
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · Results</div>
+        <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--surface2);color:${lvColor};">${escHtml(analysis.levelAssessment)}</span>
+      </div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:6px;">${escHtml(skill.name)}</div>
+
+      ${analysis.encouragement ? `<div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:16px;">${escHtml(analysis.encouragement)}</div>` : ''}
+
+      ${analysis.levelSummary ? `<div style="border-left:2px solid var(--amber);padding:8px 0 8px 14px;margin-bottom:18px;">
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;">${escHtml(analysis.levelSummary)}</div>
+      </div>` : ''}
+
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Focus areas</div>
+      ${focusHTML}
+
+      ${analysis.nextStep ? `
+      <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:2px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Next step</div>
+        <div style="font-size:0.82rem;color:var(--text);line-height:1.6;font-weight:500;">${escHtml(analysis.nextStep)}</div>
+      </div>` : ''}
+
+      <div style="display:flex;gap:8px;margin-top:20px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Close</button>
+        <button onclick="logAICoachSession()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Log session +20 XP</button>
+      </div>
+    </div>
+  `);
+}
+
+function logAICoachSession() {
+  const { skillId, questions, answers, analysis } = _aiCoachState;
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) { closeModal(); return; }
+
+  // Save learning history
+  if (!skill.learningHistory) skill.learningHistory = [];
+  skill.learningHistory.push({
+    date: new Date().toISOString().slice(0, 10),
+    quizQuestions: questions.map(q => ({
+      question: q.question,
+      userAnswer: answers[q.id] || null,
+    })),
+    analysis: {
+      level: analysis.levelAssessment,
+      focusAreas: analysis.focusAreas,
+      nextStep: analysis.nextStep,
+    },
+  });
+
+  // Increment session
+  skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
+  if (!skill.sessionLog) skill.sessionLog = [];
+  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `AI Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
+
+  const oldLevel = skill.level;
+  skill.level = calcSkillLevel(skill.sessionsTotal);
+
+  // Create task record
+  const taskText = `AI Coach: ${skill.name} — ${analysis.levelAssessment}`;
+  const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now(), points: 1 };
+  S.tasks.unshift(newTask);
+  S.totalAdded++;
+  S.totalDone++;
+  if (S.doneBy.research !== undefined) S.doneBy.research++;
+  if (!S.todayFocusIds.includes(newTask.id)) S.todayFocusIds.push(newTask.id);
+
+  gainXP(20);
+  save();
+  closeModal();
+  updateHeader();
+  renderFocusTimer();
+  checkAchievements();
+
+  const levelUpMsg = skill.level > oldLevel ? ` · Level ${skill.level} unlocked!` : '';
+  showToast(`Learning session logged ✓${levelUpMsg}`);
+  _aiCoachState = {};
 }
 
 function openSkillContent(skillId) {
@@ -5056,6 +5394,24 @@ function renderAccount() {
           <button onclick="S.weeklyCapacity=parseInt(document.getElementById('capacity-input').value)||20;save();renderAccount();showToast('Capacity updated ✓')"
             style="background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save</button>
         </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:16px">AI Coach</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:0.84rem;color:var(--text);font-weight:500">Claude API key</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Powers personalized skill quizzes and learning resources.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+        <input type="password" id="claude-api-key-input" class="add-input"
+          value="${localStorage.getItem('showup_claude_api_key') || ''}"
+          placeholder="sk-ant-..."
+          style="width:100%;font-size:0.82rem;"
+          onblur="saveClaudeApiKey()">
+        <button onclick="toggleApiKeyVisibility()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Show</button>
+        <button onclick="saveClaudeApiKey();showToast('API key saved ✓')" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Save</button>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
