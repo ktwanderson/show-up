@@ -674,6 +674,20 @@
       .timer-display { font-size: 3.5rem; }
     }
 
+    /* ── iPad / tablet ───────────────────────────────── */
+    @media (min-width: 768px) {
+      :root {
+        --fs-label: 0.72rem;
+        --fs-meta:  0.82rem;
+        --fs-ui:    0.78rem;
+        --fs-body:  0.94rem;
+      }
+      .main { max-width: 860px; padding: 28px 36px; }
+      .modal-inner { max-width: 460px; }
+      .header { padding: 14px 28px 13px; }
+      .tab { font-size: 0.72rem; padding: 0 14px; }
+    }
+
     /* ── JOURNAL CALENDAR ────────────────────────────────── */
     .journal-cal-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -1585,7 +1599,8 @@ const CATS = {
   network:  { label: 'Network',    abbr: 'N', color: '#4a6b8a', xp: 35, ph: 'Name + context (how you know them, why to reach out)' },
   research: { label: 'Research',   abbr: 'R', color: '#7a5c8a', xp: 20, ph: 'Company, role, or topic to look into' },
   admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 15, ph: 'Appointments, bills, forms, errands, logistics' },
-  personal: { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Health, family, home, anything life needs from you' },
+  personal:  { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Health, family, home, anything life needs from you' },
+  schedule:  { label: 'Scheduling', abbr: 'S', color: '#4a7a6d', xp: 20, ph: 'Appointments, interviews, calls to book or confirm' },
 };
 
 const PIPELINE_STAGES = [
@@ -2306,7 +2321,10 @@ function renderToday() {
         </div>`).join('')
     : `<div style="font-size:0.77rem;color:var(--text-dim);padding:8px 0">Nothing logged yet. Even a tiny thing counts.</div>`;
 
-  const weekPlannerHtml = shouldShowWeekPlanner() ? renderWeekPlannerHTML() : '';
+  const _hasPlan = getCurrentWeekPlan() && (getCurrentWeekPlan().goals||[]).filter(Boolean).length > 0;
+  const weekPlannerHtml = (shouldShowWeekPlanner() || _weekPlanEditing)
+    ? renderWeekPlannerHTML()
+    : (_hasPlan && !shouldShowWeekReview() ? renderWeekPlanViewHTML() : '');
   const weekReviewHtml = shouldShowWeekReview() ? renderWeekReviewHTML() : '';
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
   const todayIso = new Date().toISOString().slice(0,10);
@@ -3083,7 +3101,8 @@ async function callClaude(prompt, options = {}) {
   }
 }
 
-let _aiCoachState = {};  // tracks current quiz state
+let _aiCoachState = {};    // tracks current quiz state
+let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
 
 async function openSkillAICoach(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
@@ -3102,26 +3121,60 @@ async function openSkillAICoach(skillId) {
     return;
   }
 
-  // Show loading state
+  // Show free-text intro question first — no API call needed yet
+  displayIntroQuestion(skillId);
+}
+
+function displayIntroQuestion(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 4</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
+        ${[0,1,2,3].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i===0?'var(--text-mid)':'var(--border)'};"></div>`).join('')}
+      </div>
+      <div style="font-size:0.92rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you define <em>${escHtml(skill.name)}</em>?</div>
+      <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:14px;">No right or wrong answer — this helps calibrate the questions to where you actually are.</div>
+      <textarea id="ai-intro-answer" placeholder="Write a few sentences..." style="width:100%;border:1px solid var(--border);background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:10px 12px;outline:none;border-radius:2px;resize:none;min-height:80px;box-sizing:border-box;line-height:1.6;" oninput="document.getElementById('ai-intro-next').style.background=this.value.trim()?'var(--amber)':'var(--surface2)';document.getElementById('ai-intro-next').style.color=this.value.trim()?'#fff':'var(--text-dim)';"></textarea>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button id="ai-intro-next" onclick="submitIntroAnswer(${skillId})" style="flex:2;padding:10px;background:var(--surface2);color:var(--text-dim);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;">Next</button>
+      </div>
+    </div>
+  `);
+}
+
+async function submitIntroAnswer(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  const introText = (document.getElementById('ai-intro-answer') || {}).value?.trim() || '';
+  if (!introText) { showToast('Write a few words first'); return; }
+
   showModal(`
     <div style="text-align:center;padding:40px 0;">
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
-      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Generating diagnostic questions...</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Generating questions...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
     </div>
   `);
 
-  const prompt = `You are a learning coach. Generate 4 diagnostic questions to assess a user's knowledge of "${skill.name}" in the context of ad tech, digital media, and product management.
+  const prompt = `You are a learning coach. A user is being assessed on "${skill.name}" in the context of ad tech, digital media, and product management.
 
-Each question should test a different depth of knowledge — from basic awareness to applied understanding.
+They described it in their own words as:
+"${introText}"
+
+Based on their definition, generate 3 diagnostic questions that go BEYOND the basics. Assume they already have some familiarity with the topic. Skip introductory or definitional questions — focus on nuanced, applied, or scenario-based understanding. Make the correct answer non-obvious; avoid questions where one option is clearly superior.
 
 Return ONLY valid JSON, no other text:
 [
-  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
-  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
-  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"},
-  {"id": 4, "question": "...", "options": ["A) ...", "B) ...", "C) ..."], "type": "multiple_choice"}
+  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"},
+  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"},
+  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"}
 ]`;
 
   const result = await callClaude(prompt);
@@ -3131,7 +3184,7 @@ Return ONLY valid JSON, no other text:
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Something went wrong</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${escHtml(result.message)}</div>
-        <button onclick="openSkillAICoach(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
     `);
@@ -3144,14 +3197,14 @@ Return ONLY valid JSON, no other text:
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Claude's response wasn't in the expected format. Try again or use static content.</div>
-        <button onclick="openSkillAICoach(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
     `);
     return;
   }
 
-  _aiCoachState = { skillId, questions, answers: {}, currentQ: 0 };
+  _aiCoachState = { skillId, introAnswer: introText, questions, answers: {}, currentQ: 0 };
   displayDiagnosticQuestion();
 }
 
@@ -3172,8 +3225,11 @@ function displayDiagnosticQuestion() {
       onmouseout="if(!${isSelected})this.style.borderColor='var(--border)'">${escHtml(opt)}</button>`;
   }).join('');
 
-  const progressDots = questions.map((_, i) =>
-    `<div style="width:8px;height:8px;border-radius:50%;background:${i < currentQ ? 'var(--amber)' : i === currentQ ? 'var(--text-mid)' : 'var(--border)'};transition:background 0.3s;"></div>`
+  // Progress includes the intro question as step 1
+  const totalWithIntro = total + 1;
+  const currentWithIntro = currentQ + 1; // 0-indexed questions start at position 1 after intro
+  const progressDots = Array.from({ length: totalWithIntro }, (_, i) =>
+    `<div style="width:8px;height:8px;border-radius:50%;background:${i < currentWithIntro ? 'var(--amber)' : i === currentWithIntro ? 'var(--text-mid)' : 'var(--border)'};transition:background 0.3s;"></div>`
   ).join('');
 
   const isLast = currentQ === total - 1;
@@ -3183,7 +3239,7 @@ function displayDiagnosticQuestion() {
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
-        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentQ + 1} / ${total}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentWithIntro + 1} / ${totalWithIntro}</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">${progressDots}</div>
       <div style="font-size:0.92rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:18px;">${escHtml(q.question)}</div>
@@ -3213,7 +3269,10 @@ async function submitDiagnosticAnswers() {
     </div>
   `);
 
-  const answersText = questions.map(q =>
+  const introLine = _aiCoachState.introAnswer
+    ? `User's own definition: "${_aiCoachState.introAnswer}"\n\n`
+    : '';
+  const answersText = introLine + questions.map(q =>
     `Q: ${q.question}\nAnswer: ${answers[q.id] || 'No answer'}`
   ).join('\n\n');
 
@@ -4359,6 +4418,7 @@ function saveWeeklyPlan() {
     plan.goals = [g1,g2,g3];
     plan.intention = intention;
   }
+  _weekPlanEditing = false;
   save();
   renderToday();
   showToast('Week plan saved \u2713');
@@ -4416,9 +4476,48 @@ function renderWeekPlannerHTML() {
       </div>
     </div>
     <input id="w-intention" placeholder="This week I want to feel..." value="${escHtml(plan?.intention||'')}" style="${wkInputStyle}margin-bottom:14px;">
-    <button onclick="saveWeeklyPlan()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save plan</button>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveWeeklyPlan()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save plan</button>
+      ${_weekPlanEditing ? `<button onclick="cancelWeekPlanEdit()" style="background:none;border:none;color:var(--text-dim);font-size:0.82rem;cursor:pointer;padding:9px 14px;font-family:'DM Sans',sans-serif;">Cancel</button>` : ''}
+    </div>
   </div>`;
 }
+
+function renderWeekPlanViewHTML() {
+  const plan = getCurrentWeekPlan();
+  if (!plan) return '';
+  const goals = (plan.goals || []).filter(Boolean);
+  if (!goals.length) return '';
+  const done = plan.goalsDone || [false, false, false];
+  return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="card-label" style="margin-bottom:0;">This week's plan</div>
+      <button onclick="editWeekPlan()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;cursor:pointer;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Edit</button>
+    </div>
+    ${goals.map((g, i) => {
+      const isDone = done[i];
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="toggleWeekGoalDone(${i})">
+        <div style="width:16px;height:16px;min-width:16px;border-radius:50%;border:1.5px solid ${isDone?'var(--amber)':'var(--border)'};background:${isDone?'var(--amber)':'transparent'};margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">
+          ${isDone ? `<div style="width:6px;height:6px;border-radius:50%;background:#fff;"></div>` : ''}
+        </div>
+        <div style="font-size:0.84rem;color:${isDone?'var(--text-dim)':'var(--text)'};line-height:1.5;text-decoration:${isDone?'line-through':'none'};transition:all 0.15s;">${escHtml(g)}</div>
+      </div>`;
+    }).join('')}
+    ${plan.intention ? `<div style="font-size:0.74rem;color:var(--text-dim);font-style:italic;padding:10px 0 2px;">"${escHtml(plan.intention)}"</div>` : ''}
+  </div>`;
+}
+
+function toggleWeekGoalDone(idx) {
+  const plan = getCurrentWeekPlan();
+  if (!plan) return;
+  if (!plan.goalsDone) plan.goalsDone = [false, false, false];
+  plan.goalsDone[idx] = !plan.goalsDone[idx];
+  save();
+  renderToday();
+}
+
+function editWeekPlan() { _weekPlanEditing = true; renderToday(); }
+function cancelWeekPlanEdit() { _weekPlanEditing = false; renderToday(); }
 
 function renderWeekReviewHTML() {
   const stats = getWeekStats();
@@ -5020,7 +5119,40 @@ function quickLogInteraction(contactId) {
   save();
   networkOpenId = contactId;
   renderNetwork();
-  showToast('Logged \u2713');
+
+  // Offer to create a follow-up task
+  const name = escHtml(contactFullName(c));
+  showModal(`
+    <div style="text-align:left;">
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px;font-family:'Montserrat',sans-serif;">Add a follow-up task?</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:18px;line-height:1.5;">Create a "Follow up with ${name}" task — where should it go?</div>
+      <button onclick="addFollowupTask(${contactId},'today');closeModal()" style="display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border);background:transparent;border-radius:2px;font-size:0.84rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-weight:600;">Add to Today's Focus</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">Time-sensitive — handle today</div>
+      </button>
+      <button onclick="addFollowupTask(${contactId},'backlog');closeModal()" style="display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:16px;border:1px solid var(--border);background:transparent;border-radius:2px;font-size:0.84rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-weight:600;">Add to Backlog</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">Plan it for a future day</div>
+      </button>
+      <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Skip</button>
+    </div>
+  `);
+}
+
+function addFollowupTask(contactId, destination) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const task = { id: S.nextId++, text: `Follow up with ${contactFullName(c)}`, cat: 'followup', done: false, createdAt: Date.now(), points: 1, contactId };
+  S.tasks.unshift(task);
+  S.totalAdded++;
+  if (destination === 'today') {
+    if (!S.todayFocusIds.includes(task.id)) S.todayFocusIds.push(task.id);
+    showToast("Added to Today\u2019s focus \u2713");
+    if (currentTab === 'today') renderToday();
+  } else {
+    showToast('Added to backlog \u2713');
+  }
+  save();
 }
 
 function openEditContact(contactId) {
