@@ -1858,6 +1858,7 @@ const DEFAULT_STATE = {
   carryOverIds: [],
   todayCalEvents: [],
   dailySnapshots: [],
+  rolledOverTasks: [],
   contacts: [],
   nextContactId: 1,
   aspirationalsVisible: false,
@@ -2169,6 +2170,12 @@ function checkDayReset() {
   const today = new Date().toDateString();
   if (S.todayDate !== today) {
     saveDaySnapshot(S.todaySealed || false); // capture yesterday before clearing
+    // Capture incomplete focus tasks (excluding intentional carry-overs) for Rolled Over section
+    const carrySet = new Set(S.carryOverIds || []);
+    S.rolledOverTasks = (S.todayFocusIds || []).filter(id => {
+      const t = S.tasks.find(x => x.id === id);
+      return t && !t.done && !carrySet.has(id);
+    });
     S.todayDate         = today;
     S.todayEnergy       = null;
     S.todayFocusIds     = [...(S.carryOverIds || [])];
@@ -2388,6 +2395,23 @@ function renderToday() {
       <button onclick="resetCheckin()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;padding:4px 0;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Change</button>
     </div>
 
+    ${(S.rolledOverTasks && S.rolledOverTasks.length > 0) ? (() => {
+      const rolledTasks = S.rolledOverTasks.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
+      if (rolledTasks.length === 0) return '';
+      return `<div style="margin-bottom:16px;border:1px solid var(--border);border-left:3px solid var(--border-hl);border-radius:3px;padding:12px 14px;">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:10px;">From yesterday</div>
+        ${rolledTasks.map(t => `
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+            <div style="flex:1;font-size:0.84rem;color:var(--text-mid);line-height:1.3;">${escHtml(t.text)}</div>
+            <div style="display:flex;gap:5px;flex-shrink:0;">
+              <button onclick="completeRolledOverTask(${t.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:0.7rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Done ✓</button>
+              <button onclick="addRolledOverToToday(${t.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:0.7rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">→ Today</button>
+              <button onclick="dismissRolledOver(${t.id})" style="background:none;border:none;padding:3px 5px;font-size:0.8rem;color:var(--text-dim);cursor:pointer;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    })() : ''}
+
     ${isRest ? `
       <div class="field-note" style="background:rgba(14,116,144,0.05);margin-bottom:14px">
         <div class="field-note-icon">☁️</div>
@@ -2599,6 +2623,27 @@ function quickAddFocus() {
 
 function removeFocusItem(id) {
   S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  save();
+  renderToday();
+}
+
+function completeRolledOverTask(id) {
+  const t = S.tasks.find(x => x.id === id);
+  if (t) { t.done = true; t.doneAt = Date.now(); t.doneDate = new Date().toISOString().slice(0,10); gainXP(5); }
+  S.rolledOverTasks = (S.rolledOverTasks || []).filter(rid => rid !== id);
+  save();
+  renderToday();
+}
+
+function addRolledOverToToday(id) {
+  if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
+  S.rolledOverTasks = (S.rolledOverTasks || []).filter(rid => rid !== id);
+  save();
+  renderToday();
+}
+
+function dismissRolledOver(id) {
+  S.rolledOverTasks = (S.rolledOverTasks || []).filter(rid => rid !== id);
   save();
   renderToday();
 }
@@ -4007,9 +4052,37 @@ function renderCompanies() {
 
   const statuses = ['researching', 'targeting', 'applied'];
 
-  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <span style="font-size:0.8rem;color:var(--text-dim)">${S.companies.length} companies</span>
+  // Filter by search
+  const searchLower = companySearch.toLowerCase();
+  const filtered = companySearch
+    ? S.companies.filter(c =>
+        c.name.toLowerCase().includes(searchLower) ||
+        (c.industry || '').toLowerCase().includes(searchLower))
+    : S.companies;
+
+  // Sort
+  const sorted = [...filtered].sort((a, b) => {
+    if (companySort === 'industry') {
+      const ia = (a.industry || '').toLowerCase();
+      const ib = (b.industry || '').toLowerCase();
+      if (ia !== ib) return ia < ib ? -1 : 1;
+    }
+    return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+  });
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:0.8rem;color:var(--text-dim)">${S.companies.length} compan${S.companies.length===1?'y':'ies'}</span>
     <button onclick="openAddCompany()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+    <input type="text" placeholder="Search companies..." value="${escHtml(companySearch)}"
+      oninput="companySearch=this.value;companyOpenId=null;renderNetwork()"
+      style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
+    <select onchange="companySort=this.value;renderNetwork()"
+      style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.7rem;color:var(--text-dim);padding:5px 0;outline:none;cursor:pointer;letter-spacing:0.03em;">
+      <option value="alpha" ${companySort==='alpha'?'selected':''}>A–Z</option>
+      <option value="industry" ${companySort==='industry'?'selected':''}>Industry</option>
+    </select>
   </div>`;
 
   if (S.companies.length === 0) {
@@ -4023,20 +4096,42 @@ function renderCompanies() {
     return;
   }
 
-  statuses.forEach(statusKey => {
-    const cos = S.companies.filter(c => c.status === statusKey);
-    if (cos.length === 0) return;
-    const statusInfo = COMPANY_STATUSES.find(s => s.key === statusKey);
-    html += `<div style="margin-bottom:16px;">
-      <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${statusInfo.label} · ${cos.length}</div>
-      ${cos.map(c => renderCompanyRow(c)).join('')}
-    </div>`;
-  });
+  if (sorted.length === 0) {
+    html += `<div style="font-size:0.82rem;color:var(--text-dim);padding:20px 0;text-align:center;">No companies match "${escHtml(companySearch)}"</div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+
+  if (companySort === 'industry') {
+    // Group by industry when sorting by industry
+    const industries = [...new Set(sorted.map(c => c.industry || ''))];
+    industries.sort();
+    industries.forEach(ind => {
+      const cos = sorted.filter(c => (c.industry || '') === ind);
+      html += `<div style="margin-bottom:16px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${ind ? escHtml(ind) : 'No industry'} · ${cos.length}</div>
+        ${cos.map(c => renderCompanyRow(c)).join('')}
+      </div>`;
+    });
+  } else {
+    // Group by status when sorting alpha
+    statuses.forEach(statusKey => {
+      const cos = sorted.filter(c => c.status === statusKey);
+      if (cos.length === 0) return;
+      const statusInfo = COMPANY_STATUSES.find(s => s.key === statusKey);
+      html += `<div style="margin-bottom:16px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${statusInfo.label} · ${cos.length}</div>
+        ${cos.map(c => renderCompanyRow(c)).join('')}
+      </div>`;
+    });
+  }
 
   container.insertAdjacentHTML('beforeend', html);
 }
 
 let companyOpenId = null;
+let companySort = 'alpha';
+let companySearch = '';
 
 function renderCompanyRow(c) {
   const isOpen = companyOpenId === c.id;
@@ -4054,6 +4149,10 @@ function renderCompanyRow(c) {
       <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?180:0}deg);transition:transform 0.2s;flex-shrink:0;color:var(--text-dim);"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </div>
     ${isOpen ? `<div style="padding-bottom:14px;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button onclick="event.stopPropagation();openEditCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.borderColor='var(--text-mid)'" onmouseout="this.style.borderColor='var(--border)'">Edit</button>
+        <button onclick="event.stopPropagation();deleteCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">Remove</button>
+      </div>
       <div style="display:grid;gap:10px;">
         <div>
           <div class="rej-field-label">Status</div>
@@ -4086,7 +4185,6 @@ function renderCompanyRow(c) {
           ${linkedJobs.map(j => { const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0]; return `<div onclick="networkView='pipeline';switchTab('network');setTimeout(()=>{pipelineOpenId=${j.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'"><span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>${escHtml(j.role||'Role TBD')}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${st.label} →</span></div>`; }).join('')}
         </div>` : ''; })()}
         ${c.website ? `<a href="https://${c.website.replace(/^https?:\/\//,'')}" target="_blank" style="display:block;font-size:0.75rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;padding:4px 0;">Visit website →</a>` : ''}
-        <button onclick="deleteCompany(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;text-align:left;padding:4px 0;letter-spacing:0.03em;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Remove company</button>
       </div>
     </div>` : ''}
   </div>`;
@@ -4142,11 +4240,56 @@ function saveNewCompany() {
   const status = (document.getElementById('nc-costatus')||{}).value || 'researching';
   if (!S.companies) S.companies = [];
   if (!S.nextCompanyId) S.nextCompanyId = 1;
+  const isDupe = S.companies.some(c => c.name.toLowerCase() === name.toLowerCase());
+  if (isDupe) { showToast('⚠ A company with this name already exists'); return; }
   S.companies.push({ id: S.nextCompanyId++, name, industry, status, website: '', why: '', notes: '' });
   save();
   closeModal();
   networkView = 'companies';
   switchTab('network');
+}
+
+function openEditCompany(id) {
+  const c = S.companies.find(x => x.id === id);
+  if (!c) return;
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:14px">Edit company</div>
+      <div class="rej-field-label">Company name *</div>
+      <input class="rej-small-input" id="eco-name" value="${escHtml(c.name||'')}">
+      <div class="rej-field-label">Industry</div>
+      <input class="rej-small-input" id="eco-industry" value="${escHtml(c.industry||'')}" placeholder="e.g. Ad Tech, Streaming">
+      <div class="rej-field-label">Website</div>
+      <input class="rej-small-input" id="eco-website" value="${escHtml(c.website||'')}" placeholder="company.com">
+      <div class="rej-field-label">Status</div>
+      <select id="eco-status" style="border:none;border-bottom:1px solid var(--border);background:transparent;width:100%;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;box-sizing:border-box;margin-bottom:20px;">
+        ${COMPANY_STATUSES.map(s => `<option value="${s.key}" ${c.status===s.key?'selected':''}>${s.label}</option>`).join('')}
+      </select>
+      <div style="display:flex;gap:8px">
+        <button onclick="saveEditCompany(${id})" style="flex:1;background:var(--text);color:var(--surface);border:none;padding:11px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border-radius:2px;transition:opacity 0.15s" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save</button>
+        <button onclick="closeModal()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);padding:11px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:2px;">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function saveEditCompany(id) {
+  const c = S.companies.find(x => x.id === id);
+  if (!c) return;
+  const name = (document.getElementById('eco-name')||{}).value?.trim();
+  if (!name) { showToast('Company name required'); return; }
+  const dupeExists = S.companies.some(x => x.id !== id && x.name.toLowerCase() === name.toLowerCase());
+  if (dupeExists) { showToast('⚠ Another company with this name already exists'); return; }
+  c.name     = name;
+  c.industry = (document.getElementById('eco-industry')||{}).value?.trim() || '';
+  c.website  = (document.getElementById('eco-website')||{}).value?.trim() || '';
+  c.status   = (document.getElementById('eco-status')||{}).value || c.status;
+  save();
+  closeModal();
+  companyOpenId = id;
+  renderNetwork();
+  showToast('Company updated ✓');
 }
 
 let _rejQuote = null;
@@ -5455,6 +5598,11 @@ function renderContactCard(c) {
   const detailHTML = isOpen ? `
     <div class="contact-detail">
 
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="contact-action-btn" onclick="event.stopPropagation();openEditContact(${c.id})">Edit</button>
+        <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
+      </div>
+
       <div>
         <div class="card-label">Interaction history</div>
         ${historyHTML}
@@ -5516,14 +5664,6 @@ function renderContactCard(c) {
             <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
           </div>
           <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
-        </div>
-      </div>
-
-      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
-        <div class="contact-action-row">
-          <button class="contact-action-btn" onclick="event.stopPropagation();openEditContact(${c.id})">Edit</button>
-          <button class="contact-action-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
-          <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
         </div>
       </div>
 
