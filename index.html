@@ -2342,13 +2342,16 @@ function renderToday() {
       const isPast = c.nextContactDate < todayIso;
       const statusCls = isPast ? 'overdue' : isToday ? 'due-soon' : 'ok';
       const label = isPast ? 'overdue' : isToday ? 'today' : 'upcoming';
-      return `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
-        <div class="contact-status-dot ${statusCls}"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(c))}</div>
-          ${c.followUpNote ? `<div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.followUpNote)}</div>` : ''}
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+          <div class="contact-status-dot ${statusCls}"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(c))}</div>
+            ${c.followUpNote ? `<div style="font-size:0.72rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.followUpNote)}</div>` : ''}
+          </div>
+          <div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isPast?'var(--red)':isToday?'var(--teal)':'var(--text-dim)'};">${label}</div>
         </div>
-        <div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isPast?'var(--red)':isToday?'var(--teal)':'var(--text-dim)'};">${label}</div>
+        <button onclick="dismissFollowUpNudge(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
       </div>`;
     }).join('')}
   </div>` : '';
@@ -2535,11 +2538,14 @@ function renderToday() {
       <div class="card-label" style="margin-bottom:10px">Network check-ins due</div>
       ${overdueContacts.map(c => {
         const days = getDaysSince(c.lastContact);
-        return `<div class="nudge-row" onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="cursor:pointer;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
-          <div class="contact-status-dot overdue" style="flex-shrink:0"></div>
-          <div class="nudge-name">${escHtml(contactFullName(c))} <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company||'')}</span></div>
-          <div class="nudge-days">${days}d overdue</div>
-          <button class="contact-today-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
+        return `<div class="nudge-row">
+          <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+            <div class="contact-status-dot overdue" style="flex-shrink:0"></div>
+            <div class="nudge-name">${escHtml(contactFullName(c))} <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company||'')}</span></div>
+            <div class="nudge-days">${days}d overdue</div>
+          </div>
+          <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
+          <button onclick="dismissFollowUpNudge(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
@@ -4092,7 +4098,7 @@ function renderCompanies() {
       oninput="companySearch=this.value;companyOpenId=null;renderNetwork()"
       style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
     <select onchange="companySort=this.value;renderNetwork()"
-      style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.7rem;color:var(--text-dim);padding:5px 0;outline:none;cursor:pointer;letter-spacing:0.03em;">
+      style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.72rem;color:var(--text-dim);padding:5px 0;outline:none;cursor:pointer;letter-spacing:0.03em;">
       <option value="alpha" ${companySort==='alpha'?'selected':''}>A–Z</option>
       <option value="industry" ${companySort==='industry'?'selected':''}>Industry</option>
     </select>
@@ -4163,8 +4169,8 @@ function renderCompanyRow(c) {
     </div>
     ${isOpen ? `<div style="padding-bottom:14px;">
       <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button onclick="event.stopPropagation();openEditCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.borderColor='var(--text-mid)'" onmouseout="this.style.borderColor='var(--border)'">Edit</button>
-        <button onclick="event.stopPropagation();deleteCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">Remove</button>
+        <button onclick="event.stopPropagation();openEditCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.borderColor='var(--text-mid)'" onmouseout="this.style.borderColor='var(--border)'">Edit</button>
+        <button onclick="event.stopPropagation();deleteCompany(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.75rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">Remove</button>
       </div>
       <div style="display:grid;gap:10px;">
         <div>
@@ -5280,9 +5286,13 @@ function quickLogInteraction(contactId) {
   c.lastContact = date;
   if (method) c.preferredMethod = method;
   c.interactions.unshift({ date, method, notes });
+  // Auto-clear the planned follow-up nudge if this interaction is on or after its date
+  const nudgeCleared = c.nextContactDate && date >= c.nextContactDate;
+  if (nudgeCleared) { c.nextContactDate = ''; c.followUpNote = ''; }
   save();
   networkOpenId = contactId;
   renderNetwork();
+  if (nudgeCleared) showToast('Follow-up marked complete ✓');
 
   // Offer to create a follow-up task
   const name = escHtml(contactFullName(c));
@@ -5404,6 +5414,16 @@ function saveContactFollowupNote(id) {
   const el = document.getElementById(`fu-note-${id}`);
   if (el) c.followUpNote = el.value || '';
   save();
+}
+
+function dismissFollowUpNudge(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  c.nextContactDate = '';
+  c.followUpNote = '';
+  save();
+  renderToday();
+  showToast('Reach-out marked done ✓');
 }
 
 function getFollowUpNudges() {
@@ -5632,7 +5652,7 @@ function renderContactCard(c) {
       <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <div class="card-label" style="margin-bottom:0;">Log interaction</div>
-          <span style="font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;background:var(--amber);color:#fff;padding:2px 6px;border-radius:2px;">New</span>
+          <span style="font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;background:var(--amber);color:var(--surface);padding:2px 6px;border-radius:2px;">New</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:7px">
           <input type="date" class="contact-inline-input" id="qi-date-${c.id}"
@@ -5677,17 +5697,10 @@ function renderContactCard(c) {
         </div>` : ''}
 
         <div style="margin-top:10px;">
-          <div class="contact-detail-section-label">Next step</div>
-          <textarea class="contact-inline-input" id="ns-${c.id}" rows="2"
-            placeholder="What's the next thing to do with this person?"
-            onblur="saveContactNextStep(${c.id})">${escHtml(c.nextStep || '')}</textarea>
-        </div>
-
-        <div style="margin-top:10px;">
           <div class="contact-detail-section-label">Notes</div>
           <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
-            placeholder="Context, background, things to remember..."
-            onblur="saveContactNotes(${c.id})">${escHtml(c.notes || '')}</textarea>
+            placeholder="Next steps, context, things to remember..."
+            onblur="saveContactNotes(${c.id})">${escHtml(c.notes || c.nextStep || '')}</textarea>
         </div>
       </div>
 
