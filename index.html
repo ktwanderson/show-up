@@ -2342,7 +2342,7 @@ function renderToday() {
       const isPast = c.nextContactDate < todayIso;
       const statusCls = isPast ? 'overdue' : isToday ? 'due-soon' : 'ok';
       const label = isPast ? 'overdue' : isToday ? 'today' : 'upcoming';
-      return `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();},50)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+      return `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
         <div class="contact-status-dot ${statusCls}"></div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(c))}</div>
@@ -2535,11 +2535,11 @@ function renderToday() {
       <div class="card-label" style="margin-bottom:10px">Network check-ins due</div>
       ${overdueContacts.map(c => {
         const days = getDaysSince(c.lastContact);
-        return `<div class="nudge-row">
+        return `<div class="nudge-row" onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="cursor:pointer;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
           <div class="contact-status-dot overdue" style="flex-shrink:0"></div>
           <div class="nudge-name">${escHtml(contactFullName(c))} <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company||'')}</span></div>
           <div class="nudge-days">${days}d overdue</div>
-          <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
+          <button class="contact-today-btn" onclick="event.stopPropagation();addContactToToday(${c.id})">\u2192 Today</button>
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
@@ -2656,6 +2656,7 @@ function completeFocusTask(id, event) {
   const oldLv = getLvl(S.xp).num;
   task.done = true;
   task.doneAt = Date.now();
+  task.doneDate = new Date().toISOString().slice(0,10);
   gainXP(xp);
   S.totalDone++;
   if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
@@ -3126,8 +3127,12 @@ async function callClaude(prompt, options = {}) {
       }),
     });
     if (!resp.ok) {
-      const errBody = await resp.text();
-      return { error: 'api_error', message: `API error (${resp.status}): ${errBody}` };
+      let friendlyMsg;
+      if (resp.status === 401) friendlyMsg = 'Your API key looks invalid or expired. Go to Account → AI Settings to update it.';
+      else if (resp.status === 429) friendlyMsg = 'Too many requests — the AI service is rate-limited right now. Wait a moment and try again.';
+      else if (resp.status >= 500) friendlyMsg = 'The AI service is temporarily unavailable. Try again in a moment.';
+      else friendlyMsg = `Something went wrong with the AI service (${resp.status}). Try again or check your API key in Account settings.`;
+      return { error: 'api_error', message: friendlyMsg };
     }
     const data = await resp.json();
     const text = data.content?.[0]?.text || '';
@@ -3225,11 +3230,15 @@ Return ONLY valid JSON, no other text:
   const result = await callClaude(prompt);
 
   if (result.error) {
+    const isNoKey = result.error === 'no_key';
     showModal(`
       <div style="text-align:left;">
-        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Something went wrong</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${escHtml(result.message)}</div>
-        <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Something went wrong'}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use AI Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
+        ${isNoKey
+          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
+          : `<button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
+        }
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
     `);
@@ -3342,11 +3351,15 @@ Based on these answers, provide a personalized learning assessment. Return ONLY 
   const result = await callClaude(prompt);
 
   if (result.error) {
+    const isNoKey = result.error === 'no_key';
     showModal(`
       <div style="text-align:left;">
-        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Analysis failed</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${escHtml(result.message)}</div>
-        <button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Analysis failed'}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use AI Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
+        ${isNoKey
+          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
+          : `<button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
+        }
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
       </div>
     `);
@@ -3779,7 +3792,7 @@ function completeQuestTask(id, event) {
   const cat = CATS[task.cat];
   const xp = cat ? cat.xp : 15;
   const oldLv = getLvl(S.xp).num;
-  task.done = true; task.doneAt = Date.now();
+  task.done = true; task.doneAt = Date.now(); task.doneDate = new Date().toISOString().slice(0,10);
   gainXP(xp);
   S.totalDone++;
   if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
@@ -4572,13 +4585,15 @@ function saveWeeklyReview() {
   let plan = getCurrentWeekPlan();
   const wentWell = (document.getElementById('wr-well')||{}).value?.trim() || '';
   const carryForward = (document.getElementById('wr-carry')||{}).value?.trim() || '';
+  const improveNextWeek = (document.getElementById('wr-improve')||{}).value?.trim() || '';
   if (!plan) {
-    plan = { id: S.nextWeeklyId++, weekStart: ws, goals: [], intention: '', reviewDone: true, wentWell, carryForward };
+    plan = { id: S.nextWeeklyId++, weekStart: ws, goals: [], intention: '', reviewDone: true, wentWell, carryForward, improveNextWeek };
     S.weeklyPlans.push(plan);
   } else {
     plan.reviewDone = true;
     plan.wentWell = wentWell;
     plan.carryForward = carryForward;
+    plan.improveNextWeek = improveNextWeek;
   }
   save();
   renderToday();
@@ -4693,6 +4708,7 @@ function renderWeekReviewHTML() {
     <div style="display:grid;gap:2px;margin-bottom:14px;">
       <textarea id="wr-well" placeholder="What went well this week..." style="${wkTaStyle}"></textarea>
       <textarea id="wr-carry" placeholder="What to carry forward..." style="${wkTaStyle}"></textarea>
+      <textarea id="wr-improve" placeholder="One thing to do differently next week..." style="${wkTaStyle}"></textarea>
     </div>
     <button onclick="saveWeeklyReview()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Wrap the week</button>
   </div>`;
@@ -5255,9 +5271,14 @@ function quickLogInteraction(contactId) {
   const method = (document.getElementById(`qi-method-${contactId}`) || {}).value || '';
   const notes  = ((document.getElementById(`qi-notes-${contactId}`) || {}).value || '').trim();
   if (!date) { showToast('Please select a date'); return; }
+  if (!c.interactions) c.interactions = [];
+  const dupeOnDate = c.interactions.some(ix => ix.date === date);
+  if (dupeOnDate) {
+    showToast('An interaction is already logged for this date — change the date to add another');
+    return;
+  }
   c.lastContact = date;
   if (method) c.preferredMethod = method;
-  if (!c.interactions) c.interactions = [];
   c.interactions.unshift({ date, method, notes });
   save();
   networkOpenId = contactId;
@@ -5609,7 +5630,10 @@ function renderContactCard(c) {
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
-        <div class="card-label">Log interaction</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div class="card-label" style="margin-bottom:0;">Log interaction</div>
+          <span style="font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;background:var(--amber);color:#fff;padding:2px 6px;border-radius:2px;">New</span>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:7px">
           <input type="date" class="contact-inline-input" id="qi-date-${c.id}"
             value="${today}" style="flex:1;min-width:120px;max-width:160px">
@@ -5621,6 +5645,15 @@ function renderContactCard(c) {
         <textarea class="contact-inline-input" id="qi-notes-${c.id}" rows="2"
           placeholder="What happened? Any context or next steps..." style="margin-bottom:7px"></textarea>
         <button class="contact-action-btn" onclick="event.stopPropagation();quickLogInteraction(${c.id})">Log it</button>
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+          <div class="contact-detail-section-label">Planned follow-up</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+            <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
+            <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
+          </div>
+          <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
+        </div>
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
@@ -5655,15 +5688,6 @@ function renderContactCard(c) {
           <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
             placeholder="Context, background, things to remember..."
             onblur="saveContactNotes(${c.id})">${escHtml(c.notes || '')}</textarea>
-        </div>
-
-        <div style="margin-top:10px;">
-          <div class="contact-detail-section-label">Planned follow-up</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-            <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
-            <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
-          </div>
-          <input id="fu-note-${c.id}" placeholder="What to follow up about..." value="${escHtml(c.followUpNote||'')}" onblur="saveContactFollowupNote(${c.id})" class="contact-inline-input" style="margin-top:6px;">
         </div>
       </div>
 
