@@ -2574,7 +2574,7 @@ function renderToday() {
             <div class="nudge-days">${days}d overdue</div>
           </div>
           <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
-          <button onclick="dismissFollowUpNudge(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
+          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
@@ -5478,6 +5478,17 @@ function dismissFollowUpNudge(contactId) {
   save();
   renderToday();
   showToast('Reach-out marked done ✓');
+}
+
+function markContactedToday(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  c.lastContact = new Date().toISOString().slice(0,10);
+  c.nextContactDate = '';
+  c.followUpNote = '';
+  save();
+  renderToday();
+  showToast('Marked as contacted today ✓');
 }
 
 function getFollowUpNudges() {
