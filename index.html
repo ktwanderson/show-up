@@ -2197,21 +2197,43 @@ function touchStreak(energy) {
     S.showUpDays[S.showUpDays.length - 1].date === today;
 
   if (!alreadyToday) {
-    // Find the previous required day, skipping weekends (Sat=6, Sun=0)
-    let prevMs = Date.now() - 86400000;
-    let prevDay = new Date(prevMs);
-    while (prevDay.getDay() === 0 || prevDay.getDay() === 6) {
-      prevMs -= 86400000;
-      prevDay = new Date(prevMs);
+    // Find the previous required business day (skip weekends)
+    const prevBizDay = (fromMs) => {
+      let ms = fromMs - 86400000;
+      let d = new Date(ms);
+      while (d.getDay() === 0 || d.getDay() === 6) { ms -= 86400000; d = new Date(ms); }
+      return { ms, str: d.toDateString() };
+    };
+    const prev1 = prevBizDay(Date.now());
+    const hadPrev1 = S.showUpDays.some(d => d.date === prev1.str);
+
+    const prevStreakVal = S.showUpStreak;
+    let streakBroke = false;
+
+    if (hadPrev1) {
+      // Showed up yesterday — normal increment
+      S.showUpStreak++;
+    } else {
+      // Missed yesterday — check 2-Day Rule: if the day before yesterday was hit, grace applies
+      const prev2 = prevBizDay(prev1.ms);
+      const hadPrev2 = S.showUpDays.some(d => d.date === prev2.str);
+      if (hadPrev2 && S.showUpStreak > 0) {
+        // 1 missed business day within grace window — streak continues
+        S.showUpStreak++;
+      } else {
+        // More than 1 missed day — streak breaks
+        streakBroke = prevStreakVal > 1;
+        S.showUpStreak = 1;
+      }
     }
-    const prevRequired = prevDay.toDateString();
-    const hadPrev = S.showUpDays.some(d => d.date === prevRequired);
-    S.showUpStreak = hadPrev ? S.showUpStreak + 1 : 1;
+
     S.maxShowUpStreak = Math.max(S.maxShowUpStreak, S.showUpStreak);
     S.showUpDays.push({ date: today, energy });
     if (S.showUpDays.length > 28) S.showUpDays.shift();
+    return { broke: streakBroke, prevStreak: prevStreakVal };
   } else {
     S.showUpDays[S.showUpDays.length - 1].energy = energy;
+    return { broke: false, prevStreak: S.showUpStreak };
   }
 }
 
@@ -2263,7 +2285,14 @@ function updateHeader() {
   document.getElementById('xpBar').style.width        = lv.pct + '%';
   document.getElementById('xpBarLabel').textContent   = lv.next ? `${lv.xpIn} / ${lv.xpFor} XP to next level` : `Max level · ${S.xp} XP`;
   document.getElementById('xpTotal').textContent      = '';
-  document.getElementById('streakPill').textContent   = streakLabel(S.showUpStreak);
+  const best = S.maxShowUpStreak || 0;
+  const cur = S.showUpStreak || 0;
+  const bestSuffix = best > cur
+    ? ` <span style="color:var(--border-hl);font-size:0.68rem;">· best ${best}</span>`
+    : best > 0 && best === cur
+    ? ` <span style="color:var(--amber);font-size:0.68rem;">· best ✦</span>`
+    : '';
+  document.getElementById('streakPill').innerHTML = streakLabel(cur) + bestSuffix;
 }
 
 // ── TODAY TAB ────────────────────────────────────────────────
@@ -2598,13 +2627,37 @@ function fmtWinDate(iso) {
 // ── TODAY ACTIONS ────────────────────────────────────────────
 function setEnergy(energy) {
   S.todayEnergy = energy;
-  touchStreak(energy);
+  const streakResult = touchStreak(energy);
   const xp = ENERGY[energy].xp;
   gainXP(xp);
   if (energy === 'rest') S.totalRestDays = (S.totalRestDays || 0) + 1;
   save();
   render();
   checkAchievements();
+  if (streakResult.broke) {
+    const best = S.maxShowUpStreak;
+    const prev = streakResult.prevStreak;
+    setTimeout(() => showModal(`
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:2rem;margin-bottom:12px;">◎</div>
+        <div style="font-size:1.1rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:6px;">Welcome back.</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:16px;">Your streak reset. That happens — job searching isn't linear, and taking a break sometimes is part of the process.</div>
+        <div style="display:flex;justify-content:center;gap:24px;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:20px;">
+          <div>
+            <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;line-height:1;color:var(--text);">${prev}</div>
+            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">prev streak</div>
+          </div>
+          <div style="width:1px;background:var(--border);"></div>
+          <div>
+            <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;line-height:1;color:var(--amber);">${best}</div>
+            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">your best</div>
+          </div>
+        </div>
+        <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:20px;">Your best — ${best} ${best === 1 ? 'day' : 'days'} — is still yours.</div>
+        <button onclick="closeModal()" style="width:100%;padding:11px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Pick up where I left off</button>
+      </div>
+    `), 400);
+  }
 }
 
 function resetCheckin() {
@@ -4464,6 +4517,7 @@ function renderProgress() {
       <div class="stat-card">
         <div class="stat-value">${S.showUpStreak}</div>
         <div class="stat-label">day streak</div>
+        ${(S.maxShowUpStreak||0) > 0 ? `<div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;margin-top:3px;">best ${S.maxShowUpStreak}</div>` : ''}
       </div>
       <div class="stat-card">
         <div class="stat-value">${S.doneBy.apply||0}</div>
