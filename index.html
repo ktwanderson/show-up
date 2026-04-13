@@ -2625,22 +2625,52 @@ function renderToday() {
 }
 
 function makeFocusItemHTML(task) {
-  let textHTML = escHtml(task.text);
-  if (task.contactId) {
-    const c = S.contacts.find(x => x.id === task.contactId);
+  // If this is a project (has subtasks), surface the next action instead
+  const children = S.tasks.filter(t => t.parentId === task.id);
+  const nextAction = children.find(t => !t.done);
+  const doneChildCount = children.filter(t => t.done).length;
+  const totalChildCount = children.length;
+  const hasChildren = totalChildCount > 0;
+
+  // The task we actually render the check against
+  const actionTask = (hasChildren && nextAction) ? nextAction : task;
+  const allDone = hasChildren && doneChildCount === totalChildCount;
+
+  let textHTML = escHtml(actionTask.text);
+  if (actionTask.contactId) {
+    const c = S.contacts.find(x => x.id === actionTask.contactId);
     if (c) {
       const name = escHtml(contactFullName(c));
-      textHTML = textHTML.replace(name, `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;">${name}</span>`);
+      textHTML = textHTML.replace(name, `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${actionTask.contactId};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;">${name}</span>`);
     }
   }
-  const pts = task.points || 1;
+
+  const pts = actionTask.points || 1;
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
+  const isDone = actionTask.done || allDone || task.done;
+
+  const projectContext = hasChildren ? `
+    <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+      <span style="opacity:0.6;">↳</span>
+      <span style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(task.text)}</span>
+      ${totalChildCount > 0 ? `<span style="flex-shrink:0;background:var(--surface2);border-radius:2px;padding:1px 5px;font-size:0.6rem;">${doneChildCount}/${totalChildCount}</span>` : ''}
+    </div>` : '';
+
+  const progressBar = hasChildren && totalChildCount > 0 ? `
+    <div style="height:2px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:5px;">
+      <div style="height:100%;width:${Math.round(doneChildCount/totalChildCount*100)}%;background:${doneChildCount===totalChildCount?'var(--green)':'var(--amber)'};border-radius:2px;transition:width 0.3s;"></div>
+    </div>` : '';
+
   return `
-    <div class="focus-item ${task.done ? 'focus-done' : ''}">
-      <div class="check-circle ${task.done ? 'checked' : ''}" onclick="completeFocusTask(${task.id},event)" style="cursor:pointer">${task.done ? '✓' : ''}</div>
-      <div class="focus-text">${textHTML}</div>
-      ${!task.done ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
+    <div class="focus-item ${isDone ? 'focus-done' : ''}">
+      <div class="check-circle ${isDone ? 'checked' : ''}" onclick="completeFocusTask(${actionTask.id},event)" style="cursor:pointer;flex-shrink:0;">${isDone ? '✓' : ''}</div>
+      <div style="flex:1;min-width:0;">
+        ${projectContext}
+        <div class="focus-text">${textHTML}</div>
+        ${progressBar}
+      </div>
+      ${!isDone ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
       ${catDot(task.cat, '18px')}
       <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
     </div>`;
@@ -2750,6 +2780,25 @@ function completeFocusTask(id, event) {
   gainXP(xp);
   S.totalDone++;
   if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
+  trackEvent('task_complete', { cat: task.cat, pts: task.points || 1, isSubtask: !!task.parentId });
+
+  // If this was a subtask and all siblings are now done, auto-complete the parent
+  if (task.parentId) {
+    const siblings = S.tasks.filter(t => t.parentId === task.parentId);
+    const allDone = siblings.every(t => t.done);
+    if (allDone) {
+      const parent = S.tasks.find(t => t.id === task.parentId);
+      if (parent && !parent.done) {
+        parent.done = true;
+        parent.doneAt = Date.now();
+        parent.doneDate = new Date().toISOString().slice(0,10);
+        S.totalDone++;
+        if (S.doneBy[parent.cat] !== undefined) S.doneBy[parent.cat]++;
+        setTimeout(() => showToast('All steps done — project complete ✓'), 400);
+      }
+    }
+  }
+
   save();
   floatXP(event, `+${xp}`);
   renderToday();
@@ -3244,6 +3293,64 @@ async function callClaude(prompt, options = {}) {
 
 let _aiCoachState = {};    // tracks current quiz state
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
+const _expandedProjects = new Set(); // tracks which parent task IDs are expanded on the Tasks tab
+let _goalPickerOpenId = null;        // task ID currently showing the week-goal picker
+
+// Returns the task to act on: first incomplete subtask if parent, otherwise the task itself
+function getNextAction(task) {
+  const children = S.tasks.filter(t => t.parentId === task.id && !t.done);
+  return children.length > 0 ? children[0] : task;
+}
+
+// Returns true if task has any subtasks
+function isProject(task) {
+  return S.tasks.some(t => t.parentId === task.id);
+}
+
+function toggleProjectExpand(id, event) {
+  if (event) event.stopPropagation();
+  if (_expandedProjects.has(id)) _expandedProjects.delete(id);
+  else _expandedProjects.add(id);
+  renderQuests();
+}
+
+function toggleGoalPicker(id, event) {
+  if (event) event.stopPropagation();
+  _goalPickerOpenId = (_goalPickerOpenId === id) ? null : id;
+  renderQuests();
+}
+
+function linkTaskToWeekGoal(taskId, goalIdx, event) {
+  if (event) event.stopPropagation();
+  const task = S.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  // Toggle off if already linked to this goal
+  if (task.weekGoalIdx === goalIdx) {
+    delete task.weekGoalIdx;
+    showToast('Unlinked from week goal');
+  } else {
+    task.weekGoalIdx = goalIdx;
+    const plan = getCurrentWeekPlan();
+    const goalText = plan?.goals?.[goalIdx];
+    showToast(goalText ? `Linked to: ${goalText.slice(0, 40)}${goalText.length > 40 ? '…' : ''}` : 'Linked to week goal');
+  }
+  save();
+  renderQuests();
+  if (currentTab === 'today') renderToday();
+}
+
+function getWeekGoalPickerHTML(taskId) {
+  const plan = getCurrentWeekPlan();
+  const goals = (plan?.goals || []).filter(Boolean);
+  if (!goals.length) return '';
+  const task = S.tasks.find(t => t.id === taskId);
+  return goals.map((g, i) => {
+    const isLinked = task?.weekGoalIdx === i;
+    return `<button onclick="linkTaskToWeekGoal(${taskId},${i},event)" style="display:block;width:100%;text-align:left;background:${isLinked?'var(--amber-lt)':'none'};border:1px solid ${isLinked?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 8px;margin-bottom:4px;font-size:0.72rem;color:${isLinked?'var(--amber)':'var(--text-mid)'};cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='${isLinked?'var(--amber)':'var(--border)'}'">
+      ${isLinked ? '✓ ' : ''}${escHtml(g)}
+    </button>`;
+  }).join('');
+}
 
 async function openSkillAICoach(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
@@ -3807,55 +3914,113 @@ function makeQuestTaskHTML(task, showCat) {
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
 
-  const childTasks = S.tasks.filter(t => t.parentId === task.id);
-  const doneChildCount = childTasks.filter(t => t.done).length;
-  const totalChildCount = childTasks.length;
-  const activeChildTasks = childTasks.filter(t => !t.done);
+  const allChildren = S.tasks.filter(t => t.parentId === task.id);
+  const doneChildCount = allChildren.filter(t => t.done).length;
+  const totalChildCount = allChildren.length;
   const hasChildren = totalChildCount > 0;
-  // A parent with subtasks is implicitly in-progress if any subtask is done
-  const isInProgress = hasChildren ? doneChildCount > 0 && doneChildCount < totalChildCount : task.inProgress;
+  const isExpanded = _expandedProjects.has(task.id);
+  const nextAction = hasChildren ? S.tasks.find(t => t.parentId === task.id && !t.done) : null;
+  const isInProgress = hasChildren ? (doneChildCount > 0 && doneChildCount < totalChildCount) : task.inProgress;
+  const progressPct = hasChildren && totalChildCount > 0 ? Math.round((doneChildCount / totalChildCount) * 100) : 0;
 
-  const progressBadge = hasChildren
-    ? `<span style="display:inline-flex;align-items:center;justify-content:center;height:20px;border-radius:2px;background:var(--surface2);color:var(--text-dim);font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 5px;flex-shrink:0;letter-spacing:0;">${doneChildCount}/${totalChildCount}</span>`
-    : '';
+  const plan = getCurrentWeekPlan();
+  const weekGoals = (plan?.goals || []).filter(Boolean);
+  const isLinkedToGoal = task.weekGoalIdx !== undefined && task.weekGoalIdx !== null;
+  const linkedGoalText = isLinkedToGoal ? weekGoals[task.weekGoalIdx] : null;
+  const goalPickerOpen = _goalPickerOpenId === task.id;
 
-  const taskRow = `
-    <div class="task ${task.done?'done':isInProgress?'in-progress':''}" id="task-row-${task.id}">
-      <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
-      ${!task.done && !hasChildren ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
-      ${!task.done && !hasChildren ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
-      ${hasChildren ? progressBadge : ''}
-      <div class="task-text">${escHtml(task.text)}</div>
-      <div class="task-meta">
-        ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
-        ${showCat ? catDot(task.cat, '18px') : ''}
-        ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
-        ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
-        ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Add subtask" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+sub</button>` : ''}
-        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
+  const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
+    <button onclick="toggleGoalPicker(${task.id},event)" title="Link to week goal"
+      style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:opacity 0.15s;color:${isLinkedToGoal?'var(--amber)':'var(--text-dim)'};opacity:${isLinkedToGoal?'1':'0.3'};"
+      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${isLinkedToGoal?'1':'0.3'}'">◈</button>` : '';
+
+  const goalPicker = goalPickerOpen ? `
+    <div style="padding:8px 0 8px 28px;" onclick="event.stopPropagation()">
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Link to week goal</div>
+      ${getWeekGoalPickerHTML(task.id)}
+    </div>` : '';
+
+  const linkedGoalTag = isLinkedToGoal && linkedGoalText && !goalPickerOpen ? `
+    <div style="padding:0 0 6px 28px;">
+      <span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.02em;opacity:0.8;">◈ ${escHtml(linkedGoalText.slice(0,45))}${linkedGoalText.length>45?'…':''}</span>
+    </div>` : '';
+
+  // ── Project card (has subtasks) ──────────────────────────────
+  if (hasChildren) {
+    const expandedChildren = isExpanded
+      ? allChildren.map(t => makeSubtaskHTML(t, true)).join('')
+      : (nextAction ? makeSubtaskHTML(nextAction, true) : '');
+
+    return `
+      <div id="task-row-${task.id}" style="border-bottom:1px solid var(--border);padding:0;">
+        <div class="task ${task.done?'done':isInProgress?'in-progress':''}" style="border-bottom:none;padding-bottom:6px;">
+          <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
+          <div class="task-text" style="font-weight:500;">${escHtml(task.text)}</div>
+          <div class="task-meta">
+            ${showCat ? catDot(task.cat, '18px') : ''}
+            ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
+            ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+            ${goalLinkBtn}
+            ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Add step" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+step</button>` : ''}
+            ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
+          </div>
+          <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
+        </div>
+        ${linkedGoalTag}
+        ${goalPicker}
+        <div style="padding:0 0 8px 28px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${isExpanded || nextAction ? '8px' : '0'};">
+            <div style="flex:1;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;">
+              <div style="height:100%;width:${progressPct}%;background:${progressPct===100?'var(--green)':'var(--amber)'};border-radius:2px;transition:width 0.3s;"></div>
+            </div>
+            <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;white-space:nowrap;">${doneChildCount}/${totalChildCount}</span>
+            <button onclick="toggleProjectExpand(${task.id},event)" style="background:none;border:none;cursor:pointer;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">${isExpanded ? '▲ less' : '▼ all steps'}</button>
+          </div>
+          ${expandedChildren ? `<div class="subtask-list" style="margin-left:0;border-left:2px solid var(--border);padding-left:10px;">${expandedChildren}</div>` : ''}
+        </div>
+        ${!task.done ? `<div id="subtask-add-${task.id}" class="subtask-add-form" style="padding-left:28px;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" id="subtask-input-${task.id}" class="add-input"
+              placeholder="Add a step..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
+              onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
+            <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
+            <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  // ── Standalone task (no subtasks) ────────────────────────────
+  return `
+    <div id="task-row-${task.id}" style="border-bottom:1px solid var(--border);padding:0;">
+      <div class="task ${task.done?'done':task.inProgress?'in-progress':''}" style="border-bottom:none;">
+        <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
+        ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
+        ${!task.done ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
+        <div class="task-text">${escHtml(task.text)}</div>
+        <div class="task-meta">
+          ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
+          ${showCat ? catDot(task.cat, '18px') : ''}
+          ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
+          ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+          ${goalLinkBtn}
+          ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Break into steps" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+steps</button>` : ''}
+          ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
+        </div>
+        <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
       </div>
-      <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
+      ${linkedGoalTag}
+      ${goalPicker}
+      <div id="subtask-add-${task.id}" class="subtask-add-form">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="subtask-input-${task.id}" class="add-input"
+            placeholder="Add a step..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
+            onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
+          <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
+          <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+      </div>
     </div>`;
-
-  const subtaskListHTML = hasChildren ? `
-    <div class="subtask-list" id="subtask-list-${task.id}">
-      ${activeChildTasks.map(t => makeSubtaskHTML(t)).join('')}
-      ${childTasks.filter(t => t.done).map(t => makeSubtaskHTML(t)).join('')}
-    </div>` : '';
-
-  const addSubtaskFormHTML = !task.done ? `
-    <div id="subtask-add-${task.id}" class="subtask-add-form">
-      <div style="display:flex;gap:6px;align-items:center;">
-        <input type="text" id="subtask-input-${task.id}" class="add-input"
-          placeholder="Subtask..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
-          onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
-        <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
-        <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
-      </div>
-    </div>` : '';
-
-  return taskRow + subtaskListHTML + addSubtaskFormHTML;
-}
 
 function makeSubtaskHTML(task) {
   const pts = task.points || 1;
@@ -3956,12 +4121,21 @@ function addQuestTask() {
     : currentQuestCat;
   const pointsSel = document.getElementById('task-points-sel');
   const pts = parseInt(pointsSel?.value || '1');
-  S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now(), points: pts });
+  const newId = S.nextId++;
+  S.tasks.unshift({ id: newId, text, cat, done: false, createdAt: Date.now(), points: pts });
   S.totalAdded++;
   trackEvent('task_add', { cat, pts });
   save();
   inp.value = '';
   renderQuests();
+  // For high-effort tasks (4-5 pts), auto-open the steps form as a nudge
+  if (pts >= 4) {
+    setTimeout(() => {
+      _expandedProjects.add(newId);
+      startAddingSubtask(newId);
+      showToast('High-effort task — break it into steps?');
+    }, 120);
+  }
 }
 
 function completeQuestTask(id, event) {
@@ -4828,6 +5002,8 @@ function renderWeekPlanViewHTML() {
   const goals = (plan.goals || []).filter(Boolean);
   if (!goals.length) return '';
   const done = plan.goalsDone || [false, false, false];
+  // Find tasks/projects linked to each goal index
+  const linkedTasks = (goalIdx) => S.tasks.filter(t => !t.parentId && !t.done && t.weekGoalIdx === goalIdx);
   return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 10px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="card-label" style="margin-bottom:0;">This week's plan</div>
@@ -4835,11 +5011,35 @@ function renderWeekPlanViewHTML() {
     </div>
     ${goals.map((g, i) => {
       const isDone = done[i];
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="toggleWeekGoalDone(${i})">
-        <div style="width:16px;height:16px;min-width:16px;border-radius:50%;border:1.5px solid ${isDone?'var(--amber)':'var(--border)'};background:${isDone?'var(--amber)':'transparent'};margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">
-          ${isDone ? `<div style="width:6px;height:6px;border-radius:50%;background:#fff;"></div>` : ''}
+      const linked = linkedTasks(i);
+      const totalPts = linked.reduce((sum, t) => {
+        const children = S.tasks.filter(c => c.parentId === t.id);
+        return sum + (children.length > 0
+          ? children.filter(c => !c.done).reduce((s, c) => s + (c.points || 1), 0)
+          : (t.points || 1));
+      }, 0);
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;" onclick="toggleWeekGoalDone(${i})">
+          <div style="width:16px;height:16px;min-width:16px;border-radius:50%;border:1.5px solid ${isDone?'var(--amber)':'var(--border)'};background:${isDone?'var(--amber)':'transparent'};margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;">
+            ${isDone ? `<div style="width:6px;height:6px;border-radius:50%;background:#fff;"></div>` : ''}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.84rem;color:${isDone?'var(--text-dim)':'var(--text)'};line-height:1.5;text-decoration:${isDone?'line-through':'none'};transition:all 0.15s;">${escHtml(g)}</div>
+            ${linked.length > 0 ? `<div style="font-size:0.65rem;color:var(--text-dim);margin-top:2px;font-family:'Montserrat',sans-serif;">${linked.length} task${linked.length!==1?'s':''} · ${totalPts} pt${totalPts!==1?'s':''} remaining</div>` : ''}
+          </div>
         </div>
-        <div style="font-size:0.84rem;color:${isDone?'var(--text-dim)':'var(--text)'};line-height:1.5;text-decoration:${isDone?'line-through':'none'};transition:all 0.15s;">${escHtml(g)}</div>
+        ${linked.length > 0 ? `<div style="margin-top:6px;padding-left:26px;display:flex;flex-direction:column;gap:3px;">
+          ${linked.map(t => {
+            const children = S.tasks.filter(c => c.parentId === t.id);
+            const doneC = children.filter(c => c.done).length;
+            const totalC = children.length;
+            return `<div style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-mid);">
+              <span style="opacity:0.4;">·</span>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
+              ${totalC > 0 ? `<span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;color:var(--text-dim);flex-shrink:0;">${doneC}/${totalC}</span>` : ''}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
       </div>`;
     }).join('')}
     ${plan.intention ? `<div style="font-size:0.74rem;color:var(--text-dim);font-style:italic;padding:10px 0 2px;">"${escHtml(plan.intention)}"</div>` : ''}
