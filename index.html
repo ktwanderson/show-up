@@ -1336,7 +1336,7 @@ async function loadFromFirebase() {
       if (cloudData) {
         // Cloud has data — use it
         _syncPaused = true;
-        S = Object.assign({}, DEFAULT_STATE, cloudData);
+        S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, cloudData));
         // Existing users predate onboarding — mark complete so it never shows
         if (cloudData.onboardingComplete === undefined) {
           S.onboardingComplete = true;
@@ -1491,7 +1491,7 @@ function syncFromCloud() {
     const cloudData = snapshot.val();
     if (!cloudData) { showToast('No cloud data found'); if (btn) btn.textContent = 'Sync now'; return; }
     _syncPaused = true;
-    S = Object.assign({}, DEFAULT_STATE, cloudData);
+    S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, cloudData));
     localStorage.setItem('jhc3', JSON.stringify(S));
     _syncPaused = false;
     render();
@@ -1514,12 +1514,29 @@ function startFirebaseSync() {
     const cloudNextId = cloudData.nextId || 0;
     if (cloudVer > localVer || (cloudVer === 0 && cloudNextId > localNextId)) {
       _syncPaused = true;
-      S = Object.assign({}, DEFAULT_STATE, cloudData);
+      S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, cloudData));
       localStorage.setItem('jhc3', JSON.stringify(S));
       _syncPaused = false;
       render();
     }
   });
+}
+
+// ── STATE NORMALIZATION ───────────────────────────────────────
+// Firebase serializes JS arrays as objects {0:{...},1:{...}} on round-trip.
+// This converts them back to proper arrays so .filter/.map/.length work correctly.
+function normalizeStateArrays(s) {
+  const fields = [
+    'tasks','pipeline','companies','contacts','wins','weeklyPlans',
+    'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
+    'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
+    'rolledOverTasks','trackedHabits'
+  ];
+  fields.forEach(f => {
+    if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
+    if (!s[f]) s[f] = (DEFAULT_STATE[f] || []);
+  });
+  return s;
 }
 
 // ── CONSTANTS ────────────────────────────────────────────────
@@ -2106,7 +2123,7 @@ function catDot(cat, size = '20px') {
 function loadState() {
   try {
     const raw = localStorage.getItem('jhc3');
-    if (raw) return Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+    if (raw) return normalizeStateArrays(Object.assign({}, DEFAULT_STATE, JSON.parse(raw)));
     // Migrate from v2
     const old = localStorage.getItem('jhc2');
     if (old) {
@@ -2259,6 +2276,24 @@ function getLvl(xp) {
 }
 
 function gainXP(amt) { S.xp += amt; }
+
+function getInterviewEvents() {
+  const keywords = ['interview','phone screen','phone call','screening','screen','hiring','recruiter call','technical','take-home','onsite','on-site','final round','offer call'];
+  return (S.todayCalEvents || []).filter(e =>
+    keywords.some(kw => (e.title || '').toLowerCase().includes(kw))
+  );
+}
+
+const INTERVIEW_ENCOURAGEMENTS = [
+  "You've prepared for this. Trust what you know and let your genuine curiosity do the rest.",
+  "They already liked you enough to get you here. Now it's just a conversation.",
+  "You don't have to be perfect — you have to be yourself. That's what they're trying to find.",
+  "Nerves mean you care. Channel that into presence, not performance.",
+  "Every interviewer was once where you are now. They're rooting for you to succeed.",
+  "You've done hard things before. This is just one more of them.",
+  "The goal isn't to impress — it's to connect. Ask questions. Be curious. Be real.",
+  "Whatever happens today, you're building skills and signal. This is not your last shot.",
+];
 
 // ── STREAK LABEL ─────────────────────────────────────────────
 function timeOfDayWord() {
@@ -2456,6 +2491,20 @@ function renderToday() {
       </div>
       <button onclick="resetCheckin()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;padding:4px 0;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Change</button>
     </div>
+
+    ${(function() {
+      const interviews = getInterviewEvents();
+      if (!interviews.length) return '';
+      const msg = INTERVIEW_ENCOURAGEMENTS[new Date().getDate() % INTERVIEW_ENCOURAGEMENTS.length];
+      const eventList = interviews.map(e =>
+        `<span style="font-size:0.72rem;color:var(--text-mid);font-family:'Montserrat',sans-serif;">${escHtml(e.time)} · ${escHtml(e.title)}</span>`
+      ).join('<br>');
+      return `<div style="margin-bottom:18px;border-radius:3px;padding:16px;background:linear-gradient(135deg,rgba(58,86,73,0.07) 0%,rgba(154,124,28,0.07) 100%);border:1px solid var(--amber-ring);">
+        <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--amber);font-family:'Montserrat',sans-serif;margin-bottom:8px;">Interview day</div>
+        <div style="margin-bottom:10px;line-height:1.4;">${eventList}</div>
+        <div style="font-size:0.84rem;color:var(--text);line-height:1.6;font-style:italic;">"${escHtml(msg)}"</div>
+      </div>`;
+    })()}
 
     ${(S.rolledOverTasks && S.rolledOverTasks.length > 0) ? (() => {
       const rolledTasks = S.rolledOverTasks.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
@@ -4552,6 +4601,15 @@ function renderCompanyRow(c) {
           ${linkedJobs.map(j => { const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0]; return `<div onclick="networkView='pipeline';switchTab('network');setTimeout(()=>{pipelineOpenId=${j.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'"><span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>${escHtml(j.role||'Role TBD')}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${st.label} →</span></div>`; }).join('')}
         </div>` : ''; })()}
         ${c.website ? `<a href="https://${c.website.replace(/^https?:\/\//,'')}" target="_blank" style="display:block;font-size:0.75rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;padding:4px 0;">Visit website →</a>` : ''}
+        <div style="margin-top:6px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div class="rej-field-label" style="margin-bottom:0;">Recent headlines</div>
+            <button onclick="event.stopPropagation();delete _companyNewsCache[${c.id}];fetchCompanyNews(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">↻ Refresh</button>
+          </div>
+          <div id="co-news-${c.id}">
+            <button onclick="event.stopPropagation();fetchCompanyNews(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.72rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Fetch headlines via AI</button>
+          </div>
+        </div>
       </div>
     </div>` : ''}
   </div>`;
@@ -4560,6 +4618,68 @@ function renderCompanyRow(c) {
 function toggleCompanyDetail(id) {
   companyOpenId = companyOpenId === id ? null : id;
   renderNetwork();
+}
+
+// ── COMPANY NEWS (AI) ────────────────────────────────────────
+const _companyNewsCache = {}; // id → { headlines, fetchedAt }
+
+async function fetchCompanyNews(companyId) {
+  const c = S.companies.find(x => x.id === companyId);
+  if (!c) return;
+
+  // Cache for 1 hour so re-opening the card doesn't re-fetch
+  const cached = _companyNewsCache[companyId];
+  if (cached && Date.now() - cached.fetchedAt < 60 * 60 * 1000) {
+    renderCompanyNewsSection(companyId, cached.headlines, null);
+    return;
+  }
+
+  const el = document.getElementById(`co-news-${companyId}`);
+  if (el) el.innerHTML = `<div style="font-size:0.78rem;color:var(--text-dim);padding:6px 0;">Fetching headlines…</div>`;
+
+  const context = [
+    c.industry ? `Industry: ${c.industry}` : '',
+    c.why ? `Why interested: ${c.why}` : '',
+  ].filter(Boolean).join('. ');
+
+  const prompt = `You are a job search research assistant. Give me the 3–5 most recent, relevant news headlines about the company "${c.name}"${context ? ` (${context})` : ''}. Focus on business developments, leadership changes, product launches, funding, layoffs, or strategic shifts that would be useful context for a job seeker reaching out or preparing for an interview.
+
+Return ONLY a JSON array of objects, each with "headline" (string, the news item summary in 1 sentence, written as if it were a real headline) and "relevance" (string, one short phrase explaining why it matters for a job seeker — e.g. "Hiring signal", "Team restructure", "New direction"). No extra text outside the JSON.
+
+Example format:
+[{"headline":"Company X raises $50M Series B to expand product team","relevance":"Hiring signal"},{"headline":"New CTO hired from Google","relevance":"Leadership change"}]`;
+
+  const result = await callClaude(prompt, { maxTokens: 600 });
+
+  if (result.error) {
+    renderCompanyNewsSection(companyId, null, result.error === 'no_key'
+      ? 'Add a Claude API key in Account to enable news.'
+      : 'Could not load headlines — try again.');
+    return;
+  }
+
+  const headlines = Array.isArray(result.json) ? result.json : null;
+  if (!headlines || headlines.length === 0) {
+    renderCompanyNewsSection(companyId, null, 'No recent headlines found.');
+    return;
+  }
+
+  _companyNewsCache[companyId] = { headlines, fetchedAt: Date.now() };
+  renderCompanyNewsSection(companyId, headlines, null);
+}
+
+function renderCompanyNewsSection(companyId, headlines, errorMsg) {
+  const el = document.getElementById(`co-news-${companyId}`);
+  if (!el) return;
+  if (errorMsg) {
+    el.innerHTML = `<div style="font-size:0.75rem;color:var(--text-dim);padding:4px 0;">${escHtml(errorMsg)}</div>`;
+    return;
+  }
+  el.innerHTML = headlines.map(h => `
+    <div style="padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:0.82rem;color:var(--text);line-height:1.45;">${escHtml(h.headline)}</div>
+      ${h.relevance ? `<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);margin-top:3px;text-transform:uppercase;">${escHtml(h.relevance)}</div>` : ''}
+    </div>`).join('');
 }
 
 function updateCompanyStatus(id, status) {
