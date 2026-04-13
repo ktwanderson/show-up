@@ -4643,12 +4643,26 @@ async function fetchCompanyNews(companyId) {
     c.why ? `Why interested: ${c.why}` : '',
   ].filter(Boolean).join('. ');
 
-  const prompt = `You are a job search research assistant. Give me the 3–5 most recent, relevant news headlines about the company "${c.name}"${context ? ` (${context})` : ''}. Focus on business developments, leadership changes, product launches, funding, layoffs, or strategic shifts that would be useful context for a job seeker reaching out or preparing for an interview.
+  const isAdTech = ['ad tech','adtech','advertising','programmatic','media','martech','marketing technology','digital media','publisher','dsp','ssp','data'].some(kw =>
+    (c.industry || '').toLowerCase().includes(kw) || (c.why || '').toLowerCase().includes(kw)
+  );
 
-Return ONLY a JSON array of objects, each with "headline" (string, the news item summary in 1 sentence, written as if it were a real headline) and "relevance" (string, one short phrase explaining why it matters for a job seeker — e.g. "Hiring signal", "Team restructure", "New direction"). No extra text outside the JSON.
+  const prompt = `You are a job search research assistant. Give me the 3–5 most recent, relevant news headlines about the company "${c.name}"${context ? ` (${context})` : ''}. Focus on:
+- Business developments, product launches, funding, acquisitions, or partnerships
+- Leadership changes (new hires, departures, reorgs)
+- Layoffs, hiring freezes, or hiring surges
+- Strategic shifts or pivots${isAdTech ? `
+- Ad tech / advertising industry angles: programmatic, privacy changes (third-party cookie deprecation, clean rooms, identity), AI in advertising, new ad formats, publisher/buyer dynamics` : ''}
 
-Example format:
-[{"headline":"Company X raises $50M Series B to expand product team","relevance":"Hiring signal"},{"headline":"New CTO hired from Google","relevance":"Leadership change"}]`;
+Return ONLY a JSON array of objects with these fields:
+- "headline": string — 1-sentence summary written as a real headline
+- "relevance": string — one short phrase for a job seeker (e.g. "Hiring signal", "Leadership change", "New direction", "Industry shift")
+- "searchQuery": string — 4–6 words to search Google News for this story (company name + key terms)
+
+No extra text outside the JSON.
+
+Example:
+[{"headline":"Company X raises $50M to expand its programmatic platform","relevance":"Hiring signal","searchQuery":"Company X raises funding programmatic"},{"headline":"New CTO joins from Google","relevance":"Leadership change","searchQuery":"Company X new CTO hire"}]`;
 
   const result = await callClaude(prompt, { maxTokens: 600 });
 
@@ -4676,11 +4690,18 @@ function renderCompanyNewsSection(companyId, headlines, errorMsg) {
     el.innerHTML = `<div style="font-size:0.75rem;color:var(--text-dim);padding:4px 0;">${escHtml(errorMsg)}</div>`;
     return;
   }
-  el.innerHTML = headlines.map(h => `
-    <div style="padding:7px 0;border-bottom:1px solid var(--border);">
+  el.innerHTML = headlines.map(h => {
+    const query = encodeURIComponent(h.searchQuery || h.headline);
+    const url = `https://news.google.com/search?q=${query}`;
+    return `
+    <a href="${url}" target="_blank" rel="noopener" style="display:block;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
       <div style="font-size:0.82rem;color:var(--text);line-height:1.45;">${escHtml(h.headline)}</div>
-      ${h.relevance ? `<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);margin-top:3px;text-transform:uppercase;">${escHtml(h.relevance)}</div>` : ''}
-    </div>`).join('');
+      <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+        ${h.relevance ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);text-transform:uppercase;">${escHtml(h.relevance)}</span>` : ''}
+        <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Search Google News →</span>
+      </div>
+    </a>`;
+  }).join('');
 }
 
 function updateCompanyStatus(id, status) {
