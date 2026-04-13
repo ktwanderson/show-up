@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Show Up</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23e8b800'/%3E%3Cg stroke='%23e8b800' stroke-width='2.2' stroke-linecap='round'%3E%3Cline x1='16' y1='1.5' x2='16' y2='6'/%3E%3Cline x1='16' y1='26' x2='16' y2='30.5'/%3E%3Cline x1='1.5' y1='16' x2='6' y2='16'/%3E%3Cline x1='26' y1='16' x2='30.5' y2='16'/%3E%3Cline x1='5' y1='5' x2='8.2' y2='8.2'/%3E%3Cline x1='23.8' y1='23.8' x2='27' y2='27'/%3E%3Cline x1='27' y1='5' x2='23.8' y2='8.2'/%3E%3Cline x1='8.2' y1='23.8' x2='5' y2='27'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232d4a3e'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23f0c430'/%3E%3Cg stroke='%23f0c430' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='16' y1='26' x2='16' y2='30'/%3E%3Cline x1='2' y1='16' x2='6' y2='16'/%3E%3Cline x1='26' y1='16' x2='30' y2='16'/%3E%3Cline x1='5.5' y1='5.5' x2='8.4' y2='8.4'/%3E%3Cline x1='23.6' y1='23.6' x2='26.5' y2='26.5'/%3E%3Cline x1='26.5' y1='5.5' x2='23.6' y2='8.4'/%3E%3Cline x1='8.4' y1='23.6' x2='5.5' y2='26.5'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="apple-touch-icon" id="apple-touch-icon-link">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,14 +16,18 @@
         const c = document.createElement('canvas');
         c.width = s; c.height = s;
         const x = c.getContext('2d');
-        // Warm background from palette
-        x.fillStyle = '#e8e0d4'; x.fillRect(0,0,s,s);
-        // Sun center
-        const cx = s/2, cy = s/2, r = s * 0.22;
-        x.fillStyle = '#e8b800'; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill();
-        // Rays
-        x.strokeStyle = '#e8b800'; x.lineWidth = s * 0.055; x.lineCap = 'round';
-        const rayIn = r + s*0.06, rayOut = r + s*0.16;
+        // Deep forest green background (high contrast)
+        const radius = s * 0.18;
+        x.beginPath();
+        x.roundRect(0, 0, s, s, radius);
+        x.fillStyle = '#2d4a3e';
+        x.fill();
+        // Bright golden sun center
+        const cx = s/2, cy = s/2, r = s * 0.20;
+        x.fillStyle = '#f0c430'; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill();
+        // Bright golden rays
+        x.strokeStyle = '#f0c430'; x.lineWidth = s * 0.05; x.lineCap = 'round';
+        const rayIn = r + s*0.055, rayOut = r + s*0.15;
         for (let i = 0; i < 8; i++) {
           const a = (Math.PI * 2 * i) / 8 - Math.PI/2;
           x.beginPath();
@@ -41,6 +45,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="initGCalClient()"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -374,6 +379,10 @@
     .progress-btn { background:none;border:none;cursor:pointer;font-size:0.78rem;padding:0 2px;line-height:1;flex-shrink:0;opacity:0.25;transition:opacity 0.15s;color:var(--text-dim); }
     .progress-btn.active { opacity:1;color:var(--amber); }
     .task:hover .progress-btn { opacity:0.55; }
+    .subtask-list { margin-left:28px;border-left:2px solid var(--border);padding-left:10px;margin-top:0;margin-bottom:2px; }
+    .subtask-list .task { border-bottom:1px solid var(--border);font-size:0.82rem;padding:6px 0; }
+    .subtask-list .task:last-child { border-bottom:none; }
+    .subtask-add-form { display:none;margin-left:28px;padding-left:10px;border-left:2px solid var(--border);padding-top:5px;padding-bottom:6px; }
     .task:hover .progress-btn.active { opacity:1; }
     .task-text { flex: 1; font-size: 0.86rem; line-height: 1.55; color: var(--text); word-break: break-word; }
     .task-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
@@ -1274,6 +1283,7 @@ function initFirebase() {
         hideSignInScreen();
         await loadFromFirebase();
         startFirebaseSync();
+        trackEvent('app_open', { tasks: S.tasks.filter(t=>!t.done).length, xp: S.xp });
       } else {
         firebaseUser = null;
         showSignInScreen();
@@ -2388,7 +2398,24 @@ function renderToday() {
   wrap.innerHTML = `
     ${weekPlannerHtml}${weekReviewHtml}
     ${(function() {
-      if (!(S.todayCalEvents && S.todayCalEvents.length > 0)) return '';
+      const hasEvents = S.todayCalEvents && S.todayCalEvents.length > 0;
+      const gcalConfigured = !!localStorage.getItem('showup_gcal_client_id');
+      if (!hasEvents && !gcalConfigured) return '';
+
+      const syncBtn = gcalConfigured
+        ? '<button onclick="connectGCal()" style="background:none;border:none;color:var(--amber);font-size:0.72rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0;transition:opacity 0.15s;" onmouseover="this.style.opacity=\'0.65\'" onmouseout="this.style.opacity=\'1\'">↻ Sync</button>'
+        : '';
+
+      if (!hasEvents) {
+        return '<div style="margin-bottom:20px;">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+          + '<div class="card-label">Today\'s schedule</div>'
+          + syncBtn
+          + '</div>'
+          + '<div style="font-size:0.78rem;color:var(--text-dim);padding:4px 0;">No events loaded — tap Sync to pull from Google Calendar.</div>'
+          + '</div>';
+      }
+
       const now2 = new Date();
       const currentMins = now2.getHours() * 60 + now2.getMinutes();
       const rows = S.todayCalEvents.map(function(e) {
@@ -2414,7 +2441,10 @@ function renderToday() {
       return '<div style="margin-bottom:20px;">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
         + '<div class="card-label">Today\'s schedule</div>'
+        + '<div style="display:flex;gap:10px;align-items:center;">'
+        + syncBtn
         + '<button onclick="S.todayCalEvents=[];save();renderToday()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-dim)\'">Clear</button>'
+        + '</div>'
         + '</div>'
         + rows
         + '</div>';
@@ -2631,6 +2661,7 @@ function setEnergy(energy) {
   const xp = ENERGY[energy].xp;
   gainXP(xp);
   if (energy === 'rest') S.totalRestDays = (S.totalRestDays || 0) + 1;
+  trackEvent('energy_set', { energy });
   save();
   render();
   checkAchievements();
@@ -2759,6 +2790,7 @@ function logWin() {
   S.wins.push({ text, date: new Date().toISOString() });
   S.totalWins = (S.totalWins || 0) + 1;
   gainXP(5);
+  trackEvent('win_logged');
   save();
   inp.value = '';
   updateHeader();
@@ -3627,6 +3659,7 @@ function setTimerMode(mode) {
 function logFocusSessionManually() {
   S.focusBlocksToday++;
   S.totalFocusBlocks = (S.totalFocusBlocks || 0) + 1;
+  trackEvent('focus_block', { sessions_today: S.focusBlocksToday });
   save();
   updateHeader();
   renderFocusTimer();
@@ -3648,10 +3681,12 @@ function renderCapacityBar() {
   wEnd.setDate(wEnd.getDate() + 6);
   const wEndStr = wEnd.toISOString().slice(0,10);
 
-  const activeTasks = S.tasks.filter(t => !t.done);
+  // Parent tasks (those with subtasks) act as containers — count leaf tasks only to avoid double-counting
+  const parentIds = new Set(S.tasks.filter(t => t.parentId).map(t => t.parentId));
+  const activeTasks = S.tasks.filter(t => !t.done && !parentIds.has(t.id));
   const committedPts = activeTasks.reduce((sum, t) => sum + (t.points || 1), 0);
 
-  const completedThisWeek = S.tasks.filter(t => t.done && t.doneDate >= ws && t.doneDate <= wEndStr);
+  const completedThisWeek = S.tasks.filter(t => t.done && !parentIds.has(t.id) && t.doneDate >= ws && t.doneDate <= wEndStr);
   const donePts = completedThisWeek.reduce((sum, t) => sum + (t.points || 1), 0);
 
   const capacity = S.weeklyCapacity || 20;
@@ -3677,7 +3712,8 @@ function renderQuests() {
   const wrap = document.getElementById('quests-wrap');
   if (!wrap) return;
 
-  const active = S.tasks.filter(t => !t.done);
+  // Only count top-level tasks in tab badges (subtasks are nested under their parent)
+  const active = S.tasks.filter(t => !t.done && !t.parentId);
   const catTabsHTML = ['all', ...Object.keys(CATS)].map(c => {
     const count = c === 'all' ? active.length : active.filter(t => t.cat === c).length;
     const label = c === 'all' ? 'All' : CATS[c].label;
@@ -3696,12 +3732,13 @@ function renderQuests() {
       <button onclick="logRejection()" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">${S.rejections > 0 ? `${S.rejections} rejection${S.rejections!==1?'s':''} logged →` : '+ Log rejection'}</button>
     </div>`;
 
+  // Only show top-level tasks (no parentId) — subtasks render under their parent
   const activeTasks = currentQuestCat === 'all'
-    ? S.tasks.filter(t => !t.done)
-    : S.tasks.filter(t => !t.done && t.cat === currentQuestCat);
+    ? S.tasks.filter(t => !t.done && !t.parentId)
+    : S.tasks.filter(t => !t.done && !t.parentId && t.cat === currentQuestCat);
   const doneTasks = currentQuestCat === 'all'
-    ? S.tasks.filter(t => t.done)
-    : S.tasks.filter(t => t.done && t.cat === currentQuestCat);
+    ? S.tasks.filter(t => t.done && !t.parentId)
+    : S.tasks.filter(t => t.done && !t.parentId && t.cat === currentQuestCat);
 
   const catForNew = currentQuestCat === 'all' ? 'todo' : currentQuestCat;
   const ph = currentQuestCat === 'all' ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
@@ -3715,6 +3752,7 @@ function renderQuests() {
     <option value="1">1</option>
     <option value="2">2</option>
     <option value="3">3</option>
+    <option value="4">4</option>
     <option value="5">5</option>
   </select>`;
 
@@ -3755,7 +3793,7 @@ function cycleTaskPoints(id, event) {
   event.stopPropagation();
   const task = S.tasks.find(t => t.id === id);
   if (!task) return;
-  const cycle = [1, 2, 3, 5];
+  const cycle = [1, 2, 3, 4, 5];
   const idx = cycle.indexOf(task.points || 1);
   task.points = cycle[(idx + 1) % cycle.length];
   save();
@@ -3768,21 +3806,101 @@ function makeQuestTaskHTML(task, showCat) {
   const pts = task.points || 1;
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
-  return `
-    <div class="task ${task.done?'done':task.inProgress?'in-progress':''}" id="task-row-${task.id}">
+
+  const childTasks = S.tasks.filter(t => t.parentId === task.id);
+  const doneChildCount = childTasks.filter(t => t.done).length;
+  const totalChildCount = childTasks.length;
+  const activeChildTasks = childTasks.filter(t => !t.done);
+  const hasChildren = totalChildCount > 0;
+  // A parent with subtasks is implicitly in-progress if any subtask is done
+  const isInProgress = hasChildren ? doneChildCount > 0 && doneChildCount < totalChildCount : task.inProgress;
+
+  const progressBadge = hasChildren
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;height:20px;border-radius:2px;background:var(--surface2);color:var(--text-dim);font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 5px;flex-shrink:0;letter-spacing:0;">${doneChildCount}/${totalChildCount}</span>`
+    : '';
+
+  const taskRow = `
+    <div class="task ${task.done?'done':isInProgress?'in-progress':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
-      ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
-      ${!task.done ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
+      ${!task.done && !hasChildren ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
+      ${!task.done && !hasChildren ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
+      ${hasChildren ? progressBadge : ''}
       <div class="task-text">${escHtml(task.text)}</div>
       <div class="task-meta">
         ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
         ${showCat ? catDot(task.cat, '18px') : ''}
         ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
         ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+        ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Add subtask" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+sub</button>` : ''}
         ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
       </div>
       <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
     </div>`;
+
+  const subtaskListHTML = hasChildren ? `
+    <div class="subtask-list" id="subtask-list-${task.id}">
+      ${activeChildTasks.map(t => makeSubtaskHTML(t)).join('')}
+      ${childTasks.filter(t => t.done).map(t => makeSubtaskHTML(t)).join('')}
+    </div>` : '';
+
+  const addSubtaskFormHTML = !task.done ? `
+    <div id="subtask-add-${task.id}" class="subtask-add-form">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" id="subtask-input-${task.id}" class="add-input"
+          placeholder="Subtask..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
+          onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
+        <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
+        <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+    </div>` : '';
+
+  return taskRow + subtaskListHTML + addSubtaskFormHTML;
+}
+
+function makeSubtaskHTML(task) {
+  const pts = task.points || 1;
+  const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
+  const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
+  return `
+    <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
+      <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer;width:18px;height:18px;min-width:18px;font-size:0.68rem;">${task.done?'✓':''}</div>
+      ${!task.done ? `<span onclick="cycleTaskPoints(${task.id},event)" title="Effort" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.6rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 3px;flex-shrink:0;">${pts}</span>` : ''}
+      <div class="task-text" style="font-size:0.82rem;">${escHtml(task.text)}</div>
+      <div class="task-meta">
+        ${!task.done ? `<div class="xp-badge">+${(CATS[task.cat]||{}).xp||15}</div>` : ''}
+        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
+      </div>
+      <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
+    </div>`;
+}
+
+function startAddingSubtask(parentId, event) {
+  if (event) event.stopPropagation();
+  const el = document.getElementById('subtask-add-' + parentId);
+  if (!el) return;
+  el.style.display = 'block';
+  const input = document.getElementById('subtask-input-' + parentId);
+  if (input) input.focus();
+}
+
+function cancelAddSubtask(parentId) {
+  const el = document.getElementById('subtask-add-' + parentId);
+  if (el) el.style.display = 'none';
+  const input = document.getElementById('subtask-input-' + parentId);
+  if (input) input.value = '';
+}
+
+function addSubtask(parentId) {
+  const input = document.getElementById('subtask-input-' + parentId);
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+  const parent = S.tasks.find(t => t.id === parentId);
+  if (!parent) return;
+  S.tasks.push({ id: S.nextId++, text, cat: parent.cat, done: false, createdAt: Date.now(), points: 1, parentId });
+  S.totalAdded++;
+  trackEvent('subtask_add', { cat: parent.cat });
+  save();
+  renderQuests();
 }
 
 function openEditTask(id) {
@@ -3840,6 +3958,7 @@ function addQuestTask() {
   const pts = parseInt(pointsSel?.value || '1');
   S.tasks.unshift({ id: S.nextId++, text, cat, done: false, createdAt: Date.now(), points: pts });
   S.totalAdded++;
+  trackEvent('task_add', { cat, pts });
   save();
   inp.value = '';
   renderQuests();
@@ -3854,6 +3973,7 @@ function completeQuestTask(id, event) {
   task.done = true; task.doneAt = Date.now(); task.doneDate = new Date().toISOString().slice(0,10);
   gainXP(xp);
   S.totalDone++;
+  trackEvent('task_complete', { cat: task.cat, pts: task.points || 1, isSubtask: !!task.parentId });
   if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
   save();
   floatXP(event, `+${xp}`);
@@ -3902,8 +4022,9 @@ function markTaskInProgress(id, event) {
 }
 
 function deleteQuestTask(id) {
-  S.tasks = S.tasks.filter(t => t.id !== id);
-  S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  const childIds = S.tasks.filter(t => t.parentId === id).map(t => t.id);
+  S.tasks = S.tasks.filter(t => t.id !== id && t.parentId !== id);
+  S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id && !childIds.includes(fid));
   save();
   renderQuests();
 }
@@ -4807,6 +4928,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  trackEvent('tab_view', { tab });
   render();
 }
 
@@ -6049,7 +6171,7 @@ function renderAccount() {
           </div>
         </div>`;
       }).join('')}
-      <button onclick="saveHabitGoals()" style="margin-top:4px;background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save changes</button>
+      <button onclick="saveHabitGoals()" style="margin-top:4px;flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save changes</button>
     </div>
     <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Sprint</div>
@@ -6061,7 +6183,7 @@ function renderAccount() {
             style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:6px 0 8px;outline:none;width:60px;text-align:center;">
           <span style="font-size:0.78rem;color:var(--text-dim);">points / week</span>
           <button onclick="S.weeklyCapacity=parseInt(document.getElementById('capacity-input').value)||20;save();renderAccount();showToast('Capacity updated ✓')"
-            style="background:none;border:none;color:var(--amber);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Save</button>
+            style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save</button>
         </div>
       </div>
     </div>
@@ -6078,6 +6200,27 @@ function renderAccount() {
         <button onclick="searchWeatherLocation()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Search</button>
       </div>
       <div id="location-results" style="margin-top:8px;"></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:16px">Google Calendar</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5;">Pull today's events into your Today tab so you can see how busy the day is at a glance. Requires a Google Cloud OAuth Client ID.</div>
+      <div style="font-size:0.75rem;color:var(--text);font-weight:500;margin-bottom:3px;">OAuth Client ID</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:8px;">Google Cloud Console → APIs &amp; Services → Credentials → OAuth 2.0 Client ID (Web application). Add your app URL as an authorized JavaScript origin.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <input type="text" id="gcal-client-id-input" class="add-input"
+          value="${localStorage.getItem('showup_gcal_client_id') || ''}"
+          placeholder="xxxxxxxx.apps.googleusercontent.com"
+          style="width:100%;font-size:0.78rem;"
+          onkeydown="if(event.key==='Enter')saveGCalClientId()">
+        <button onclick="saveGCalClientId()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save</button>
+      </div>
+      ${localStorage.getItem('showup_gcal_client_id') ? `
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button onclick="connectGCal()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${localStorage.getItem('showup_gcal_connected') === '1' ? '↻ Sync now' : 'Connect Google Calendar'}</button>
+          ${localStorage.getItem('showup_gcal_connected') === '1' ? `<button onclick="disconnectGCal()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.68rem;padding:6px 4px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Disconnect</button>` : ''}
+        </div>
+        ${localStorage.getItem('showup_gcal_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · events sync to your Today tab daily</div>` : ''}
+      ` : ''}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">AI Coach</div>
@@ -6169,6 +6312,93 @@ function completeInReminders(text) {
   window.location.href = `shortcuts://run-shortcut?name=Complete%20in%20Reminders&input=${encodeURIComponent(text.trim())}`;
 }
 
+// ── GOOGLE CALENDAR OAUTH2 ────────────────────────────────────
+let _gCalTokenClient = null;
+let _gCalAccessToken = null;
+let _gCalTokenExpiry = 0;
+
+function initGCalClient() {
+  const clientId = localStorage.getItem('showup_gcal_client_id');
+  if (!clientId || !window.google?.accounts?.oauth2) return;
+  _gCalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.events.readonly',
+    callback: (response) => {
+      if (response.error) { showToast('Calendar auth failed · check your Client ID'); return; }
+      _gCalAccessToken = response.access_token;
+      _gCalTokenExpiry = Date.now() + ((response.expires_in || 3600) * 1000);
+      localStorage.setItem('showup_gcal_connected', '1');
+      fetchGCalEvents();
+    }
+  });
+  // Auto-sync silently if previously connected
+  if (localStorage.getItem('showup_gcal_connected') === '1') {
+    _gCalTokenClient.requestAccessToken({ prompt: 'none' });
+  }
+}
+
+function connectGCal() {
+  const clientId = localStorage.getItem('showup_gcal_client_id');
+  if (!clientId) { showToast('Paste your Google Client ID in Account first'); return; }
+  if (!window.google?.accounts?.oauth2) { showToast('Google API loading — try again in a moment'); return; }
+  if (!_gCalTokenClient) initGCalClient();
+  if (!_gCalTokenClient) return;
+  _gCalTokenClient.requestAccessToken({ prompt: '' });
+}
+
+async function fetchGCalEvents() {
+  if (!_gCalAccessToken || Date.now() > _gCalTokenExpiry) { connectGCal(); return; }
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+  const end   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+  try {
+    const resp = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events` +
+      `?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}` +
+      `&singleEvents=true&orderBy=startTime&maxResults=20`,
+      { headers: { Authorization: `Bearer ${_gCalAccessToken}` } }
+    );
+    if (resp.status === 401) { _gCalAccessToken = null; connectGCal(); return; }
+    if (!resp.ok) throw new Error('Calendar API error ' + resp.status);
+    const data = await resp.json();
+    S.todayCalEvents = (data.items || []).filter(e => e.start).map(e => {
+      let time = 'All day';
+      if (e.start.dateTime) {
+        const d = new Date(e.start.dateTime);
+        time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      }
+      return { time, title: e.summary || '(No title)' };
+    });
+    save();
+    trackEvent('gcal_sync', { event_count: S.todayCalEvents.length });
+    if (currentTab === 'today') renderToday();
+    showToast(`Calendar synced · ${S.todayCalEvents.length} event${S.todayCalEvents.length !== 1 ? 's' : ''}`);
+  } catch(e) {
+    console.error('GCal fetch error:', e);
+    showToast('Calendar sync failed — check console');
+  }
+}
+
+function disconnectGCal() {
+  _gCalAccessToken = null;
+  _gCalTokenClient = null;
+  _gCalTokenExpiry = 0;
+  localStorage.removeItem('showup_gcal_connected');
+  showToast('Google Calendar disconnected');
+  renderAccount();
+}
+
+function saveGCalClientId() {
+  const input = document.getElementById('gcal-client-id-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (val) localStorage.setItem('showup_gcal_client_id', val);
+  else localStorage.removeItem('showup_gcal_client_id');
+  _gCalTokenClient = null; // reset so it reinitialises with new ID
+  showToast('Client ID saved');
+  renderAccount();
+}
+
 // ── CALENDAR EVENTS BRIDGE ────────────────────────────────────
 function checkCalEventsImport() {
   const params = new URLSearchParams(window.location.search);
@@ -6194,6 +6424,26 @@ function checkCalEventsImport() {
   } catch(e) {
     console.error('Cal events import error:', e);
   }
+}
+
+// ── ANALYTICS ────────────────────────────────────────────────
+// Lightweight internal analytics for future multi-user scaling.
+// Only writes to Firebase when the user is authenticated.
+// Each event: { e: name, ts: epoch, d: date, sid: sessionId, uid: userId, ...props }
+const _sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function trackEvent(eventName, props = {}) {
+  if (!firebaseDb || !firebaseUser) return;
+  try {
+    firebaseDb.ref(`analytics/${firebaseUser.uid}/events`).push({
+      e: eventName,
+      ts: Date.now(),
+      d: new Date().toISOString().slice(0, 10),
+      sid: _sessionId,
+      uid: firebaseUser.uid,
+      ...props
+    });
+  } catch(_) { /* analytics must never break the app */ }
 }
 
 // ── INIT ─────────────────────────────────────────────────────
