@@ -1262,6 +1262,7 @@ let firebaseDb = null;
 let firebaseUser = null;
 let _saveTimeout = null;
 let _syncPaused = false;
+let _syncListenerActive = false;
 
 function initFirebase() {
   if (FIREBASE_CONFIG.apiKey === 'PASTE_YOUR_API_KEY_HERE') {
@@ -1502,8 +1503,12 @@ function syncFromCloud() {
 
 function startFirebaseSync() {
   if (!firebaseUser || !firebaseDb) return;
-  // Listen for changes from other devices
+  // Guard against registering multiple listeners if onAuthStateChanged fires more than once
+  if (_syncListenerActive) return;
+  _syncListenerActive = true;
+  let _firstFire = true; // skip the immediate fire — loadFromFirebase already handled it
   firebaseDb.ref(`users/${firebaseUser.uid}/state`).on('value', (snapshot) => {
+    if (_firstFire) { _firstFire = false; return; }
     if (_syncPaused) return;
     const cloudData = snapshot.val();
     if (!cloudData) return;
@@ -1536,7 +1541,27 @@ function normalizeStateArrays(s) {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
     if (!s[f]) s[f] = (DEFAULT_STATE[f] || []);
   });
+  // Normalize nested arrays inside contacts (interactions) and tasks (subtasks via parentId are separate tasks)
+  if (Array.isArray(s.contacts)) {
+    s.contacts.forEach(c => {
+      if (c.interactions && !Array.isArray(c.interactions))
+        c.interactions = Object.values(c.interactions);
+      if (!c.interactions) c.interactions = [];
+    });
+  }
   return s;
+}
+
+// ── DATE HELPERS ──────────────────────────────────────────────
+// Returns today's date as YYYY-MM-DD in LOCAL time (not UTC), used for date inputs.
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Parses a stored YYYY-MM-DD date for display, avoiding the UTC-midnight-to-local-day-shift bug.
+// Using T12:00:00 (noon) ensures toLocaleDateString always returns the correct calendar day.
+function parseLocalDate(dateStr) {
+  return new Date(dateStr + 'T12:00:00');
 }
 
 // ── CONSTANTS ────────────────────────────────────────────────
@@ -4534,7 +4559,7 @@ function savePipelineField(id, field) {
 }
 
 function openAddPipelineEntry() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayLocal();
   const inner = document.getElementById('modal-inner');
   const mFieldLabel = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
   const mInput = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;`;
@@ -5926,7 +5951,7 @@ function saveNewContact() {
 function openLogInteraction(contactId) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `
     <div style="text-align:left">
@@ -6360,14 +6385,14 @@ function renderContactCard(c) {
     else lastStr = `${days}d ago`;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
   const hasRealHistory = c.interactions && c.interactions.length > 0;
   const hasSyntheticEntry = !hasRealHistory && c.lastContact && c.preferredMethod;
 
   const historyHTML = hasRealHistory
     ? c.interactions.slice(0, 8).map(ix => `
         <div class="contact-interaction-entry">
-          <span class="contact-interaction-date">${new Date(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}${ix.resumeSent ? ' <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.6rem;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;font-family:\'Montserrat\',sans-serif;vertical-align:middle;">RESUME</span>' : ''}</span>
+          <span class="contact-interaction-date">${parseLocalDate(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}${ix.resumeSent ? ' <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.6rem;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;font-family:\'Montserrat\',sans-serif;vertical-align:middle;">RESUME</span>' : ''}</span>
           ${ix.notes ? `<br>${escHtml(ix.notes)}` : ''}
         </div>`).join('')
     : hasSyntheticEntry
