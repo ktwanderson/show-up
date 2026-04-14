@@ -1535,7 +1535,7 @@ function normalizeStateArrays(s) {
     'tasks','pipeline','companies','contacts','wins','weeklyPlans',
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
-    'rolledOverTasks','trackedHabits','questionBank'
+    'rolledOverTasks','trackedHabits','questionBank','focusLog'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -1941,6 +1941,8 @@ const DEFAULT_STATE = {
   resume: '',
   questionBank: [],
   nextQuestionBankId: 1,
+  focusLog: [],
+  nextFocusLogId: 1,
 };
 
 let S = loadState();
@@ -2067,7 +2069,7 @@ function changePin() {
 
 // Timer — not persisted
 const T_DUR = { work: 25*60, short: 5*60, long: 15*60 };
-let timer = { mode: 'work', remaining: T_DUR.work, running: false, interval: null };
+let timer = { mode: 'work', remaining: T_DUR.work, running: false, interval: null, intention: '', taskId: null, startedAt: null };
 
 // ── WEATHER ──────────────────────────────────────────────────
 const WX = {
@@ -3076,12 +3078,19 @@ function renderFocusTimer() {
 
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
     <button class="view-toggle-btn ${focusView==='timer'?'active':''}" onclick="focusView='timer';renderFocusTimer()">Timer</button>
+    <button class="view-toggle-btn ${focusView==='history'?'active':''}" onclick="focusView='history';renderFocusTimer()">History</button>
     <button class="view-toggle-btn ${focusView==='skills'?'active':''}" onclick="focusView='skills';renderFocusTimer()">Skills</button>
   </div>`;
 
   if (focusView === 'skills') {
     wrap.innerHTML = `<div>${toggleHTML}</div>`;
     renderSkills();
+    return;
+  }
+
+  if (focusView === 'history') {
+    wrap.innerHTML = `<div>${toggleHTML}</div>`;
+    renderFocusHistory();
     return;
   }
 
@@ -3095,6 +3104,43 @@ function renderFocusTimer() {
   const noteText = timer.mode === 'work'
     ? 'One focused session at a time. You don\'t need to solve everything today.'
     : randomPick(BREAK_NOTES);
+
+  // Today's timeline strip
+  const todayStr = todayLocal();
+  const todaySessions = (S.focusLog || []).filter(s => s.date === todayStr);
+  const timelineHTML = todaySessions.length > 0 ? `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);text-align:left;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Today's sessions</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        ${todaySessions.map(s => {
+          const taskLabel = s.taskId ? (S.tasks.find(t => t.id === s.taskId)||{}).text || s.intention : s.intention;
+          const typeIcon = s.type === 'manual' ? '○' : '◎';
+          return `<div style="display:flex;align-items:flex-start;gap:8px;">
+            <span style="font-size:0.62rem;color:var(--amber);margin-top:2px;flex-shrink:0;">${typeIcon}</span>
+            <div style="flex:1;min-width:0;">
+              <span style="font-size:0.7rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${s.time}</span>
+              ${taskLabel ? `<span style="font-size:0.75rem;color:var(--text-mid);margin-left:6px;">${escHtml(taskLabel.slice(0,50))}${taskLabel.length>50?'…':''}</span>` : ''}
+              ${s.reflection ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-top:1px;padding-left:0;">↳ ${escHtml(s.reflection.slice(0,60))}${s.reflection.length>60?'…':''}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Intention input — only show when mode is work and timer not yet running mid-session
+  const intentionHTML = timer.mode === 'work' ? `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);text-align:left;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">What are you working on?</div>
+      ${focusTasks.length > 0 ? `
+        <select id="timer-task-sel" onchange="timer.taskId=this.value?parseInt(this.value):null;timer.intention=''" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;-webkit-appearance:none;cursor:pointer;margin-bottom:6px;">
+          <option value="">— pick a task or type below —</option>
+          ${focusTasks.map(t => `<option value="${t.id}" ${timer.taskId===t.id?'selected':''}>${escHtml(t.text)}</option>`).join('')}
+        </select>
+        <input id="timer-intention" placeholder="…or describe your focus goal" value="${escHtml(timer.intention||'')}" oninput="timer.intention=this.value;timer.taskId=null;document.getElementById('timer-task-sel').value=''" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;">
+      ` : `
+        <input id="timer-intention" placeholder="What will you focus on this session?" value="${escHtml(timer.intention||'')}" oninput="timer.intention=this.value" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;">
+      `}
+    </div>` : '';
 
   wrap.innerHTML = toggleHTML + `
     <div class="card" style="text-align:center;border-top:none;padding-top:0">
@@ -3110,6 +3156,8 @@ function renderFocusTimer() {
         <button class="timer-btn secondary" onclick="resetTimer()">Reset</button>
       </div>
       <div class="session-dots" style="margin-top:20px;justify-content:center">${sessionDots}</div>
+      ${intentionHTML}
+      ${timelineHTML}
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:0.78rem;font-weight:600;color:var(--text-mid);">Worked outside the timer?</div>
@@ -3118,18 +3166,6 @@ function renderFocusTimer() {
         <button onclick="logFocusSessionManually()" style="background:none;border:1px solid var(--border);border-radius:2px;padding:7px 14px;font-size:0.82rem;font-weight:600;color:var(--text-mid);cursor:pointer;">+ Log</button>
       </div>
     </div>
-
-    ${focusTasks.length > 0 ? `
-    <div class="card">
-      <div class="card-label">Working on</div>
-      <select class="timer-task-select" id="timer-task-sel">
-        ${focusTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('')}
-      </select>
-    </div>` : `
-    <div class="card" style="text-align:center">
-      <div style="font-size:0.8rem;color:var(--text-dim)">No focus items set for today. Add some in the Today tab.</div>
-      <button onclick="switchTab('today')" style="margin-top:12px;background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Go to Today →</button>
-    </div>`}
 
     <div class="field-note">
       <div class="field-note-icon">${timer.mode==='work'?'💬':'☕'}</div>
@@ -3144,6 +3180,88 @@ function renderFocusTimer() {
       </div>
     </div>
   `;
+}
+
+// ── FOCUS HISTORY ────────────────────────────────────────────
+function renderFocusHistory() {
+  const wrap = document.getElementById('focus-wrap');
+  if (!wrap) return;
+  const container = wrap.querySelector('div');
+  if (!container) return;
+
+  const log = (S.focusLog || []).slice().reverse(); // most recent first
+  const todayStr = todayLocal();
+
+  if (log.length === 0) {
+    container.insertAdjacentHTML('beforeend', `
+      <div class="empty" style="margin-top:20px;">
+        <div class="empty-icon">◎</div>
+        <div>No sessions logged yet.</div>
+        <div style="margin-top:4px;font-size:0.78rem;">Start a timer or log a session manually.</div>
+        <button onclick="focusView='timer';renderFocusTimer()" style="margin-top:14px;background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Go to timer →</button>
+      </div>`);
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  log.forEach(s => {
+    if (!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+
+  let html = '';
+  Object.keys(byDate).sort().reverse().slice(0, 14).forEach(date => {
+    const sessions = byDate[date];
+    const totalMins = sessions.reduce((sum, s) => sum + (s.durationMins || 25), 0);
+    const isToday = date === todayStr;
+    const dateLabel = isToday ? 'Today' : parseLocalDate(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    html += `<div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:0.68rem;font-weight:600;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:${isToday?'var(--amber)':'var(--text-dim)'};">${dateLabel}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);">${sessions.length} session${sessions.length!==1?'s':''} · ${totalMins} min</div>
+      </div>`;
+
+    sessions.forEach(s => {
+      const taskLabel = s.taskId ? (S.tasks.find(t => t.id === s.taskId)||{}).text || s.intention : s.intention;
+      const typeIcon = s.type === 'manual' ? '○' : '◎';
+      html += `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:0.75rem;color:var(--amber);margin-top:1px;flex-shrink:0;">${typeIcon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:${taskLabel||s.reflection?'3':'0'}px;">
+            <span style="font-size:0.7rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${s.time}</span>
+            <span style="font-size:0.7rem;color:var(--text-dim);">${s.durationMins||25} min</span>
+          </div>
+          ${taskLabel ? `<div style="font-size:0.82rem;color:var(--text);line-height:1.4;">${escHtml(taskLabel)}</div>` : ''}
+          ${s.reflection ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:3px;line-height:1.45;">↳ ${escHtml(s.reflection)}</div>` : ''}
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  const totalAllTime = (S.focusLog||[]).reduce((sum, s) => sum + (s.durationMins||25), 0);
+  const totalHours = (totalAllTime / 60).toFixed(1);
+
+  container.insertAdjacentHTML('beforeend', `
+    <div style="display:flex;gap:16px;margin-bottom:20px;">
+      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${S.focusLog.length}</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">sessions</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${totalHours}h</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">total focus</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${S.focusBlocksToday}</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">today</div>
+      </div>
+    </div>
+    ${html}
+  `);
 }
 
 // ── SKILLS ───────────────────────────────────────────────────
@@ -3840,6 +3958,19 @@ function toggleTimer() {
     clearInterval(timer.interval);
     timer.running = false;
   } else {
+    // Capture intention from inputs if not already set
+    if (!timer.startedAt) {
+      const taskSel = document.getElementById('timer-task-sel');
+      const intentionEl = document.getElementById('timer-intention');
+      if (taskSel && taskSel.value) {
+        timer.taskId = parseInt(taskSel.value);
+        timer.intention = '';
+      } else if (intentionEl && intentionEl.value.trim()) {
+        timer.intention = intentionEl.value.trim();
+        timer.taskId = null;
+      }
+      timer.startedAt = Date.now();
+    }
     timer.running = true;
     timer.interval = setInterval(timerTick, 1000);
   }
@@ -3869,18 +4000,29 @@ function timerDone() {
     updateHeader();
     renderFocusTimer();
     checkAchievements();
+
+    const sessionNum = S.focusBlocksToday;
+    const intentionLabel = timer.taskId
+      ? (S.tasks.find(t => t.id === timer.taskId)||{}).text || ''
+      : (timer.intention || '');
+
     showModal(`
-      <div style="text-align:center;padding:8px 0;">
-        <div style="font-size:2.5rem;font-weight:100;font-family:'Montserrat',sans-serif;color:var(--amber);letter-spacing:-0.02em;margin-bottom:4px;">${S.focusBlocksToday}</div>
-        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:16px;">session${S.focusBlocksToday!==1?'s':''} completed today</div>
-        <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;">Session complete</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">Take a real break — it makes the next session better.</div>
+      <div style="text-align:left;padding:4px 0;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:2.5rem;font-weight:100;font-family:'Montserrat',sans-serif;color:var(--amber);letter-spacing:-0.02em;margin-bottom:2px;">${sessionNum}</div>
+          <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;">session${sessionNum!==1?'s':''} today</div>
+        </div>
+        ${intentionLabel ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;padding:7px 10px;background:var(--surface2);border-radius:2px;">Working on: <span style="color:var(--text-mid);">${escHtml(intentionLabel)}</span></div>` : ''}
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">What did you get done? <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem;">— optional</span></div>
+        <input id="focus-reflection" placeholder="One line is enough…" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:16px;" onkeydown="if(event.key==='Enter'){event.preventDefault();logTimerSession();}">
         <div style="display:flex;gap:8px;">
-          <button onclick="closeModal();setTimerMode('short')" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;color:var(--text-mid);">Short break</button>
-          <button onclick="closeModal();setTimerMode('work')" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Keep going</button>
+          <button onclick="logTimerSession();setTimerMode('short')" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;color:var(--text-mid);">Break</button>
+          <button onclick="logTimerSession();setTimerMode('work')" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Keep going</button>
         </div>
       </div>
     `);
+    // Focus the reflection input
+    setTimeout(() => { const el = document.getElementById('focus-reflection'); if (el) el.focus(); }, 80);
   } else {
     showModal(`
       <div style="text-align:center;padding:8px 0;">
@@ -3892,19 +4034,99 @@ function timerDone() {
   }
 }
 
+function logTimerSession() {
+  const reflection = (document.getElementById('focus-reflection')||{}).value?.trim() || '';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (!S.focusLog) S.focusLog = [];
+  if (!S.nextFocusLogId) S.nextFocusLogId = 1;
+  S.focusLog.push({
+    id: S.nextFocusLogId++,
+    date: todayLocal(),
+    time: timeStr,
+    taskId: timer.taskId || null,
+    intention: timer.intention || '',
+    reflection,
+    durationMins: 25,
+    type: 'timer',
+  });
+  // Reset timer intention for next session
+  timer.intention = '';
+  timer.taskId = null;
+  timer.startedAt = null;
+  save();
+  closeModal();
+}
+
 function setTimerMode(mode) {
   if (timer.running) { clearInterval(timer.interval); timer.running = false; }
   timer.mode = mode;
   timer.remaining = T_DUR[mode];
+  timer.startedAt = null;
   renderFocusTimer();
 }
 
 function logFocusSessionManually() {
-  S.focusBlocksToday++;
-  S.totalFocusBlocks = (S.totalFocusBlocks || 0) + 1;
+  const inner = document.getElementById('modal-inner');
+  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(t => t && !t.done);
+  const taskOptions = focusTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('');
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:14px;font-family:'Montserrat',sans-serif;">Log a focus session</div>
+      ${focusTasks.length > 0 ? `
+        <label style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;">Task</label>
+        <select id="mlog-task" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;-webkit-appearance:none;margin-bottom:10px;">
+          <option value="">— no specific task —</option>
+          ${taskOptions}
+        </select>` : ''}
+      <label style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;">What did you work on?</label>
+      <input id="mlog-intention" placeholder="Brief description…" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:10px;">
+      <label style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;">Approx. duration</label>
+      <select id="mlog-duration" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;-webkit-appearance:none;margin-bottom:16px;">
+        <option value="25">25 min (1 Pomodoro)</option>
+        <option value="50">50 min (2 Pomodoros)</option>
+        <option value="15">15 min (short)</option>
+        <option value="60">60 min</option>
+        <option value="90">90 min</option>
+      </select>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveManualFocusSession()" style="flex:2;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Log it</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function saveManualFocusSession() {
+  const taskEl = document.getElementById('mlog-task');
+  const intentionEl = document.getElementById('mlog-intention');
+  const durationEl = document.getElementById('mlog-duration');
+  const taskId = taskEl && taskEl.value ? parseInt(taskEl.value) : null;
+  const intention = (intentionEl||{}).value?.trim() || '';
+  const durationMins = durationEl ? parseInt(durationEl.value) : 25;
+  const pomodoros = Math.max(1, Math.round(durationMins / 25));
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (!S.focusLog) S.focusLog = [];
+  if (!S.nextFocusLogId) S.nextFocusLogId = 1;
+  S.focusLog.push({
+    id: S.nextFocusLogId++,
+    date: todayLocal(),
+    time: timeStr,
+    taskId,
+    intention,
+    reflection: '',
+    durationMins,
+    type: 'manual',
+  });
+
+  S.focusBlocksToday += pomodoros;
+  S.totalFocusBlocks = (S.totalFocusBlocks || 0) + pomodoros;
   trackEvent('focus_block', { sessions_today: S.focusBlocksToday });
   save();
   updateHeader();
+  closeModal();
   renderFocusTimer();
   if (currentTab === 'today') renderToday();
   showToast(`Session logged · ${S.focusBlocksToday} today`);
@@ -3914,6 +4136,7 @@ function logFocusSessionManually() {
 function resetTimer() {
   if (timer.running) { clearInterval(timer.interval); timer.running = false; }
   timer.remaining = T_DUR[timer.mode];
+  timer.startedAt = null;
   renderFocusTimer();
 }
 
