@@ -1535,7 +1535,7 @@ function normalizeStateArrays(s) {
     'tasks','pipeline','companies','contacts','wins','weeklyPlans',
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
-    'rolledOverTasks','trackedHabits'
+    'rolledOverTasks','trackedHabits','questionBank'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -1938,6 +1938,9 @@ const DEFAULT_STATE = {
   nextSkillId: 1,
   weeklyCapacity: 20,
   lastModified: 0,
+  resume: '',
+  questionBank: [],
+  nextQuestionBankId: 1,
 };
 
 let S = loadState();
@@ -4398,6 +4401,10 @@ function renderPipelineEntry(e) {
         </div>` : '';
         return coHTML + ctHTML;
       })()}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+        <button onclick="event.stopPropagation();openEmailDrafter(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft email</button>
+        <button onclick="event.stopPropagation();openSalaryResearch(${e.id})" style="background:${e.stage==='offer'?'var(--amber)':'none'};border:1px solid ${e.stage==='offer'?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 10px;font-size:0.68rem;color:${e.stage==='offer'?'#fff':'var(--text-mid)'};cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✦ Salary intel</button>
+      </div>
       <button class="contact-action-btn danger" onclick="deletePipelineEntry(${e.id})">Remove</button>
     </div>`;
 
@@ -4533,7 +4540,468 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
   e.prepQuestions = newVal;
   save();
 
-  wrap.innerHTML = `<textarea id="pe-prepQuestions-${id}" onblur="savePipelineField(${id},'prepQuestions')" style="background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:120px;">${escHtml(newVal)}</textarea>`;
+  wrap.innerHTML = `<textarea id="pe-prepQuestions-${id}" onblur="savePipelineField(${id},'prepQuestions')" style="background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:120px;">${escHtml(newVal)}</textarea>
+  <button onclick="openAddToQuestionBank()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Save to Q Bank</button>`;
+}
+
+// ── FEATURE 1: EMAIL DRAFTER ─────────────────────────────────
+function openEmailDrafter(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const inner = document.getElementById('modal-inner');
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
+  const iS = iI + `-webkit-appearance:none;appearance:none;cursor:pointer;`;
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:2px;font-family:'Montserrat',sans-serif;">✦ Draft Email</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:14px;">${escHtml(e.role||'Role')} · ${escHtml(e.company||'Company')}</div>
+      <label style="${fL}">Type</label>
+      <select id="ed-type" style="${iS}">
+        <option value="cover">Cover Letter</option>
+        <option value="followup">Follow-up after apply</option>
+        <option value="thankyou">Thank-you after interview</option>
+        <option value="checkin">Check-in after silence</option>
+        <option value="referral">Referral ask</option>
+      </select>
+      <label style="${fL}">Channel</label>
+      <select id="ed-channel" style="${iS}">
+        <option value="Email">Email</option>
+        <option value="LinkedIn">LinkedIn</option>
+      </select>
+      <label style="${fL}">Goal <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></label>
+      <input id="ed-goal" placeholder="e.g. Get a call, express enthusiasm, ask for update…" style="${iI}">
+      <div style="display:flex;gap:8px;margin-top:22px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function generateEmailDraft(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const type    = (document.getElementById('ed-type')    || {}).value || 'followup';
+  const channel = (document.getElementById('ed-channel') || {}).value || 'Email';
+  const goal    = (document.getElementById('ed-goal')    || {}).value?.trim() || '';
+  const typeLabels = { cover:'Cover Letter', followup:'Follow-up after apply', thankyou:'Thank-you after interview', checkin:'Check-in after silence', referral:'Referral ask' };
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Writing…</div>`;
+  const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage) || PIPELINE_STAGES[0];
+  const context = [
+    e.role ? `Role: ${e.role}` : '',
+    e.company ? `Company: ${e.company}` : '',
+    `Stage: ${stageInfo.label}`,
+    e.notes ? `Notes: ${e.notes}` : '',
+    e.prepPeople ? `Contacts/interviewers: ${e.prepPeople}` : '',
+  ].filter(Boolean).join('\n');
+  const prompt = `You are a career coach helping a job seeker in ad tech write a professional but warm outreach email.
+Context:
+${context}
+Type: ${typeLabels[type] || type}
+Channel: ${channel}
+${goal ? `Goal: ${goal}` : ''}
+Write a ${typeLabels[type] || type} message. For email, include a Subject: line. 2-4 paragraphs, confident but not stiff.
+Return ONLY the message text.`;
+  const result = await callClaude(prompt, { maxTokens: 700 });
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
+  if (result.error) {
+    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Draft Email</div><div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    return;
+  }
+  const draft = (result.text || '').trim();
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Draft Email</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">${escHtml(typeLabels[type]||type)} · ${escHtml(channel)}</div>
+      <label style="${fL}">Your draft</label>
+      <textarea id="ed-result" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:220px;">${escHtml(draft)}</textarea>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('ed-result').value).then(()=>showToast('Copied!'))" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Copy</button>
+        <button onclick="openEmailDrafter(${id})" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Try again</button>
+        <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+      </div>
+    </div>`;
+}
+
+// ── FEATURE 2: SALARY RESEARCH ───────────────────────────────
+function openSalaryResearch(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const inner = document.getElementById('modal-inner');
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
+  const iS = iI + `-webkit-appearance:none;appearance:none;cursor:pointer;`;
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Salary Intel</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;margin-bottom:14px;">Ad tech compensation research based on role, company, and location.</div>
+      <label style="${fL}">Role</label>
+      <input id="sr-role" value="${escHtml(e.role||'')}" style="${iI}">
+      <label style="${fL}">Company</label>
+      <input id="sr-company" value="${escHtml(e.company||'')}" style="${iI}">
+      <label style="${fL}">Location</label>
+      <input id="sr-location" placeholder="e.g. New York, NY / Remote" style="${iI}">
+      <label style="${fL}">Years of experience</label>
+      <select id="sr-yoe" style="${iS}">
+        <option value="0-2">0–2 years</option>
+        <option value="3-5">3–5 years</option>
+        <option value="6-10">6–10 years</option>
+        <option value="10+">10+ years</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-top:22px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="runSalaryResearch(${id})" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Research</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function runSalaryResearch(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const role     = (document.getElementById('sr-role')     || {}).value?.trim() || e.role || '';
+  const company  = (document.getElementById('sr-company')  || {}).value?.trim() || e.company || '';
+  const location = (document.getElementById('sr-location') || {}).value?.trim() || '';
+  const yoe      = (document.getElementById('sr-yoe')      || {}).value || '3-5';
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Researching…</div>`;
+  const prompt = `You are a compensation research assistant for a job seeker in the ad tech / programmatic advertising industry.
+Role: ${role}, Company: ${company}, Location: ${location||'US (general)'}, Experience: ${yoe} years
+Based on your knowledge of ad tech industry compensation as of early 2026, provide:
+- salaryRange: {low, mid, high} as annual base in USD (numbers only, no symbols)
+- totalComp: estimated total comp range if equity/bonus is common for this role (string)
+- marketPosition: one of 'below market' | 'at market' | 'above market' (for context)
+- negotiationTips: string[] — 3-5 concrete tips for negotiating this specific role
+- questionsToAsk: string[] — 3-4 smart questions to ask about comp/benefits
+- redFlags: string[] — 1-2 compensation red flags to watch for in this type of role (empty array if none)
+Return ONLY JSON with these fields.`;
+  const result = await callClaude(prompt, { maxTokens: 800 });
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
+  if (result.error) {
+    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Salary Intel</div><div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    return;
+  }
+  const d = result.json || {};
+  const listHTML = (arr, color) => arr && arr.length
+    ? arr.map(x => `<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;"><span style="color:${color};flex-shrink:0;margin-top:2px;">◦</span><span style="font-size:0.8rem;color:var(--text);line-height:1.45;">${escHtml(x)}</span></div>`).join('')
+    : `<span style="font-size:0.78rem;color:var(--text-dim);">—</span>`;
+  const sr = d.salaryRange || {};
+  const mpColor = d.marketPosition === 'above market' ? 'var(--teal)' : d.marketPosition === 'below market' ? 'var(--error,#e57373)' : 'var(--amber)';
+  const salaryBandText = sr.low && sr.high ? `$${Number(sr.low).toLocaleString()} – $${Number(sr.high).toLocaleString()}` : '—';
+  inner.innerHTML = `
+    <div style="padding:4px 0 8px;text-align:left;max-height:70vh;overflow-y:auto;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:2px;font-family:'Montserrat',sans-serif;">✦ Salary Intel</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">${escHtml(role)}${company ? ' · ' + escHtml(company) : ''}${location ? ' · ' + escHtml(location) : ''}</div>
+      <div style="background:var(--surface2);border-radius:4px;padding:14px 16px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Base Salary Range</div>
+        <div style="font-size:1.3rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;">${salaryBandText}</div>
+        ${sr.mid ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">Midpoint ~$${Number(sr.mid).toLocaleString()}</div>` : ''}
+        ${d.totalComp ? `<div style="font-size:0.74rem;color:var(--text-mid);margin-top:8px;line-height:1.4;">Total comp: ${escHtml(d.totalComp)}</div>` : ''}
+        ${d.marketPosition ? `<div style="margin-top:10px;display:inline-block;background:none;border:1px solid ${mpColor};border-radius:2px;padding:3px 10px;font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:${mpColor};text-transform:uppercase;">${escHtml(d.marketPosition)}</div>` : ''}
+      </div>
+      ${d.negotiationTips && d.negotiationTips.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Negotiation Tips</label>${listHTML(d.negotiationTips, 'var(--amber)')}</div>` : ''}
+      ${d.questionsToAsk && d.questionsToAsk.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Questions to Ask</label>${listHTML(d.questionsToAsk, 'var(--teal)')}</div>` : ''}
+      ${d.redFlags && d.redFlags.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Red Flags to Watch</label>${listHTML(d.redFlags, 'var(--error,#e57373)')}</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="(() => { const entry = S.pipeline.find(x=>x.id===${id}); if(entry){ entry.notes = (entry.notes?entry.notes+'\\n\\n':'') + 'Salary range (${escHtml(yoe)} yoe): ${salaryBandText}'; save(); showToast('Saved to notes'); } })()" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Save to notes</button>
+        <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+      </div>
+    </div>`;
+}
+
+// ── FEATURE 3: REJECTIONS VIEW ───────────────────────────────
+function renderRejections() {
+  const container = document.getElementById('questsContent');
+  if (!container) return;
+  const log = (S.rejectionLog || []);
+  const stageLabel = (key) => {
+    if (!key) return '—';
+    if (key === 'didnt-apply') return "Didn't apply";
+    const s = PIPELINE_STAGES.find(x => x.key === key);
+    return s ? s.label : key;
+  };
+  const stageColor = (key) => {
+    if (!key || key === 'didnt-apply') return 'var(--text-dim)';
+    const s = PIPELINE_STAGES.find(x => x.key === key);
+    return s ? s.color : 'var(--text-dim)';
+  };
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;">${log.length} rejection${log.length===1?'':'s'} logged</span>
+    ${log.length > 0 ? `<button onclick="analyzeRejectionPatterns()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Analyze patterns</button>` : ''}
+  </div>`;
+  if (log.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">◦</div><div>No rejections logged yet.</div><div style="margin-top:4px;font-size:0.78rem;">Use the Log Rejection button to track them.</div></div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+  const byStageCounts = {};
+  log.forEach(r => { const k = r.stage || ''; byStageCounts[k] = (byStageCounts[k]||0)+1; });
+  const groupedStages = Object.entries(byStageCounts).filter(([,c])=>c>3).map(([k])=>k);
+  if (groupedStages.length > 0) {
+    const grouped = {};
+    const ungrouped = [];
+    log.forEach(r => {
+      const k = r.stage || '';
+      if (groupedStages.includes(k)) { if (!grouped[k]) grouped[k]=[]; grouped[k].push(r); }
+      else ungrouped.push(r);
+    });
+    Object.entries(grouped).forEach(([stageKey, entries]) => {
+      html += `<div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:${stageColor(stageKey)};margin:16px 0 8px;font-weight:700;">At ${stageLabel(stageKey)} (${entries.length})</div>`;
+      entries.forEach(r => { html += rejectionRowHTML(r, stageLabel, stageColor); });
+    });
+    if (ungrouped.length) {
+      html += `<div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 8px;font-weight:700;">Other</div>`;
+      ungrouped.forEach(r => { html += rejectionRowHTML(r, stageLabel, stageColor); });
+    }
+  } else {
+    log.forEach(r => { html += rejectionRowHTML(r, stageLabel, stageColor); });
+  }
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+function rejectionRowHTML(r, stageLabel, stageColor) {
+  const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  const feelingsSnip = r.feelings ? escHtml(r.feelings.slice(0,80)) + (r.feelings.length>80?'…':'') : '';
+  const lessonSnip = r.lesson ? escHtml(r.lesson.slice(0,80)) + (r.lesson.length>80?'…':'') : '';
+  return `<div style="border-bottom:1px solid var(--border);padding:12px 0;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.84rem;font-weight:600;color:var(--text);">${escHtml(r.company||'—')}</div>
+        <div style="font-size:0.74rem;color:var(--text-dim);">${escHtml(r.role||'—')}</div>
+      </div>
+      ${r.stage ? `<span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:${stageColor(r.stage)};border:1px solid ${stageColor(r.stage)};border-radius:2px;padding:2px 6px;">${stageLabel(r.stage)}</span>` : ''}
+      <span style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">${dateStr}</span>
+    </div>
+    ${feelingsSnip ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:6px;line-height:1.4;">${feelingsSnip}</div>` : ''}
+    ${lessonSnip ? `<div style="font-size:0.74rem;color:var(--text-dim);margin-top:4px;font-style:italic;line-height:1.4;">${lessonSnip}</div>` : ''}
+  </div>`;
+}
+
+async function analyzeRejectionPatterns() {
+  const log = (S.rejectionLog || []);
+  if (!log.length) { showToast('No rejections to analyze'); return; }
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Analyzing patterns…</div>`;
+  document.getElementById('overlay').classList.add('show');
+  const stageLabel = (key) => {
+    if (!key) return 'unknown';
+    if (key === 'didnt-apply') return "Didn't apply";
+    const s = PIPELINE_STAGES.find(x => x.key === key);
+    return s ? s.label : key;
+  };
+  const context = log.slice(0,30).map(r =>
+    `- ${r.company||'Unknown company'} / ${r.role||'Unknown role'} / Stage: ${stageLabel(r.stage)} / Lesson: ${r.lesson||'(none)'}`
+  ).join('\n');
+  const prompt = `You are a compassionate career coach analyzing a job seeker's rejection pattern.
+Here are their logged rejections:
+${context}
+Identify: where they are consistently getting stuck (by stage), any patterns in companies/roles/timing, 1-2 specific actionable improvements, and an encouraging overall read.
+Return JSON: {stuckAt: string, patterns: string[], actions: string[], encouragement: string}`;
+  const result = await callClaude(prompt, { maxTokens: 600 });
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
+  if (result.error) {
+    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">Pattern Analysis</div><div style="font-size:0.78rem;color:var(--error,#e57373);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    return;
+  }
+  const d = result.json || {};
+  const listHTML = (arr, color) => arr && arr.length
+    ? arr.map(x => `<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;"><span style="color:${color};flex-shrink:0;margin-top:2px;">◦</span><span style="font-size:0.8rem;color:var(--text);line-height:1.45;">${escHtml(x)}</span></div>`).join('')
+    : `<span style="font-size:0.78rem;color:var(--text-dim);">—</span>`;
+  inner.innerHTML = `
+    <div style="padding:4px 0 8px;text-align:left;max-height:70vh;overflow-y:auto;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Pattern Analysis</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;">${log.length} rejections analyzed</div>
+      ${d.stuckAt ? `<div style="background:var(--surface2);border-radius:4px;padding:12px 14px;margin-bottom:14px;"><label style="${fL}">Where you're getting stuck</label><div style="font-size:0.85rem;color:var(--amber);font-weight:600;">${escHtml(d.stuckAt)}</div></div>` : ''}
+      ${d.patterns && d.patterns.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Patterns</label>${listHTML(d.patterns,'var(--text-dim)')}</div>` : ''}
+      ${d.actions && d.actions.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Actionable improvements</label>${listHTML(d.actions,'var(--teal)')}</div>` : ''}
+      ${d.encouragement ? `<div style="background:var(--surface2);border-radius:4px;padding:12px 14px;margin-bottom:14px;font-size:0.82rem;color:var(--text-mid);line-height:1.55;font-style:italic;">${escHtml(d.encouragement)}</div>` : ''}
+      <button onclick="closeModal()" style="width:100%;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+    </div>`;
+}
+
+// ── FEATURE 4: RESUME GAP ANALYZER ───────────────────────────
+function openResumeGap(keywords, mustHave) {
+  const inner = document.getElementById('modal-inner');
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Resume Gap Check</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;margin-bottom:14px;">Paste your resume to see which JD keywords you're missing or under-representing.</div>
+      <label style="${fL}">Your resume <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— stored for next time</span></label>
+      <textarea id="rg-resume" placeholder="Paste your full resume text here…" oninput="S.resume=this.value;save()" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;margin-bottom:4px;">${escHtml(S.resume||'')}</textarea>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="runResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Check gaps</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function runResumeGap(keywords, mustHave) {
+  const resumeEl = document.getElementById('rg-resume');
+  const resumeText = (resumeEl ? resumeEl.value : S.resume || '').trim();
+  if (!resumeText) { showToast('Paste your resume first'); return; }
+  S.resume = resumeText;
+  save();
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Comparing…</div>`;
+  const prompt = `Compare this resume against the following JD keywords and requirements.
+Must-have requirements: ${JSON.stringify(mustHave)}
+JD keywords (ATS): ${JSON.stringify(keywords)}
+Resume: ${resumeText.slice(0,3000)}
+Return JSON: {
+  missingKeywords: string[],
+  weakMatches: string[],
+  strongMatches: string[],
+  missingMustHave: string[],
+  coverageScore: number,
+  topSuggestions: string[]
+}`;
+  const result = await callClaude(prompt, { maxTokens: 800 });
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
+  if (result.error) {
+    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Resume Gap Check</div><div style="font-size:0.78rem;color:var(--error,#e57373);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    return;
+  }
+  const d = result.json || {};
+  const score = typeof d.coverageScore === 'number' ? d.coverageScore : 0;
+  const scoreColor = score >= 70 ? 'var(--teal)' : score >= 45 ? 'var(--amber)' : 'var(--error,#e57373)';
+  const pillsHTML = (arr, color) => arr && arr.length
+    ? arr.map(x => `<span style="display:inline-block;background:var(--surface2);border:1px solid ${color};border-radius:2px;padding:3px 8px;font-size:0.72rem;color:${color};margin:0 4px 5px 0;font-family:'DM Sans',sans-serif;">${escHtml(x)}</span>`).join('')
+    : `<span style="font-size:0.78rem;color:var(--text-dim);">None</span>`;
+  const listHTML = (arr, color) => arr && arr.length
+    ? arr.map(x => `<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;"><span style="color:${color};flex-shrink:0;margin-top:2px;">◦</span><span style="font-size:0.8rem;color:var(--text);line-height:1.45;">${escHtml(x)}</span></div>`).join('')
+    : `<span style="font-size:0.78rem;color:var(--text-dim);">—</span>`;
+  inner.innerHTML = `
+    <div style="padding:4px 0 8px;text-align:left;max-height:70vh;overflow-y:auto;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Resume Gap Check</div>
+      <div style="background:var(--surface2);border-radius:4px;padding:14px 16px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Coverage Score</div>
+        <div style="font-size:2rem;font-weight:700;color:${scoreColor};font-family:'Montserrat',sans-serif;">${score}<span style="font-size:1rem;">/100</span></div>
+      </div>
+      ${d.missingMustHave && d.missingMustHave.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Must-Haves</label>${listHTML(d.missingMustHave,'var(--error,#e57373)')}</div>` : ''}
+      ${d.missingKeywords && d.missingKeywords.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Keywords</label><div style="margin-top:4px;">${pillsHTML(d.missingKeywords,'var(--error,#e57373)')}</div></div>` : ''}
+      ${d.weakMatches && d.weakMatches.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Weak Matches (underrepresented)</label><div style="margin-top:4px;">${pillsHTML(d.weakMatches,'var(--amber)')}</div></div>` : ''}
+      ${d.strongMatches && d.strongMatches.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Strong Matches</label><div style="margin-top:4px;">${pillsHTML(d.strongMatches,'var(--teal)')}</div></div>` : ''}
+      ${d.topSuggestions && d.topSuggestions.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Top Resume Edits</label>${listHTML(d.topSuggestions,'var(--teal)')}</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="openResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Re-check</button>
+        <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+      </div>
+    </div>`;
+}
+
+// ── FEATURE 5: QUESTION BANK ──────────────────────────────────
+let _qbSearch = '';
+let _qbFilter = 'all';
+let _qbOpenId = null;
+
+function renderQuestionBank() {
+  const container = document.getElementById('questsContent');
+  if (!container) return;
+  const bank = (S.questionBank || []);
+  const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
+  const filterTabs = ['all','Behavioral','Technical','Ad Tech','To Practice'];
+  const tabsHTML = filterTabs.map(t => {
+    const isActive = _qbFilter === t;
+    return `<button onclick="_qbFilter=${JSON.stringify(t)};renderNetwork()" style="background:none;border:none;border-bottom:2px solid ${isActive?'var(--amber)':'transparent'};padding:6px 2px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isActive?'var(--text)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${t}</button>`;
+  }).join('');
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
+      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;renderNetwork()" style="${iI}max-width:220px;">
+      <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add question</button>
+    </div>
+    <div style="display:flex;gap:14px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;">${tabsHTML}</div>`;
+  const search = _qbSearch.toLowerCase();
+  let filtered = bank;
+  if (_qbFilter !== 'all') filtered = filtered.filter(q => (q.tags||[]).includes(_qbFilter));
+  if (search) filtered = filtered.filter(q =>
+    (q.question||'').toLowerCase().includes(search) ||
+    (q.answer||'').toLowerCase().includes(search) ||
+    (q.tags||[]).some(t=>t.toLowerCase().includes(search))
+  );
+  if (filtered.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">◦</div><div>${bank.length===0?'No questions yet.':'No matches.'}</div><div style="margin-top:4px;font-size:0.78rem;">${bank.length===0?'Add interview questions to build your bank.':''}</div></div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+  filtered.slice().reverse().forEach(q => {
+    const isOpen = _qbOpenId === q.id;
+    const tagsHTML = (q.tags||[]).map(t => `<span style="display:inline-block;background:var(--surface2);border-radius:2px;padding:2px 7px;font-size:0.66rem;color:var(--text-dim);margin:0 3px 3px 0;font-family:'Montserrat',sans-serif;">${escHtml(t)}</span>`).join('');
+    const answerPreview = q.answer ? escHtml(q.answer.slice(0,100)) + (q.answer.length>100?'…':'') : '';
+    html += `<div style="border-bottom:1px solid var(--border);">
+      <div onclick="_qbOpenId=${isOpen?'null':q.id};renderNetwork()" style="padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+        <div style="font-size:0.84rem;color:var(--text);line-height:1.4;margin-bottom:5px;">${escHtml(q.question||'')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:${answerPreview&&!isOpen?'4':'0'}px;">${tagsHTML}</div>
+        ${q.role||q.company ? `<div style="font-size:0.7rem;color:var(--text-dim);">${[q.role,q.company].filter(Boolean).map(escHtml).join(' · ')}</div>` : ''}
+        ${answerPreview && !isOpen ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:4px;line-height:1.4;">${answerPreview}</div>` : ''}
+      </div>
+      ${isOpen ? `<div style="padding-bottom:14px;">
+        <div style="font-size:0.78rem;color:var(--text);line-height:1.55;white-space:pre-wrap;background:var(--surface2);border-radius:2px;padding:10px 12px;margin-bottom:10px;">${escHtml(q.answer||'(no answer saved)')}</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="openAddToQuestionBank(${JSON.stringify(q.question)},${JSON.stringify(q.role||'')},${JSON.stringify(q.company||'')})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Edit</button>
+          <button onclick="deleteFromQuestionBank(${q.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--error,#e57373);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  });
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+function openAddToQuestionBank(prefillQuestion, prefillRole, prefillCompany) {
+  const inner = document.getElementById('modal-inner');
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
+  const tA = iI + `resize:vertical;min-height:70px;`;
+  const allTags = ['Behavioral','Technical','Ad Tech','Culture Fit','To Practice'];
+  const tagsHTML = allTags.map(t => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--text-mid);margin:0 10px 6px 0;cursor:pointer;"><input type="checkbox" id="qb-tag-${t.replace(/\s/g,'_')}" value="${t}" style="accent-color:var(--teal);">${t}</label>`).join('');
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:14px;font-family:'Montserrat',sans-serif;">Add to Q Bank</div>
+      <label style="${fL}">Question</label>
+      <textarea id="qb-question" placeholder="Enter interview question…" style="${tA}">${escHtml(prefillQuestion||'')}</textarea>
+      <label style="${fL}">Your answer / notes</label>
+      <textarea id="qb-answer" placeholder="Your STAR response, key points, or notes…" style="${iI}resize:vertical;min-height:100px;"></textarea>
+      <label style="${fL}">Tags</label>
+      <div style="margin-top:2px;margin-bottom:4px;">${tagsHTML}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><label style="${fL}">Role context</label><input id="qb-role" value="${escHtml(prefillRole||'')}" placeholder="e.g. Account Manager" style="${iI}"></div>
+        <div><label style="${fL}">Company context</label><input id="qb-company" value="${escHtml(prefillCompany||'')}" placeholder="e.g. TradeDesk" style="${iI}"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveToQuestionBank()" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function saveToQuestionBank() {
+  const question = (document.getElementById('qb-question')||{}).value?.trim() || '';
+  if (!question) { showToast('Enter a question first'); return; }
+  const answer  = (document.getElementById('qb-answer') ||{}).value?.trim() || '';
+  const role    = (document.getElementById('qb-role')   ||{}).value?.trim() || '';
+  const company = (document.getElementById('qb-company')||{}).value?.trim() || '';
+  const allTags = ['Behavioral','Technical','Ad Tech','Culture Fit','To Practice'];
+  const tags = allTags.filter(t => {
+    const el = document.getElementById('qb-tag-' + t.replace(/\s/g,'_'));
+    return el && el.checked;
+  });
+  if (!S.questionBank) S.questionBank = [];
+  if (!S.nextQuestionBankId) S.nextQuestionBankId = 1;
+  S.questionBank.push({ id: S.nextQuestionBankId++, question, answer, tags, role, company, date: new Date().toISOString() });
+  save();
+  closeModal();
+  if (networkView === 'qbank') renderNetwork();
+}
+
+function deleteFromQuestionBank(id) {
+  S.questionBank = (S.questionBank||[]).filter(q => q.id !== id);
+  _qbOpenId = null;
+  save();
+  if (networkView === 'qbank') renderNetwork();
 }
 
 function updatePipelineStage(id, stage) {
@@ -4691,8 +5159,9 @@ No extra text outside the JSON.`;
       ${d.adTechSignals && d.adTechSignals.length ? section('Ad Tech Signals', `<div style="margin-top:4px;">${pillsHTML(d.adTechSignals)}</div>`) : ''}
       ${d.watchOuts && d.watchOuts.length ? section('Worth Asking About', listHTML(d.watchOuts, 'var(--text-dim)')) : ''}
       ${d.fitTips ? section('How to Position Yourself', `<div style="font-size:0.8rem;color:var(--text-mid);line-height:1.55;padding:10px 12px;background:var(--surface2);border-radius:2px;">${escHtml(d.fitTips)}</div>`) : ''}
-      <div style="display:flex;gap:8px;margin-top:20px;">
+      <div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;">
         <button onclick="openJDAnalyzer()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Analyze another</button>
+        <button onclick="openResumeGap(${JSON.stringify(d.keywords||[])},${JSON.stringify(d.mustHave||[])})" style="flex:1;padding:9px;border:1px solid var(--teal);background:none;border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--teal);font-family:'DM Sans',sans-serif;font-weight:600;">✦ Gap check vs. my resume</button>
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
       </div>
     </div>
@@ -5069,6 +5538,13 @@ function showRejectionStep2() {
       <div class="rej-field-label">How are you feeling right now?</div>
       <textarea class="rej-textarea" id="rej-feelings" rows="3" placeholder="No filter needed. This is just for you."></textarea>
 
+      <div class="rej-field-label">Stage when rejected</div>
+      <select class="rej-small-input" id="rej-stage" style="width:100%;margin-bottom:2px;-webkit-appearance:none;appearance:none;cursor:pointer;">
+        <option value="">— select stage —</option>
+        <option value="didnt-apply">Didn't apply</option>
+        ${PIPELINE_STAGES.filter(s=>!['rejected','withdrawn'].includes(s.key)).map(s=>`<option value="${s.key}">${s.label}</option>`).join('')}
+      </select>
+
       <div class="rej-field-label">What are you taking from this?</div>
       <textarea class="rej-textarea" id="rej-lesson" rows="2" placeholder="A lesson, a question, anything — or nothing at all."></textarea>
 
@@ -5082,13 +5558,14 @@ function confirmRejection() {
   const role     = (document.getElementById('rej-role')     || {}).value?.trim() || '';
   const feelings = (document.getElementById('rej-feelings') || {}).value?.trim() || '';
   const lesson   = (document.getElementById('rej-lesson')   || {}).value?.trim() || '';
+  const stage    = (document.getElementById('rej-stage')    || {}).value?.trim() || '';
 
   S.rejections = (S.rejections || 0) + 1;
   if (!S.rejectionLog) S.rejectionLog = [];
   S.rejectionLog.unshift({
     id: S.nextRejectionId++,
     date: new Date().toISOString(),
-    company, role, feelings, lesson,
+    company, role, stage, feelings, lesson,
     quote: _rejQuote ? { text: _rejQuote.text, author: _rejQuote.author } : null,
   });
   if (S.rejectionLog.length > 50) S.rejectionLog = S.rejectionLog.slice(0, 50);
@@ -6224,10 +6701,12 @@ function renderNetwork() {
   const wrap = document.getElementById('network-wrap');
   if (!wrap) return;
 
-  const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+  const toggleHTML = `<div style="display:flex;gap:14px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;overflow-x:auto;">
     <button class="view-toggle-btn ${networkView==='people'?'active':''}" onclick="networkView='people';renderNetwork()">People</button>
     <button class="view-toggle-btn ${networkView==='pipeline'?'active':''}" onclick="networkView='pipeline';renderNetwork()">Pipeline</button>
     <button class="view-toggle-btn ${networkView==='companies'?'active':''}" onclick="networkView='companies';renderNetwork()">Companies</button>
+    <button class="view-toggle-btn ${networkView==='qbank'?'active':''}" onclick="networkView='qbank';renderNetwork()">Q Bank</button>
+    <button class="view-toggle-btn ${networkView==='rejections'?'active':''}" onclick="networkView='rejections';renderNetwork()">Rejections</button>
   </div>`;
 
   if (networkView === 'pipeline') {
@@ -6239,6 +6718,18 @@ function renderNetwork() {
   if (networkView === 'companies') {
     wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
     renderCompanies();
+    return;
+  }
+
+  if (networkView === 'qbank') {
+    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
+    renderQuestionBank();
+    return;
+  }
+
+  if (networkView === 'rejections') {
+    wrap.innerHTML = `<div id="questsContent">${toggleHTML}</div>`;
+    renderRejections();
     return;
   }
 
