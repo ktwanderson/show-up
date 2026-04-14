@@ -3494,14 +3494,16 @@ async function submitIntroAnswer(skillId) {
 They described it in their own words as:
 "${introText}"
 
-Based on their definition, generate 3 diagnostic questions that go BEYOND the basics. Assume they already have some familiarity with the topic. Skip introductory or definitional questions — focus on nuanced, applied, or scenario-based understanding. Make the correct answer non-obvious; avoid questions where one option is clearly superior.
+Based on their definition, generate 3 diagnostic questions that go BEYOND the basics. Assume they already have some familiarity with the topic. Skip introductory or definitional questions — focus on nuanced, applied, or scenario-based understanding. Make the correct answer non-obvious; avoid questions where one option is clearly superior. Each question must have exactly one definitively correct answer.
 
 Return ONLY valid JSON, no other text:
 [
-  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"},
-  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"},
-  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "type": "multiple_choice"}
-]`;
+  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "A) ...", "explanation": "1-2 sentences explaining why this answer is correct and what the key distinction is.", "type": "multiple_choice"},
+  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "B) ...", "explanation": "...", "type": "multiple_choice"},
+  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "C) ...", "explanation": "...", "type": "multiple_choice"}
+]
+
+IMPORTANT: "correctAnswer" must be an exact string match to one of the values in "options".`;
 
   const result = await callClaude(prompt);
 
@@ -3576,10 +3578,59 @@ function displayDiagnosticQuestion() {
       ${optionsHTML}
       <div style="display:flex;gap:8px;margin-top:16px;">
         ${currentQ > 0 ? `<button onclick="_aiCoachState.currentQ--;displayDiagnosticQuestion()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Back</button>` : ''}
-        <button onclick="${isLast ? `submitDiagnosticAnswers()` : `_aiCoachState.currentQ++;displayDiagnosticQuestion()`}"
+        <button onclick="${isLast ? `displayAnswerReview()` : `_aiCoachState.currentQ++;displayDiagnosticQuestion()`}"
           style="flex:2;padding:10px;background:${hasAnswer ? 'var(--amber)' : 'var(--surface2)'};color:${hasAnswer ? '#fff' : 'var(--text-dim)'};border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;"
           ${!hasAnswer ? 'disabled' : ''}>${isLast ? 'Get results' : 'Next'}</button>
       </div>
+    </div>
+  `);
+}
+
+function displayAnswerReview() {
+  const { skillId, questions, answers } = _aiCoachState;
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill || !questions) return;
+
+  let correct = 0;
+  const reviewHTML = questions.map((q, i) => {
+    const userAns = answers[q.id] || null;
+    const correctAns = q.correctAnswer || null;
+    const isCorrect = userAns && correctAns && userAns === correctAns;
+    if (isCorrect) correct++;
+    const dot = isCorrect
+      ? `<span style="color:#2d8a5e;font-size:0.8rem;flex-shrink:0;">✓</span>`
+      : `<span style="color:var(--error,#c0392b);font-size:0.8rem;flex-shrink:0;">✗</span>`;
+    return `
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;">
+          ${dot}
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text);line-height:1.45;">${escHtml(q.question)}</div>
+        </div>
+        ${!isCorrect && correctAns ? `
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:4px;padding-left:20px;">
+            <span style="color:var(--error,#c0392b);">You answered:</span> ${escHtml(userAns || 'no answer')}
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;padding-left:20px;">
+            <span style="color:#2d8a5e;">Correct:</span> ${escHtml(correctAns)}
+          </div>` : ''}
+        ${q.explanation ? `<div style="font-size:0.74rem;color:var(--text-mid);line-height:1.55;padding:8px 10px;background:var(--surface2);border-radius:2px;margin-left:20px;">${escHtml(q.explanation)}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  const pct = Math.round((correct / questions.length) * 100);
+  const scoreColor = pct >= 67 ? '#2d8a5e' : pct >= 34 ? 'var(--amber)' : 'var(--error,#c0392b)';
+
+  showModal(`
+    <div style="text-align:left;max-height:70vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <span style="font-size:1.1rem;font-weight:700;color:${scoreColor};font-family:'Montserrat',sans-serif;">${correct} / ${questions.length}</span>
+      </div>
+      <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:2px;transition:width 0.5s;"></div>
+      </div>
+      ${reviewHTML}
+      <button onclick="submitDiagnosticAnswers()" style="width:100%;margin-top:16px;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">See full analysis →</button>
     </div>
   `);
 }
@@ -3589,7 +3640,6 @@ async function submitDiagnosticAnswers() {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill) return;
 
-  // Show loading
   showModal(`
     <div style="text-align:center;padding:40px 0;">
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
@@ -3602,9 +3652,11 @@ async function submitDiagnosticAnswers() {
   const introLine = _aiCoachState.introAnswer
     ? `User's own definition: "${_aiCoachState.introAnswer}"\n\n`
     : '';
-  const answersText = introLine + questions.map(q =>
-    `Q: ${q.question}\nAnswer: ${answers[q.id] || 'No answer'}`
-  ).join('\n\n');
+  const answersText = introLine + questions.map(q => {
+    const userAns = answers[q.id] || 'No answer';
+    const correct = q.correctAnswer ? ` (correct: ${q.correctAnswer})` : '';
+    return `Q: ${q.question}\nAnswer: ${userAns}${correct}`;
+  }).join('\n\n');
 
   const prompt = `You are a learning coach analyzing a user's knowledge of "${skill.name}" in ad tech / digital media / product management.
 
@@ -3712,12 +3764,18 @@ function logAICoachSession() {
 
   // Save learning history
   if (!skill.learningHistory) skill.learningHistory = [];
+  const scored = questions.map(q => ({
+    question: q.question,
+    userAnswer: answers[q.id] || null,
+    correctAnswer: q.correctAnswer || null,
+    correct: !!(q.correctAnswer && answers[q.id] === q.correctAnswer),
+    explanation: q.explanation || null,
+  }));
+  const numCorrect = scored.filter(q => q.correct).length;
   skill.learningHistory.push({
     date: new Date().toISOString().slice(0, 10),
-    quizQuestions: questions.map(q => ({
-      question: q.question,
-      userAnswer: answers[q.id] || null,
-    })),
+    score: `${numCorrect}/${questions.length}`,
+    quizQuestions: scored,
     analysis: {
       level: analysis.levelAssessment,
       focusAreas: analysis.focusAreas,
@@ -4910,8 +4968,11 @@ function renderQuestionBank() {
   }).join('');
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
-      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;renderNetwork()" style="${iI}max-width:220px;">
-      <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add question</button>
+      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;renderNetwork()" style="${iI}max-width:200px;">
+      <div style="display:flex;gap:10px;flex-shrink:0;">
+        <button onclick="openBulkQBankImport()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Bulk import</button>
+        <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
+      </div>
     </div>
     <div style="display:flex;gap:14px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;">${tabsHTML}</div>`;
   const search = _qbSearch.toLowerCase();
@@ -5002,6 +5063,108 @@ function deleteFromQuestionBank(id) {
   _qbOpenId = null;
   save();
   if (networkView === 'qbank') renderNetwork();
+}
+
+function openBulkQBankImport() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">✦ Bulk Import Questions</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.55;margin-bottom:14px;">Paste your interview prep notes — Q&A pairs, bullet lists, anything. Claude will extract individual questions and answers, and categorize them.</div>
+      <textarea id="qb-bulk-input" placeholder="Paste your interview prep notes here…&#10;&#10;Can be any format:&#10;- Q: Tell me about yourself / A: ...&#10;- Bullet lists of questions&#10;- Full conversation transcripts&#10;- Notes from a Chat session" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="runBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Extract questions</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function runBulkQBankImport() {
+  const raw = (document.getElementById('qb-bulk-input')||{}).value?.trim();
+  if (!raw) { showToast('Paste some prep notes first'); return; }
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Extracting questions…</div>`;
+
+  const prompt = `You are helping a job seeker in ad tech organize their interview prep notes into a structured question bank.
+
+Parse the following prep notes and extract every distinct interview question you can find, along with the person's answer or notes for that question (if provided).
+
+For each question, assign 1-3 tags from this list ONLY: "Behavioral", "Technical", "Ad Tech", "Culture Fit", "To Practice"
+- Behavioral: experience-based, STAR-format, leadership, conflict, teamwork
+- Technical: data, analytics, system design, code, measurement
+- Ad Tech: programmatic, DSPs/SSPs, identity, cookies, attribution, ad tech platforms
+- Culture Fit: why this company, values, working style, goals
+- To Practice: mark this if the answer is missing, thin, or clearly needs more work
+
+Return ONLY a JSON array. Each object:
+{
+  "question": "full question text",
+  "answer": "the person's answer or notes, or empty string if none",
+  "tags": ["tag1", "tag2"]
+}
+
+Prep notes:
+${raw.slice(0, 5000)}`;
+
+  const result = await callClaude(prompt, { maxTokens: 2000 });
+
+  if (result.error) {
+    inner.innerHTML = `
+      <div style="padding:4px 0;text-align:left;">
+        <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Bulk Import</div>
+        <div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:16px;">${result.message}</div>
+        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
+        <button onclick="closeModal()" style="width:100%;padding:9px;border:none;background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Close</button>
+      </div>`;
+    return;
+  }
+
+  const extracted = Array.isArray(result.json) ? result.json.filter(q => q && q.question) : null;
+  if (!extracted || extracted.length === 0) {
+    inner.innerHTML = `
+      <div style="padding:4px 0;text-align:left;">
+        <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Bulk Import</div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:16px;">Couldn't extract any questions. Try formatting your notes with clearer Q: / A: pairs.</div>
+        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+      </div>`;
+    return;
+  }
+
+  // Preview before saving
+  const previewHTML = extracted.slice(0, 8).map((q, i) => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:0.8rem;color:var(--text);line-height:1.4;margin-bottom:4px;">${escHtml(q.question)}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${(q.tags||[]).map(t => `<span style="display:inline-block;background:var(--surface2);border-radius:2px;padding:2px 7px;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${escHtml(t)}</span>`).join('')}
+      </div>
+      ${q.answer ? `<div style="font-size:0.72rem;color:var(--text-mid);margin-top:4px;line-height:1.4;">${escHtml(q.answer.slice(0,80))}${q.answer.length>80?'…':''}</div>` : ''}
+    </div>`).join('');
+
+  const moreCount = extracted.length > 8 ? extracted.length - 8 : 0;
+
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;max-height:70vh;overflow-y:auto;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:2px;font-family:'Montserrat',sans-serif;">✦ Ready to Import</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:12px;">${extracted.length} question${extracted.length!==1?'s':''} extracted${moreCount?` — showing first 8`:''}</div>
+      ${previewHTML}
+      ${moreCount ? `<div style="font-size:0.72rem;color:var(--text-dim);padding:8px 0;">+ ${moreCount} more</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="openBulkQBankImport()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Re-paste</button>
+        <button onclick="(()=>{
+          const items = ${JSON.stringify(extracted)};
+          if (!S.questionBank) S.questionBank = [];
+          if (!S.nextQuestionBankId) S.nextQuestionBankId = 1;
+          items.forEach(q => S.questionBank.push({ id: S.nextQuestionBankId++, question: q.question, answer: q.answer||'', tags: q.tags||[], createdAt: Date.now() }));
+          save();
+          closeModal();
+          networkView = 'qbank';
+          renderNetwork();
+          showToast(items.length + ' questions added to Q Bank ✓');
+        })()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Import all ${extracted.length}</button>
+      </div>
+    </div>`;
 }
 
 function updatePipelineStage(id, stage) {
@@ -5597,6 +5760,9 @@ function renderProgress() {
 
   const lv = getLvl(S.xp);
   const today = new Date();
+  const todayStr = todayLocal();
+
+  // ── 14-day activity heatmap ──
   const weekHTML = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (13 - i));
@@ -5607,68 +5773,138 @@ function renderProgress() {
     return `<div class="wday ${cls} ${isToday?'today':''}" title="${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${entry?' · '+ENERGY[entry.energy]?.label:''}"></div>`;
   }).join('');
 
+  // ── Weekly activity bars (last 6 weeks) ──
+  const weekBars = (() => {
+    const weeks = [];
+    for (let w = 5; w >= 0; w--) {
+      const wStart = new Date(today);
+      wStart.setDate(today.getDate() - today.getDay() + (today.getDay()===0?-6:1) - w*7);
+      const ws = `${wStart.getFullYear()}-${String(wStart.getMonth()+1).padStart(2,'0')}-${String(wStart.getDate()).padStart(2,'0')}`;
+      const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+      const we = `${wEnd.getFullYear()}-${String(wEnd.getMonth()+1).padStart(2,'0')}-${String(wEnd.getDate()).padStart(2,'0')}`;
+      const doneTasks = (S.tasks||[]).filter(t => t.done && t.doneDate && t.doneDate >= ws && t.doneDate <= we);
+      const apps = doneTasks.filter(t => t.cat === 'apply').length;
+      const network = doneTasks.filter(t => t.cat === 'network' || t.cat === 'followup').length;
+      const other = doneTasks.filter(t => !['apply','network','followup'].includes(t.cat)).length;
+      const focus = (S.dailySnapshots||[]).filter(s => s.date >= ws && s.date <= we).reduce((sum,s) => sum+(s.focusSessions||0), 0);
+      const label = w === 0 ? 'This wk' : w === 1 ? 'Last wk' : wStart.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      weeks.push({ label, apps, network, other, focus, total: apps+network+other });
+    }
+    const maxTotal = Math.max(...weeks.map(w => Math.max(w.total, w.focus)), 1);
+    return weeks.map(w => {
+      const appsH  = Math.round((w.apps    / maxTotal) * 60);
+      const netH   = Math.round((w.network / maxTotal) * 60);
+      const otherH = Math.round((w.other   / maxTotal) * 60);
+      const focusH = Math.round((w.focus   / maxTotal) * 60);
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;height:60px;width:100%;gap:1px;">
+          ${w.other  ? `<div style="height:${otherH}px;background:var(--border);border-radius:1px 1px 0 0;" title="${w.other} other tasks"></div>` : ''}
+          ${w.network? `<div style="height:${netH}px;background:var(--teal);opacity:0.7;border-radius:1px 1px 0 0;" title="${w.network} network/followup"></div>` : ''}
+          ${w.apps   ? `<div style="height:${appsH}px;background:var(--amber);border-radius:1px 1px 0 0;" title="${w.apps} applications"></div>` : ''}
+        </div>
+        <div style="height:28px;display:flex;flex-direction:column;justify-content:flex-end;width:100%;">
+          ${w.focus  ? `<div style="height:${focusH}px;background:rgba(100,120,180,0.35);border-radius:1px;" title="${w.focus} focus sessions"></div>` : ''}
+        </div>
+        <div style="font-size:0.55rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;text-align:center;white-space:nowrap;">${w.label}</div>
+      </div>`;
+    }).join('');
+  })();
+
+  // ── Pipeline funnel ──
+  const funnelHTML = (() => {
+    const active = (S.pipeline||[]).filter(e => !['rejected','withdrawn'].includes(e.stage));
+    if (active.length === 0) return '';
+    const funnelStages = ['applied','phone','interview1','interview2','final','offer'];
+    const stageCounts = funnelStages.map(key => ({
+      key,
+      label: (PIPELINE_STAGES.find(s=>s.key===key)||{}).label || key,
+      color: (PIPELINE_STAGES.find(s=>s.key===key)||{}).color || 'var(--border)',
+      count: active.filter(e => e.stage === key).length,
+    })).filter(s => s.count > 0);
+    if (stageCounts.length === 0) return '';
+    const maxCount = Math.max(...stageCounts.map(s => s.count), 1);
+    const rows = stageCounts.map(s => {
+      const pct = Math.round((s.count / maxCount) * 100);
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;width:72px;flex-shrink:0;text-align:right;">${s.label}</div>
+        <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${s.color};border-radius:3px;transition:width 0.4s;"></div>
+        </div>
+        <div style="font-size:0.72rem;font-weight:600;color:var(--text-mid);font-family:'Montserrat',sans-serif;width:16px;text-align:right;">${s.count}</div>
+      </div>`;
+    }).join('');
+    const rejected = (S.pipeline||[]).filter(e => e.stage === 'rejected').length;
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Pipeline funnel</div>
+      ${rows}
+      ${rejected ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">${rejected} closed / rejected</div>` : ''}
+    </div>`;
+  })();
+
+  // ── Task category breakdown ──
+  const catBreakdownHTML = (() => {
+    const db = S.doneBy || {};
+    const cats = [
+      { key:'apply',    label:'Apply',      color:'var(--amber)',  val: db.apply||0 },
+      { key:'followup', label:'Follow-up',  color:'var(--teal)',   val: db.followup||0 },
+      { key:'network',  label:'Network',    color:'#6b9fb5',       val: db.network||0 },
+      { key:'research', label:'Research',   color:'var(--text-mid)',val:db.research||0 },
+      { key:'admin',    label:'Admin',      color:'var(--border)',  val: db.admin||0 },
+      { key:'personal', label:'Personal',   color:'#8b7db5',       val: db.personal||0 },
+    ].filter(c => c.val > 0);
+    if (cats.length === 0) return '';
+    const total = cats.reduce((s,c) => s+c.val, 0);
+    const barSegs = cats.map(c => `<div style="flex:${c.val};background:${c.color};height:6px;" title="${c.label}: ${c.val}"></div>`).join('');
+    const legend = cats.map(c => `<div style="display:flex;align-items:center;gap:5px;">
+      <div style="width:8px;height:8px;border-radius:1px;background:${c.color};flex-shrink:0;"></div>
+      <span style="font-size:0.68rem;color:var(--text-dim);">${c.label} <span style="color:var(--text-mid);font-weight:600;">${c.val}</span></span>
+    </div>`).join('');
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-label" style="margin-bottom:0;">Tasks completed</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);">${total} total</div>
+      </div>
+      <div style="display:flex;border-radius:3px;overflow:hidden;height:6px;margin-bottom:12px;">${barSegs}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">${legend}</div>
+    </div>`;
+  })();
+
+  // ── Badges ──
   const achStats = {
-    showUpStreak: S.showUpStreak,
-    maxShowUpStreak: S.maxShowUpStreak,
-    totalWins: S.totalWins || 0,
-    totalOutside: S.totalOutside || 0,
-    totalFocusBlocks: S.totalFocusBlocks || 0,
-    doneBy: S.doneBy,
-    rejections: S.rejections,
-    totalRestDays: S.totalRestDays || 0,
-    level: lv.num,
-    totalSkillSessions: (S.skills||[]).reduce((acc, sk) => acc + (sk.sessionsTotal||0), 0),
-    maxSkillLevel:      (S.skills||[]).reduce((acc, sk) => Math.max(acc, sk.level||0), 0),
-    activeSkillCount:   (S.skills||[]).filter(sk => sk.active).length,
+    showUpStreak: S.showUpStreak, maxShowUpStreak: S.maxShowUpStreak,
+    totalWins: S.totalWins||0, totalOutside: S.totalOutside||0,
+    totalFocusBlocks: S.totalFocusBlocks||0, doneBy: S.doneBy,
+    rejections: S.rejections, totalRestDays: S.totalRestDays||0, level: lv.num,
+    totalSkillSessions: (S.skills||[]).reduce((a,sk)=>a+(sk.sessionsTotal||0),0),
+    maxSkillLevel: (S.skills||[]).reduce((a,sk)=>Math.max(a,sk.level||0),0),
+    activeSkillCount: (S.skills||[]).filter(sk=>sk.active).length,
   };
   const achHTML = ACHIEVEMENTS.map(a => {
     const earned = a.check(achStats);
     return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="width:36px;height:36px;border-radius:50%;border:1.5px solid ${earned ? 'var(--amber)' : 'var(--border)'};background:${earned ? 'var(--amber-lt)' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <span style="font-size:0.9rem;color:${earned ? 'var(--amber)' : 'var(--border)'};font-family:'Montserrat',sans-serif;font-weight:700;">${a.icon}</span>
+      <div style="width:36px;height:36px;border-radius:50%;border:1.5px solid ${earned?'var(--amber)':'var(--border)'};background:${earned?'var(--amber-lt)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-size:0.9rem;color:${earned?'var(--amber)':'var(--border)'};font-family:'Montserrat',sans-serif;font-weight:700;">${a.icon}</span>
       </div>
-      <div style="flex:1;${earned ? '' : 'opacity:0.45'}">
+      <div style="flex:1;${earned?'':'opacity:0.45'}">
         <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:2px;">${a.name}</div>
         <div style="font-size:0.72rem;color:var(--text-dim);">${a.desc}</div>
       </div>
-      ${earned ? `<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:0.07em;color:var(--amber);font-weight:700;">✓</div>` : ''}
+      ${earned?`<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:0.07em;color:var(--amber);font-weight:700;">✓</div>`:''}
     </div>`;
   }).join('');
 
-  const rejLogHTML = (S.rejectionLog && S.rejectionLog.length > 0) ? `
-  <div style="margin-top:32px">
-    <div class="card-label" style="margin-bottom:16px">Rejection log</div>
-    ${S.rejectionLog.slice(0, 10).map(r => {
-      const d = new Date(r.date);
-      const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      const source = [r.company, r.role].filter(Boolean).join(' · ');
-      return `<div class="rej-log-entry">
-        <div class="rej-log-date">${dateStr}</div>
-        ${source ? `<div class="rej-log-source">${escHtml(source)}</div>` : ''}
-        ${r.feelings ? `<div class="rej-log-field">${escHtml(r.feelings)}</div>` : ''}
-        ${r.lesson ? `<div class="rej-log-lesson">↳ ${escHtml(r.lesson)}</div>` : ''}
-      </div>`;
-    }).join('')}
-    ${S.rejectionLog.length > 10 ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:10px">${S.rejectionLog.length - 10} more not shown</div>` : ''}
-  </div>` : '';
-
-  const thisMonthWorkouts = getWorkoutsThisMonth();
-  const workoutPct = Math.min(100, Math.round((thisMonthWorkouts / (S.workoutGoal || 10)) * 100));
-
+  // ── This week pts ──
   const ws = getWeekStart();
-  const wEnd = new Date(ws);
-  wEnd.setDate(wEnd.getDate() + 6);
+  const wEnd = new Date(ws); wEnd.setDate(wEnd.getDate()+6);
   const wEndStr = wEnd.toISOString().slice(0,10);
-  const ptsThisWeek = S.tasks
-    .filter(t => t.done && t.doneDate >= ws && t.doneDate <= wEndStr)
-    .reduce((sum, t) => sum + (t.points||1), 0);
+  const ptsThisWeek = (S.tasks||[]).filter(t=>t.done&&t.doneDate&&t.doneDate>=ws&&t.doneDate<=wEndStr).reduce((s,t)=>s+(t.points||1),0);
 
   wrap.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-value">${S.showUpStreak}</div>
         <div class="stat-label">day streak</div>
-        ${(S.maxShowUpStreak||0) > 0 ? `<div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;margin-top:3px;">best ${S.maxShowUpStreak}</div>` : ''}
+        ${(S.maxShowUpStreak||0)>0?`<div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;margin-top:3px;">best ${S.maxShowUpStreak}</div>`:''}
       </div>
       <div class="stat-card">
         <div class="stat-value">${S.doneBy.apply||0}</div>
@@ -5683,16 +5919,18 @@ function renderProgress() {
         <div class="stat-label">pts this week</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:0;">
-      <div>
-        <div style="font-size:0.84rem;font-weight:500;color:var(--text);">Workouts this month</div>
-        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">${thisMonthWorkouts} of ${S.workoutGoal || 10} goal · ${workoutPct}%</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:80px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
-          <div style="width:${workoutPct}%;height:100%;background:var(--amber);border-radius:2px;transition:width 0.4s;"></div>
-        </div>
-        <span style="font-size:0.78rem;font-weight:600;font-family:'Montserrat',sans-serif;color:var(--text-dim);min-width:24px;text-align:right;">${thisMonthWorkouts}</span>
+
+    ${funnelHTML}
+    ${catBreakdownHTML}
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
+      <div style="display:flex;gap:4px;align-items:flex-end;padding-bottom:4px;">${weekBars}</div>
+      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--amber);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Apply</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--teal);opacity:0.7;border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Network</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--border);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Other tasks</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:rgba(100,120,180,0.35);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Focus sessions</span></div>
       </div>
     </div>
 
@@ -5712,15 +5950,12 @@ function renderProgress() {
         <div style="font-size:0.78rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Lv ${lv.num} · ${lv.title}</div>
         <div style="font-size:0.68rem;color:var(--text-dim)">${S.xp} XP</div>
       </div>
-      <div class="xp-bar-track" style="height:2px">
-        <div class="xp-bar-fill" style="width:${lv.pct}%"></div>
-      </div>
-      ${lv.next ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px">${lv.xpIn} / ${lv.xpFor} XP to Level ${lv.num+1}</div>` : ''}
+      <div class="xp-bar-track" style="height:2px"><div class="xp-bar-fill" style="width:${lv.pct}%"></div></div>
+      ${lv.next?`<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px">${lv.xpIn} / ${lv.xpFor} XP to Level ${lv.num+1}</div>`:''}
     </div>
 
     <div class="card-label" style="padding:20px 0 4px;border-top:1px solid var(--border)">Badges</div>
     <div class="ach-list">${achHTML}</div>
-    ${rejLogHTML}
   `;
 }
 
