@@ -5178,6 +5178,7 @@ Return JSON: {
 let _qbSearch = '';
 let _qbFilter = 'all';
 let _qbOpenId = null;
+let _pendingBulkImport = null; // holds extracted items between preview and confirm
 
 function renderQuestionBank() {
   const container = document.getElementById('questsContent');
@@ -5355,7 +5356,9 @@ ${raw.slice(0, 5000)}`;
     return;
   }
 
-  // Preview before saving
+  // Store extracted items for confirmBulkQBankImport() to consume
+  _pendingBulkImport = extracted;
+
   const previewHTML = extracted.slice(0, 8).map((q, i) => `
     <div style="padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="font-size:0.8rem;color:var(--text);line-height:1.4;margin-bottom:4px;">${escHtml(q.question)}</div>
@@ -5375,19 +5378,29 @@ ${raw.slice(0, 5000)}`;
       ${moreCount ? `<div style="font-size:0.72rem;color:var(--text-dim);padding:8px 0;">+ ${moreCount} more</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="openBulkQBankImport()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Re-paste</button>
-        <button onclick="(()=>{
-          const items = ${JSON.stringify(extracted)};
-          if (!S.questionBank) S.questionBank = [];
-          if (!S.nextQuestionBankId) S.nextQuestionBankId = 1;
-          items.forEach(q => S.questionBank.push({ id: S.nextQuestionBankId++, question: q.question, answer: q.answer||'', tags: q.tags||[], createdAt: Date.now() }));
-          save();
-          closeModal();
-          networkView = 'qbank';
-          renderNetwork();
-          showToast(items.length + ' questions added to Q Bank ✓');
-        })()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Import all ${extracted.length}</button>
+        <button onclick="confirmBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Import all ${extracted.length}</button>
       </div>
     </div>`;
+}
+
+function confirmBulkQBankImport() {
+  const items = _pendingBulkImport;
+  if (!items || items.length === 0) { showToast('Nothing to import'); return; }
+  if (!S.questionBank) S.questionBank = [];
+  if (!S.nextQuestionBankId) S.nextQuestionBankId = 1;
+  items.forEach(q => S.questionBank.push({
+    id: S.nextQuestionBankId++,
+    question: q.question,
+    answer: q.answer || '',
+    tags: q.tags || [],
+    createdAt: Date.now(),
+  }));
+  _pendingBulkImport = null;
+  save();
+  closeModal();
+  networkView = 'qbank';
+  renderNetwork();
+  showToast(items.length + ' questions added to Q Bank ✓');
 }
 
 function updatePipelineStage(id, stage) {
