@@ -1214,12 +1214,12 @@
 </header>
 
 <div class="tabs-wrap">
-  <button class="tab active" data-tab="today"    onclick="switchTab('today')">Today</button>
-  <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
-  <button class="tab"        data-tab="quests"   onclick="switchTab('quests')">Tasks</button>
-  <button class="tab" data-tab="network" onclick="switchTab('network')">Network</button>
+  <button class="tab active" data-tab="today"    data-mode-required="full" onclick="switchTab('today')">Today</button>
+  <button class="tab"        data-tab="focus"    data-mode-required="full" onclick="switchTab('focus')">Focus</button>
+  <button class="tab"        data-tab="quests"   onclick="switchTab('quests')">Skills</button>
+  <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
-  <button class="tab" data-tab="journal" onclick="switchTab('journal')">Journal</button>
+  <button class="tab" data-tab="journal" data-mode-required="full" onclick="switchTab('journal')">Journal</button>
   <button class="tab" data-tab="account" onclick="switchTab('account')">Account</button>
 </div>
 </div>
@@ -1496,6 +1496,7 @@ function syncFromCloud() {
     localStorage.setItem('jhc3', JSON.stringify(S));
     _syncPaused = false;
     render();
+    updateTabVisibility();
     showToast('Synced \u2713');
     if (btn) btn.textContent = 'Sync now';
   });
@@ -1950,6 +1951,7 @@ const DEFAULT_STATE = {
   nextQuestionBankId: 1,
   focusLog: [],
   nextFocusLogId: 1,
+  mode: 'full',  // 'full' (job seeker + coach) | 'coach' (coach only)
 };
 
 let S = loadState();
@@ -2505,11 +2507,15 @@ function renderToday() {
             isPast = (h * 60 + m) < currentMins;
           }
         } catch(err) {}
+        const safeT = e.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const safeTm = e.time.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const fuBtn = '<button onclick="openLogMeeting(\'' + safeT + '\',\'' + safeTm + '\');event.stopPropagation();event.preventDefault();" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0 0 0 6px;white-space:nowrap;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color=\'var(--amber)\'" onmouseout="this.style.color=\'var(--text-dim)\'">＋ log meeting</button>';
         const rowInner = '<div style="font-size:0.72rem;color:var(--text-dim);font-family:\'Montserrat\',sans-serif;min-width:58px;letter-spacing:0.01em;">' + escHtml(e.time) + '</div>'
           + '<div style="font-size:0.85rem;color:' + (isPast ? 'var(--text-mid)' : 'var(--text)') + ';flex:1;line-height:1.3;">' + escHtml(e.title) + '</div>'
-          + (!isPast ? '<div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;opacity:0.6;"></div>' : '');
+          + (!isPast ? '<div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;opacity:0.6;margin-right:4px;"></div>' : '')
+          + fuBtn;
         if (e.link) {
-          return '<a href="' + escHtml(e.link) + '" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);text-decoration:none;' + (isPast ? 'opacity:0.45;' : '') + '" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">' + rowInner + '</a>';
+          return '<a href="' + escHtml(e.link) + '" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);text-decoration:none;' + (isPast ? 'opacity:0.45;' : '') + '" onmouseover="this.querySelector(\'button\').style.color=\'var(--text-dim)\'" onmouseout="">' + rowInner + '</a>';
         }
         return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);' + (isPast ? 'opacity:0.45;' : '') + '">' + rowInner + '</div>';
       }).join('');
@@ -3308,7 +3314,7 @@ function renderSkills() {
             ${progress.next ? `${progress.needed} session${progress.needed!==1?'s':''} to Level ${progress.next}` : '✦ Max level reached'}
           </div>
           <div style="display:flex;gap:8px;">
-            <button onclick="openSkillAICoach(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">AI Coach →</button>
+            <button onclick="openSkillAICoach(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">The Coach →</button>
             <button onclick="logSkillSession(${sk.id})" style="background:var(--surface2);border:none;border-radius:2px;padding:5px 12px;font-size:0.72rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Log session</button>
           </div>
         </div>
@@ -3496,6 +3502,7 @@ async function callClaude(prompt, options = {}) {
 }
 
 let _aiCoachState = {};    // tracks current quiz state
+let _calFollowUpSuggestions = []; // calendar follow-up wizard state
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
 const _expandedProjects = new Set(); // tracks which parent task IDs are expanded on the Tasks tab
 let _goalPickerOpenId = null;        // task ID currently showing the week-goal picker
@@ -3565,7 +3572,7 @@ async function openSkillAICoach(skillId) {
     showModal(`
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">API Key Required</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use AI Coach, add your Claude API key in Account settings.</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use The Coach, add your Claude API key in Account settings.</div>
         <button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account</button>
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
@@ -3573,8 +3580,115 @@ async function openSkillAICoach(skillId) {
     return;
   }
 
-  // Show free-text intro question first — no API call needed yet
-  displayIntroQuestion(skillId);
+  // If the user has prior sessions, show a continuation screen instead
+  const hasHistory = skill.learningHistory && skill.learningHistory.length > 0;
+  if (hasHistory) {
+    displayContinuationFlow(skillId);
+  } else {
+    displayIntroQuestion(skillId);
+  }
+}
+
+function displayContinuationFlow(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  const history = skill.learningHistory || [];
+  const last = history[history.length - 1];
+  const lastDate = last ? new Date(last.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const lastLevel = last?.analysis?.level || '';
+  const lastScore = last?.score || '';
+  const focusAreas = (last?.analysis?.focusAreas || []).slice(0, 2).map(f => f.topic || f).filter(Boolean);
+  const sessionCount = history.length;
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${sessionCount} session${sessionCount !== 1 ? 's' : ''}</div>
+      </div>
+      <div style="font-size:0.92rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back 👋</div>
+
+      ${last ? `<div style="background:var(--surface2);border-radius:3px;padding:12px 14px;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Last session · ${escHtml(lastDate)}</div>
+        ${lastLevel ? `<div style="font-size:0.8rem;color:var(--text);margin-bottom:4px;">Level assessed: <strong>${escHtml(lastLevel)}</strong>${lastScore ? ` · ${escHtml(lastScore)} correct` : ''}</div>` : ''}
+        ${focusAreas.length ? `<div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px;">Focus areas: ${focusAreas.map(f => escHtml(f)).join(' · ')}</div>` : ''}
+        ${last.analysis?.nextStep ? `<div style="font-size:0.78rem;color:var(--amber);margin-top:6px;font-style:italic;">"${escHtml(last.analysis.nextStep)}"</div>` : ''}
+      </div>` : ''}
+
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;line-height:1.6;">Ready to continue? The Coach will pick up from where you left off with harder questions based on your prior results.</div>
+
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button onclick="startContinuationSession(${skillId})" style="width:100%;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Continue learning →</button>
+        <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:9px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Start fresh instead</button>
+      </div>
+    </div>
+  `);
+}
+
+async function startContinuationSession(skillId) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  const history = skill.learningHistory || [];
+  const last = history[history.length - 1];
+
+  showModal(`
+    <div style="text-align:center;padding:40px 0;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Building on your progress...</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);">Generating harder questions</div>
+    </div>
+  `);
+
+  const priorContext = last ? `
+Prior session (${last.date}):
+- Level assessed: ${last.analysis?.level || 'unknown'}
+- Score: ${last.score || 'unknown'}
+- Focus areas identified: ${(last.analysis?.focusAreas || []).map(f => f.topic || f).join(', ')}
+- Next step recommended: "${last.analysis?.nextStep || ''}"
+
+Questions they got wrong last time:
+${(last.quizQuestions || []).filter(q => !q.correct).map(q => `- ${q.question}`).join('\n') || '(all correct)'}
+` : '';
+
+  const prompt = `You are a learning coach running a follow-up session with a returning student on "${skill.name}" in ad tech, digital media, and product management.
+
+${priorContext}
+
+Generate 3 diagnostic questions that are HARDER and more advanced than last time. Build directly on the areas where they showed weakness or where they need to go deeper. Focus on applied, scenario-based, or edge-case understanding. Each question must have exactly one correct answer that requires real expertise to identify.
+
+Return ONLY valid JSON, no other text:
+[
+  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "A) ...", "explanation": "1-2 sentences explaining why this answer is correct and what the key distinction is.", "type": "multiple_choice"},
+  {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "B) ...", "explanation": "...", "type": "multiple_choice"},
+  {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "C) ...", "explanation": "...", "type": "multiple_choice"}
+]
+
+IMPORTANT: "correctAnswer" must be an exact string match to one of the values in "options".`;
+
+  const result = await callClaude(prompt);
+
+  if (result.error) {
+    const isNoKey = result.error === 'no_key';
+    showModal(`
+      <div style="text-align:left;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Something went wrong'}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>.' : escHtml(result.message)}</div>
+        <button onclick="displayContinuationFlow(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
+        <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
+      </div>
+    `);
+    return;
+  }
+
+  const questions = Array.isArray(result.json) ? result.json : null;
+  if (!questions || questions.length === 0) {
+    showModal(`<div style="text-align:left;"><div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="startContinuationSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`);
+    return;
+  }
+
+  _aiCoachState = { skillId, introAnswer: `Continuation session (prior level: ${last?.analysis?.level || 'unknown'})`, questions, answers: {}, currentQ: 0 };
+  displayDiagnosticQuestion();
 }
 
 function displayIntroQuestion(skillId) {
@@ -3583,7 +3697,7 @@ function displayIntroQuestion(skillId) {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 4</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
@@ -3608,7 +3722,7 @@ async function submitIntroAnswer(skillId) {
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Generating questions...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
@@ -3638,7 +3752,7 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
     showModal(`
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Something went wrong'}</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use AI Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
         ${isNoKey
           ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
           : `<button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
@@ -3696,7 +3810,7 @@ function displayDiagnosticQuestion() {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentWithIntro + 1} / ${totalWithIntro}</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">${progressDots}</div>
@@ -3749,7 +3863,7 @@ function displayAnswerReview() {
   showModal(`
     <div style="text-align:left;max-height:70vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
         <span style="font-size:1.1rem;font-weight:700;color:${scoreColor};font-family:'Montserrat',sans-serif;">${correct} / ${questions.length}</span>
       </div>
       <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden;">
@@ -3768,7 +3882,7 @@ async function submitDiagnosticAnswers() {
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">AI Coach</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Analyzing your answers...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">Generating personalized recommendations</div>
@@ -3809,7 +3923,7 @@ Based on these answers, provide a personalized learning assessment. Return ONLY 
     showModal(`
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Analysis failed'}</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use AI Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
         ${isNoKey
           ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
           : `<button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
@@ -3855,7 +3969,7 @@ function displayAnalysisResults() {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">AI Coach · Results</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · Results</div>
         <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--surface2);color:${lvColor};">${escHtml(analysis.levelAssessment)}</span>
       </div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:6px;">${escHtml(skill.name)}</div>
@@ -3912,13 +4026,13 @@ function logAICoachSession() {
   // Increment session
   skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
   if (!skill.sessionLog) skill.sessionLog = [];
-  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `AI Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
+  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `The Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
 
   const oldLevel = skill.level;
   skill.level = calcSkillLevel(skill.sessionsTotal);
 
   // Create task record
-  const taskText = `AI Coach: ${skill.name} — ${analysis.levelAssessment}`;
+  const taskText = `The Coach: ${skill.name} — ${analysis.levelAssessment}`;
   const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now(), points: 1 };
   S.tasks.unshift(newTask);
   S.totalAdded++;
@@ -4701,7 +4815,10 @@ function renderPipelineEntry(e) {
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Prepare before the conversation. Fill in what you know.</div>
-        <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Generate questions</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
+          <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Generate questions</button>
+        </div>
       </div>
       <div>
         <label style="${fL}">Who you're meeting</label>
@@ -5471,6 +5588,15 @@ function saveNewPipelineEntry() {
   const stage = (document.getElementById('np-stage')||{}).value || 'applied';
   const appliedDate = (document.getElementById('np-date')||{}).value || '';
   const jdUrl = (document.getElementById('np-url')||{}).value?.trim() || '';
+  const dupe = S.pipeline.find(e =>
+    e.company.toLowerCase() === company.toLowerCase() &&
+    (e.role||'').toLowerCase() === role.toLowerCase()
+  );
+  if (dupe) {
+    const stInfo = PIPELINE_STAGES.find(s => s.key === dupe.stage);
+    showToast(`⚠ ${company}${role ? ' · ' + role : ''} is already in your pipeline (${stInfo?.label || dupe.stage})`);
+    return;
+  }
   S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, nextStep: '', notes: '' });
   save();
   closeModal();
@@ -5483,6 +5609,91 @@ function deletePipelineEntry(id) {
   pipelineOpenId = null;
   save();
   renderNetwork();
+}
+
+function openPrepImport(pipelineId) {
+  const inner = document.getElementById('modal-inner');
+  const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
+  inner.innerHTML = `
+    <div style="padding:4px 0;text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">↑ Import Prep Notes</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;margin-bottom:14px;">Paste anything — a Google Doc, notes, LinkedIn profile text, job description snippets. The AI will sort it into the right prep fields for you.</div>
+      <label style="${fL}">Your notes</label>
+      <textarea id="prep-import-input" placeholder="Paste your prep notes, interview brief, or Google Doc content here…" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="processPrepImport(${pipelineId})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">✦ Parse & fill fields</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function processPrepImport(pipelineId) {
+  const entry = (S.pipeline || []).find(e => e.id === pipelineId);
+  if (!entry) return;
+  const raw = (document.getElementById('prep-import-input') || {}).value?.trim() || '';
+  if (!raw) { showToast('Paste some notes first'); return; }
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `<div style="text-align:center;padding:40px 0;">
+    <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Parsing your notes…</div>
+    <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
+  </div>`;
+
+  const prompt = `You are helping a job seeker organize their interview prep notes into structured fields.
+
+They are preparing for an interview at "${entry.company || 'a company'}" for the role "${entry.role || 'unknown role'}".
+
+Here are their raw prep notes (could be a Google Doc paste, LinkedIn profiles, job description snippets, or anything):
+"""
+${raw}
+"""
+
+Extract and organize the relevant information into these fields. Return ONLY valid JSON:
+{
+  "prepPeople": "Names, roles, and any notes about the interviewers (from the raw text)",
+  "prepQuestions": "Likely interview questions to prepare for, extracted or inferred from the content",
+  "prepStories": "Any accomplishments, experience, or STAR stories mentioned in the notes",
+  "prepAsk": "Questions the candidate might want to ask them, extracted or inferred",
+  "followUpNames": "Full names of any interviewers found (for thank-you notes)",
+  "nextStep": "Any mentioned next step or follow-up action"
+}
+
+If a field has no relevant content, return an empty string for it. Do NOT make things up — only use what's in the notes.`;
+
+  const result = await callClaude(prompt);
+
+  if (result.error) {
+    inner.innerHTML = `<div style="text-align:left;">
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Parse failed</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;">${escHtml(result.message || 'Unknown error')}</div>
+      <button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+    </div>`;
+    return;
+  }
+
+  const parsed = result.json;
+  if (!parsed) {
+    inner.innerHTML = `<div style="text-align:left;"><div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`;
+    return;
+  }
+
+  // Merge into existing fields (append if content already exists)
+  const merge = (existing, incoming) => {
+    if (!incoming) return existing || '';
+    if (!existing) return incoming;
+    return existing + '\n\n— (imported) —\n' + incoming;
+  };
+
+  if (parsed.prepPeople)    entry.prepPeople    = merge(entry.prepPeople, parsed.prepPeople);
+  if (parsed.prepQuestions) entry.prepQuestions = merge(entry.prepQuestions, parsed.prepQuestions);
+  if (parsed.prepStories)   entry.prepStories   = merge(entry.prepStories, parsed.prepStories);
+  if (parsed.prepAsk)       entry.prepAsk       = merge(entry.prepAsk, parsed.prepAsk);
+  if (parsed.nextStep && !entry.nextStep) entry.nextStep = parsed.nextStep;
+  save();
+  closeModal();
+  renderNetwork();
+  showToast('Prep notes imported ✓ — review and edit each field');
 }
 
 function openJDAnalyzer() {
@@ -6457,7 +6668,44 @@ function checkAchievements() {
 }
 
 // ── NAV ──────────────────────────────────────────────────────
+
+// Tabs hidden in coach-only mode
+const JOBSEEKER_TABS = ['today', 'focus', 'network', 'journal'];
+
+function updateTabVisibility() {
+  const isCoach = S.mode === 'coach';
+
+  // Show/hide job-seeker-only tabs
+  document.querySelectorAll('[data-mode-required="full"]').forEach(btn => {
+    btn.style.display = isCoach ? 'none' : '';
+  });
+
+  // In full mode: quests tab = "Tasks". In coach mode: "Skills"
+  const questsBtn = document.querySelector('[data-tab="quests"]');
+  if (questsBtn) questsBtn.textContent = isCoach ? 'Skills' : 'Tasks';
+
+  // If currently on a hidden tab, redirect to progress
+  if (isCoach && JOBSEEKER_TABS.includes(currentTab)) {
+    currentTab = 'progress';
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('sec-progress').classList.add('active');
+    document.querySelector('[data-tab="progress"]')?.classList.add('active');
+    render();
+  }
+}
+
+function saveMode(newMode) {
+  S.mode = newMode;
+  save();
+  updateTabVisibility();
+  renderAccount();
+  showToast(`Mode set to ${newMode === 'coach' ? 'Coach only' : 'Job Seeker + Coach'}`);
+}
+
 function switchTab(tab) {
+  // Guard: silently redirect hidden tabs to progress
+  if (S.mode === 'coach' && JOBSEEKER_TABS.includes(tab)) tab = 'progress';
   currentTab = tab;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -6515,6 +6763,416 @@ function floatXP(event, label) {
 function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── LOG THIS MEETING WIZARD ───────────────────────────────────
+// Multi-step modal: type → who → interaction log → follow-up tasks → save
+
+let _lm = {};  // wizard state
+
+function openLogMeeting(title, time) {
+  const isInterview  = /interview|phone screen|screening|hiring|recruiter|final round/i.test(title);
+  const isNetworking = /coffee|lunch|connect|catch.?up|informational|networking|intro call/i.test(title);
+  _lm = {
+    title, time,
+    type: isInterview ? 'interview' : isNetworking ? 'networking' : 'other',
+    contactId: null,
+    newContact: null,
+    pipelineId: null,
+    logDate: todayLocal(),
+    logMethod: isInterview ? 'Zoom' : 'In person',
+    logNotes: '',
+    followUpDate: '',
+    followUpNote: '',
+    tasks: [],
+    step: 1,
+  };
+  _lmRender();
+}
+
+function _lmRender() {
+  if      (_lm.step === 1) _lmStep1();
+  else if (_lm.step === 2) _lmStep2();
+  else if (_lm.step === 3) _lmStep3();
+  else if (_lm.step === 4) _lmStep4();
+}
+
+function _lmStep1() {
+  const types = [
+    { val: 'interview',  label: 'Interview',         icon: '◆' },
+    { val: 'phone',      label: 'Phone / video call', icon: '○' },
+    { val: 'networking', label: 'Networking',         icon: '◇' },
+    { val: 'coffee',     label: 'Coffee chat',        icon: '◎' },
+    { val: 'other',      label: 'Other meeting',      icon: '·' },
+  ];
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      ${_lmHeader(1)}
+      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:4px;">What kind of meeting was this?</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px;">${escHtml(_lm.title)} · ${escHtml(_lm.time)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${types.map(t => `
+          <label onclick="_lm.type='${t.val}';_lmStep1()" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid ${_lm.type===t.val?'var(--amber)':'var(--border)'};border-radius:3px;cursor:pointer;transition:border-color 0.15s;">
+            <span style="color:${_lm.type===t.val?'var(--amber)':'var(--text-dim)'};font-size:1rem;">${t.icon}</span>
+            <span style="font-size:0.84rem;font-weight:${_lm.type===t.val?'600':'400'};color:${_lm.type===t.val?'var(--text)':'var(--text-mid)'};">${t.label}</span>
+          </label>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="_lm.step=2;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _lmStep2(search) {
+  search = search || '';
+  const query = search.toLowerCase();
+  const filtered = (S.contacts || []).filter(c => {
+    const name = `${c.first||''} ${c.last||''}`.toLowerCase();
+    const co   = (c.company||'').toLowerCase();
+    return !query || name.includes(query) || co.includes(query);
+  }).slice(0, 8);
+
+  // Pipeline entries matching event title (company name heuristic)
+  const titleWords = _lm.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const linkedJobs = (_lm.type === 'interview' || _lm.type === 'phone')
+    ? (S.pipeline || []).filter(j => titleWords.some(w => (j.company||'').toLowerCase().includes(w) || (j.role||'').toLowerCase().includes(w))).slice(0, 4)
+    : [];
+
+  const contactRows = filtered.length
+    ? filtered.map(c => {
+        const selected = _lm.contactId === c.id;
+        return `<div onclick="_lm.contactId=${selected?'null':c.id};_lm.newContact=null;_lmStep2(document.getElementById('lm-search')?.value||'')" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <div style="width:7px;height:7px;border-radius:50%;background:${selected?'var(--amber)':'var(--border)'};flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.84rem;color:var(--text);font-weight:${selected?'600':'400'};">${escHtml(c.first||'')} ${escHtml(c.last||'')}</div>
+            ${c.company?`<div style="font-size:0.72rem;color:var(--text-dim);">${escHtml(c.company)}</div>`:''}
+          </div>
+          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;">✓ selected</span>`:''}
+        </div>`;
+      }).join('')
+    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0;">${query ? 'No contacts match' : 'No contacts yet'}</div>`;
+
+  const pipelineRows = linkedJobs.length ? `
+    <div style="margin-top:10px;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Link to pipeline job?</div>
+      ${linkedJobs.map(j => {
+        const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0];
+        const selected = _lm.pipelineId === j.id;
+        return `<div onclick="_lm.pipelineId=${selected?'null':j.id};_lmStep2(document.getElementById('lm-search')?.value||'')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>
+          <div style="flex:1;font-size:0.82rem;color:${selected?'var(--text)':'var(--text-mid)'};">${escHtml(j.role||'Role TBD')} · ${escHtml(j.company)}</div>
+          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;">✓</span>`:''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      ${_lmHeader(2)}
+      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:12px;">Who did you meet?</div>
+      <input id="lm-search" type="text" placeholder="Search contacts…" value="${escHtml(search)}"
+        oninput="_lmStep2(this.value)"
+        style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;margin-bottom:8px;">
+      <div id="lm-contact-rows">${contactRows}</div>
+      ${pipelineRows}
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:8px;">Or add a new contact:</div>
+        <div style="display:flex;gap:6px;">
+          <input id="lm-nc-first" placeholder="First" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;" value="${_lm.newContact?.first||''}">
+          <input id="lm-nc-last" placeholder="Last" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;" value="${_lm.newContact?.last||''}">
+        </div>
+        <input id="lm-nc-company" placeholder="Company (optional)" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;box-sizing:border-box;margin-top:6px;" value="${_lm.newContact?.company||''}">
+        <button onclick="_lmSaveNewContact()" style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.72rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Add this contact</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="_lm.step=1;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
+        <button onclick="_lm.step=3;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _lmSaveNewContact() {
+  const first   = (document.getElementById('lm-nc-first')||{}).value?.trim()||'';
+  const last    = (document.getElementById('lm-nc-last')||{}).value?.trim()||'';
+  const company = (document.getElementById('lm-nc-company')||{}).value?.trim()||'';
+  if (!first && !last) { showToast('Enter a name'); return; }
+  _lm.newContact = { first, last, company };
+  _lm.contactId  = null;  // clear any selected existing contact
+  showToast(`${first} ${last} will be added when you save`);
+  _lmStep2('');
+}
+
+function _lmStep3() {
+  const inner = document.getElementById('modal-inner');
+  const methods = ['Zoom','In person','Phone','Email','LinkedIn','Text','Other'];
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      ${_lmHeader(3)}
+      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:14px;">Log the interaction</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Date</div>
+          <input type="date" id="lm-date" value="${escHtml(_lm.logDate)}" onchange="_lm.logDate=this.value"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">How you met</div>
+          <select id="lm-method" onchange="_lm.logMethod=this.value"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;-webkit-appearance:none;cursor:pointer;">
+            ${methods.map(m=>`<option value="${m}" ${_lm.logMethod===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Notes</div>
+          <textarea id="lm-notes" placeholder="Key points, impressions, next steps…" oninput="_lm.logNotes=this.value"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;resize:none;min-height:70px;">${escHtml(_lm.logNotes)}</textarea>
+        </div>
+        <div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Schedule a follow-up</div>
+          <input type="date" id="lm-fu-date" value="${escHtml(_lm.followUpDate)}" onchange="_lm.followUpDate=this.value"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;margin-bottom:6px;">
+          <input id="lm-fu-note" placeholder="What to follow up about…" value="${escHtml(_lm.followUpNote)}" oninput="_lm.followUpNote=this.value"
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button onclick="_lm.step=2;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
+        <button onclick="_lmSyncStep3();_lm.step=4;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _lmSyncStep3() {
+  _lm.logDate     = document.getElementById('lm-date')?.value    || _lm.logDate;
+  _lm.logMethod   = document.getElementById('lm-method')?.value  || _lm.logMethod;
+  _lm.logNotes    = document.getElementById('lm-notes')?.value   || _lm.logNotes;
+  _lm.followUpDate= document.getElementById('lm-fu-date')?.value || _lm.followUpDate;
+  _lm.followUpNote= document.getElementById('lm-fu-note')?.value || _lm.followUpNote;
+}
+
+function _lmStep4() {
+  const isInterview   = ['interview','phone'].includes(_lm.type);
+  const isNetworking  = ['networking','coffee'].includes(_lm.type);
+
+  let suggestions;
+  if (isInterview) {
+    suggestions = [
+      { text: 'Complete post-interview debrief in Pipeline', cat: 'research',  checked: true  },
+      { text: 'Write a thank-you note',                      cat: 'followup',  checked: true  },
+      { text: 'Connect on LinkedIn',                         cat: 'network',   checked: true  },
+      { text: 'Check in if no response within 5 days',       cat: 'followup',  checked: _lm.followUpDate==='' },
+      { text: 'Log a win from the interview',                cat: 'personal',  checked: false },
+      { text: 'Send any promised materials or links',        cat: 'followup',  checked: false },
+    ];
+  } else if (isNetworking) {
+    suggestions = [
+      { text: 'Send a follow-up thank-you note',             cat: 'followup',  checked: true  },
+      { text: 'Connect on LinkedIn',                         cat: 'network',   checked: true  },
+      { text: 'Log notes from the conversation',             cat: 'research',  checked: false },
+      { text: 'Send any resources or intros promised',       cat: 'followup',  checked: false },
+    ];
+  } else {
+    suggestions = [
+      { text: 'Send a follow-up message',                    cat: 'followup',  checked: false },
+      { text: 'Log notes and next steps',                    cat: 'research',  checked: true  },
+    ];
+  }
+  _calFollowUpSuggestions = suggestions;  // reuse existing save fn
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      ${_lmHeader(4)}
+      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:4px;">Add follow-up tasks</div>
+      <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:12px;">Uncheck anything you don't need.</div>
+      ${suggestions.map((s, i) => `
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" id="cfu-${i}" ${s.checked?'checked':''} style="margin-top:3px;flex-shrink:0;accent-color:var(--amber);width:15px;height:15px;">
+          <div>
+            <div style="font-size:0.84rem;color:var(--text);">${escHtml(s.text)}</div>
+            <div style="font-size:0.63rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;">${CATS[s.cat]?.label||s.cat}</div>
+          </div>
+        </label>`).join('')}
+      <div style="margin-top:8px;">
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <input id="cfu-custom" placeholder="Custom follow-up task…" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
+          <select id="cfu-custom-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.68rem;color:var(--text-dim);outline:none;cursor:pointer;-webkit-appearance:none;letter-spacing:0.04em;">
+            ${Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button onclick="_lm.step=3;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
+        <button onclick="_lmFinish()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save everything →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _lmFinish() {
+  let contactId = _lm.contactId;
+
+  // Create new contact if needed
+  if (!contactId && _lm.newContact && (_lm.newContact.first || _lm.newContact.last)) {
+    const nc = _lm.newContact;
+    const newC = {
+      id: S.nextContactId++, name: `${nc.first} ${nc.last}`.trim(),
+      first: nc.first, last: nc.last, company: nc.company||'',
+      role:'', email:'', type:'peer', notes:'', lastContact: null,
+      cadence:null, preferredMethod: _lm.logMethod, resumeSent:false,
+      nextStep:'', interactions:[], priority:false,
+      nextContactDate: _lm.followUpDate||'', followUpNote: _lm.followUpNote||'',
+    };
+    S.contacts.push(newC);
+    contactId = newC.id;
+  }
+
+  // Log interaction on existing or just-created contact
+  if (contactId) {
+    const ct = S.contacts.find(c => c.id === contactId);
+    if (ct) {
+      if (!ct.interactions) ct.interactions = [];
+      ct.interactions.unshift({ date: _lm.logDate, method: _lm.logMethod, notes: _lm.logNotes });
+      ct.lastContact = _lm.logDate;
+      if (_lm.followUpDate) { ct.nextContactDate = _lm.followUpDate; ct.followUpNote = _lm.followUpNote; }
+      ct.preferredMethod = ct.preferredMethod || _lm.logMethod;
+    }
+  }
+
+  // Add tasks
+  const selected = _calFollowUpSuggestions.filter((s, i) => {
+    const el = document.getElementById(`cfu-${i}`); return el && el.checked;
+  });
+  const customText = (document.getElementById('cfu-custom')||{}).value?.trim()||'';
+  const customCat  = (document.getElementById('cfu-custom-cat')||{}).value||'followup';
+  if (customText) selected.push({ text: customText, cat: customCat });
+
+  selected.forEach(s => {
+    S.tasks.unshift({ id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 });
+    S.totalAdded++;
+  });
+
+  save();
+  closeModal();
+
+  const parts = [];
+  if (contactId) parts.push('interaction logged');
+  if (_lm.followUpDate) parts.push('follow-up scheduled');
+  if (selected.length) parts.push(`${selected.length} task${selected.length!==1?'s':''} added`);
+  showToast(parts.length ? parts.join(' · ') + ' ✓' : 'Saved ✓');
+
+  if (currentTab === 'today')   renderToday();
+  if (currentTab === 'tasks')   renderQuests();
+  if (currentTab === 'network') renderNetwork();
+  _lm = {};
+}
+
+function _lmHeader(step) {
+  const dots = [1,2,3,4].map(i =>
+    `<div style="width:${i===step?'20px':'7px'};height:7px;border-radius:4px;background:${i===step?'var(--amber)':'var(--border)'};transition:width 0.2s;"></div>`
+  ).join('');
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Log this meeting</div>
+    <div style="display:flex;gap:4px;align-items:center;">${dots}</div>
+  </div>`;
+}
+
+// ── CALENDAR FOLLOW-UP WIZARD ────────────────────────────────
+
+function openCalEventFollowUp(title, time) {
+  const isInterview   = /interview|phone screen|screening|phone call|hiring|recruiter|final round/i.test(title);
+  const isNetworking  = /coffee|lunch|connect|catch.?up|informational|networking|intro call/i.test(title);
+
+  let typeLabel, suggestions;
+
+  if (isInterview) {
+    typeLabel = 'Interview follow-up';
+    suggestions = [
+      { text: 'Complete post-interview debrief in Pipeline', cat: 'research',  checked: true  },
+      { text: `Write a thank-you note`,                      cat: 'followup',  checked: true  },
+      { text: `Connect on LinkedIn`,                         cat: 'network',   checked: true  },
+      { text: `Check in if no response within 5 days`,       cat: 'followup',  checked: true  },
+      { text: `Log a win from the interview`,                cat: 'personal',  checked: false },
+      { text: `Send any promised materials or links`,        cat: 'followup',  checked: false },
+    ];
+  } else if (isNetworking) {
+    typeLabel = 'Networking follow-up';
+    suggestions = [
+      { text: `Send a follow-up thank-you note`,             cat: 'followup',  checked: true  },
+      { text: `Connect on LinkedIn`,                         cat: 'network',   checked: true  },
+      { text: `Add contact to Show Up`,                      cat: 'network',   checked: false },
+      { text: `Log notes from the conversation`,             cat: 'research',  checked: true  },
+      { text: `Schedule a follow-up check-in`,               cat: 'followup',  checked: false },
+      { text: `Send any resources or introductions promised`,cat: 'followup',  checked: false },
+    ];
+  } else {
+    typeLabel = 'Event follow-up';
+    suggestions = [
+      { text: `Send a follow-up message`,                    cat: 'followup',  checked: false },
+      { text: `Log notes and next steps`,                    cat: 'research',  checked: true  },
+      { text: `Add any new contacts`,                        cat: 'network',   checked: false },
+    ];
+  }
+
+  _calFollowUpSuggestions = suggestions;
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">${escHtml(typeLabel)}</div>
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:2px;">${escHtml(title)}</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:16px;">${escHtml(time)}</div>
+      <div style="font-size:0.72rem;color:var(--text-mid);margin-bottom:10px;">Select tasks to add to your list:</div>
+      ${suggestions.map((s, i) => `
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" id="cfu-${i}" ${s.checked ? 'checked' : ''} style="margin-top:3px;flex-shrink:0;accent-color:var(--amber);width:15px;height:15px;">
+          <div style="flex:1;">
+            <div style="font-size:0.84rem;color:var(--text);line-height:1.4;" id="cfu-txt-${i}">${escHtml(s.text)}</div>
+            <div style="font-size:0.63rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">${CATS[s.cat]?.label || s.cat}</div>
+          </div>
+        </label>`).join('')}
+      <div style="margin-top:6px;">
+        <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:5px;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Or add a custom follow-up</div>
+        <div style="display:flex;gap:6px;">
+          <input id="cfu-custom" placeholder="e.g. Prepare for next round…" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;">
+          <select id="cfu-custom-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.68rem;color:var(--text-dim);outline:none;cursor:pointer;-webkit-appearance:none;letter-spacing:0.04em;">
+            ${Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="addCalFollowUpTasks()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Add tasks →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function addCalFollowUpTasks() {
+  const selected = _calFollowUpSuggestions.filter((s, i) => {
+    const el = document.getElementById(`cfu-${i}`);
+    return el && el.checked;
+  });
+  const customText = (document.getElementById('cfu-custom') || {}).value?.trim() || '';
+  const customCat  = (document.getElementById('cfu-custom-cat') || {}).value || 'followup';
+  if (customText) selected.push({ text: customText, cat: customCat });
+
+  if (!selected.length) { showToast('Nothing selected'); return; }
+
+  selected.forEach(s => {
+    S.tasks.unshift({ id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 });
+    S.totalAdded++;
+  });
+  save();
+  closeModal();
+  showToast(`${selected.length} follow-up task${selected.length !== 1 ? 's' : ''} added ✓`);
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'tasks') renderQuests();
 }
 
 // ── CALENDAR & EXPORT ────────────────────────────────────────
@@ -6879,6 +7537,12 @@ function saveNewContact() {
   const first = document.getElementById('nc-first').value.trim();
   const last  = document.getElementById('nc-last').value.trim();
   if (!first && !last) { showToast('Enter a name'); return; }
+  const fullName = `${first} ${last}`.trim().toLowerCase();
+  const dupe = S.contacts.find(c => `${c.first||''} ${c.last||''}`.trim().toLowerCase() === fullName);
+  if (dupe) {
+    showToast(`⚠ ${first} ${last} is already in your contacts`);
+    return;
+  }
   S.contacts.push({
     id: S.nextContactId++,
     name: `${first} ${last}`.trim(),
@@ -7796,7 +8460,29 @@ function renderAccount() {
         ${firebaseUser ? `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><button onclick="signOutUser()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Sign out \u2192</button><button id="sync-now-btn" onclick="syncFromCloud()" style="background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:4px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">Sync now</button></div>` : `<button onclick="signInWithGoogle()" style="background:none;border:none;color:var(--amber);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;">Sign in with Google \u2192</button>`}
       </div>
     </div>`;
-  wrap.innerHTML = nameSection + `
+  const modeSection = `
+    <div style="margin-bottom:28px;">
+      <div class="card-label" style="margin-bottom:14px;">Product mode</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${[
+          { val: 'full',  label: 'Job Seeker + Coach',
+            desc: 'Full app — daily tracking, tasks, pipeline, network, and The Coach.' },
+          { val: 'coach', label: 'The Coach only',
+            desc: 'Skills, learning sessions, and progress. Job-search tools hidden.' },
+        ].map(opt => `
+          <label style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid ${S.mode===opt.val?'var(--amber)':'var(--border)'};border-radius:3px;cursor:pointer;transition:border-color 0.15s;" onclick="saveMode('${opt.val}')">
+            <div style="width:16px;height:16px;border-radius:50%;border:2px solid ${S.mode===opt.val?'var(--amber)':'var(--border)'};flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">
+              ${S.mode===opt.val?`<div style="width:7px;height:7px;border-radius:50%;background:var(--amber);"></div>`:''}
+            </div>
+            <div>
+              <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:2px;">${opt.label}</div>
+              <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.5;">${opt.desc}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+    </div>`;
+
+  wrap.innerHTML = nameSection + modeSection + `
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Data</div>
       <div style="display:flex;flex-direction:column;gap:14px">
@@ -7897,7 +8583,7 @@ function renderAccount() {
       ` : ''}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
-      <div class="card-label" style="margin-bottom:16px">AI Coach</div>
+      <div class="card-label" style="margin-bottom:16px">The Coach</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="flex:1">
           <div style="font-size:0.84rem;color:var(--text);font-weight:500">Claude API key</div>
@@ -8128,6 +8814,7 @@ checkWorkoutImport();
 checkDayReset();
 // Show app immediately with local data (fast start)
 render();
+updateTabVisibility();
 fetchWeather();
 // Then init Firebase — will update with cloud data if newer
 initFirebase();
