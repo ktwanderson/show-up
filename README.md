@@ -1,6 +1,8 @@
 # Show Up
 
-**Show Up is a personal operating system for job seekers** — built to help you stay consistent, stay sane, and show up every day with structure, momentum, and a clear sense of what actually moves the needle. Think of it as your daily command center, pipeline tracker, network manager, and ad tech learning coach rolled into one self-contained browser app.
+**Show Up is the personal operating system for ad tech professionals on the move** — whether you're actively job searching or leveling up where you are, it combines daily accountability tools, a full pipeline and network tracker, and an AI-powered skill coach that builds your ad tech expertise session by session, getting harder as you improve.
+
+Built for the people who already know the industry and want to get sharper: track your search from prospect to offer, stay consistent through the slow grind, and use The Coach to close the knowledge gaps — programmatic, header bidding, clean rooms, SPO, attention metrics — that actually come up in interviews and on the job.
 
 Runs entirely in the browser with no install, no backend, and no dependencies beyond optional cloud sync.
 

@@ -1083,6 +1083,12 @@
 </head>
 <body>
 
+<div id="sandbox-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:var(--amber);padding:7px 16px;align-items:center;justify-content:center;gap:12px;font-family:'Montserrat',sans-serif;">
+  <span style="font-size:0.7rem;color:#fff;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">◆ Preview mode</span>
+  <span style="font-size:0.72rem;color:rgba(255,255,255,0.85);letter-spacing:0.02em;">— your real data is untouched</span>
+  <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
+</div>
+
 <div id="signin-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
   <div style="max-width:320px;width:100%;text-align:center;">
     <div style="font-size:1.8rem;font-weight:800;letter-spacing:-0.035em;color:var(--amber);font-family:'Montserrat',sans-serif;margin-bottom:4px;">Show Up</div>
@@ -1699,6 +1705,100 @@ const LEVELS = [
   { min: 16500, title: 'Legend'               },
 ];
 
+// ── SANDBOX DEMO STATE ────────────────────────────────────────
+// Realistic "coach only" user shown during preview mode.
+// Completely isolated — never written to localStorage.
+const SANDBOX_DEMO_STATE = {
+  userName: 'Alex',
+  mode: 'coach',
+  xp: 1180,
+  earned: ['checkin_1','first_win','focus_5'],
+  showUpStreak: 6,
+  maxShowUpStreak: 14,
+  totalFocusBlocks: 9,
+  totalWins: 4,
+  totalDone: 12,
+  totalAdded: 15,
+  totalOutside: 3,
+  totalRestDays: 1,
+  doneBy: { apply:0, followup:0, network:0, research:12, admin:0, personal:0 },
+  tasks: [
+    { id:1, text:'The Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
+    { id:2, text:'The Coach: Header Bidding Deep Dive — Intermediate', cat:'research', done:true, doneAt:Date.now()-172800000, createdAt:Date.now()-172800000, points:1 },
+    { id:3, text:'Review focus areas from last session', cat:'research', done:false, createdAt:Date.now(), points:1 },
+  ],
+  nextId: 10,
+  totalAdded: 15,
+  skills: [
+    {
+      id:1, key:'programmatic-advertising', name:'Programmatic Advertising', category:'adtech',
+      level:2, sessionsTotal:3, active:true,
+      sessionLog:[
+        { date:'2026-04-10', notes:'The Coach: Beginner — Start with auction mechanics' },
+        { date:'2026-04-13', notes:'The Coach: Intermediate — Improve on floor pricing' },
+        { date:'2026-04-15', notes:'The Coach: Advanced — Strong on RTB, review deal types' },
+      ],
+      learningHistory:[
+        { date:'2026-04-10', score:'1/3', analysis:{ level:'Beginner',    focusAreas:[{topic:'Auction mechanics'},{topic:'RTB basics'}],          nextStep:'Study the open auction flow end-to-end.' } },
+        { date:'2026-04-13', score:'2/3', analysis:{ level:'Intermediate', focusAreas:[{topic:'Floor pricing'},{topic:'Deal types'}],              nextStep:'Understand PMP vs. open auction trade-offs.' } },
+        { date:'2026-04-15', score:'3/3', analysis:{ level:'Advanced',     focusAreas:[{topic:'Deal IDs'},{topic:'Bid shading'}],                  nextStep:'Go deep on bid shading and its auction impact.' } },
+      ],
+    },
+    {
+      id:2, key:'header-bidding', name:'Header Bidding', category:'adtech',
+      level:1, sessionsTotal:2, active:true,
+      sessionLog:[
+        { date:'2026-04-11', notes:'The Coach: Beginner — Understand wrapper setup' },
+        { date:'2026-04-14', notes:'The Coach: Intermediate — Focus on timeout tuning' },
+      ],
+      learningHistory:[
+        { date:'2026-04-11', score:'1/3', analysis:{ level:'Beginner',     focusAreas:[{topic:'Wrapper setup'},{topic:'Prebid.js basics'}],         nextStep:'Get hands-on with a Prebid config.' } },
+        { date:'2026-04-14', score:'2/3', analysis:{ level:'Intermediate', focusAreas:[{topic:'Timeout tuning'},{topic:'Bid caching'}],             nextStep:'Explore how timeout settings affect fill rate.' } },
+      ],
+    },
+    {
+      id:3, key:'data-clean-rooms', name:'Data Clean Rooms', category:'adtech',
+      level:0, sessionsTotal:1, active:true,
+      sessionLog:[
+        { date:'2026-04-16', notes:'The Coach: Beginner — Core privacy concepts' },
+      ],
+      learningHistory:[
+        { date:'2026-04-16', score:'0/3', analysis:{ level:'Beginner', focusAreas:[{topic:'Privacy-safe measurement'},{topic:'Identity resolution'},{topic:'AWS Clean Rooms basics'}], nextStep:'Read up on how clean rooms handle user-level matching without exposing raw data.' } },
+      ],
+    },
+    { id:4, key:'supply-path-optimization', name:'Supply Path Optimization', category:'adtech', level:0, sessionsTotal:0, active:true, sessionLog:[], learningHistory:[] },
+    { id:5, key:'attention-metrics',         name:'Attention Metrics',         category:'adtech', level:0, sessionsTotal:0, active:true, sessionLog:[], learningHistory:[] },
+  ],
+  nextSkillId: 10,
+  wins:[{ date:'2026-04-15', text:'Scored Advanced on Programmatic — first time!' }],
+  totalWins:1,
+  focusLog:[],
+  nextFocusLogId:1,
+  showUpDays:[
+    {date:'2026-04-10',energy:'regular'},{date:'2026-04-11',energy:'full'},
+    {date:'2026-04-12',energy:'light'},{date:'2026-04-13',energy:'regular'},
+    {date:'2026-04-14',energy:'regular'},{date:'2026-04-15',energy:'full'},
+    {date:'2026-04-16',energy:'regular'},
+  ],
+  todayDate: new Date().toISOString().slice(0,10),
+  todayEnergy: 'regular',
+  todayFocusIds: [3],
+  focusBlocksToday: 2,
+  contacts:[], pipeline:[], companies:[], tasks:[
+    { id:1, text:'The Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
+    { id:2, text:'Review focus areas: bid shading & deal IDs', cat:'research', done:false, createdAt:Date.now(), points:1 },
+  ],
+  nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
+  nextContactId:1, nextPipelineId:1, nextCompanyId:1,
+  trackedHabits:['workout','journal','outside'],
+  workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
+  journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
+  outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
+  questionBank:[], nextQuestionBankId:1,
+  weeklyCapacity:20, lastModified:0, resume:'', dailySnapshots:[], rolledOverTasks:[],
+  carryOverIds:[], todayCalEvents:[], onboardingComplete:true,
+};
+
 const ACHIEVEMENTS = [
   { id: 'checkin_1',   icon: '◉', name: 'Day One',          desc: 'Complete your first daily check-in',       check: s => s.showUpStreak >= 1 },
   { id: 'checkin_5',   icon: '|', name: 'Five Days',        desc: 'Check in 5 days in a row',                 check: s => s.maxShowUpStreak >= 5 },
@@ -2187,6 +2287,7 @@ function loadState() {
 }
 
 function save() {
+  if (_inSandbox) return;  // never write sandbox state to real storage
   S.lastModified = Date.now();
   localStorage.setItem('jhc3', JSON.stringify(S));
   if (firebaseUser && firebaseDb && !_syncPaused) {
@@ -3503,6 +3604,7 @@ async function callClaude(prompt, options = {}) {
 
 let _aiCoachState = {};    // tracks current quiz state
 let _calFollowUpSuggestions = []; // calendar follow-up wizard state
+let _inSandbox = false;           // true when previewing demo state
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
 const _expandedProjects = new Set(); // tracks which parent task IDs are expanded on the Tasks tab
 let _goalPickerOpenId = null;        // task ID currently showing the week-goal picker
@@ -6703,6 +6805,31 @@ function saveMode(newMode) {
   showToast(`Mode set to ${newMode === 'coach' ? 'Coach only' : 'Job Seeker + Coach'}`);
 }
 
+function enterSandbox() {
+  if (_inSandbox) return;
+  _inSandbox = true;
+  S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, SANDBOX_DEMO_STATE));
+  const banner = document.getElementById('sandbox-banner');
+  if (banner) { banner.style.display = 'flex'; document.body.style.paddingTop = '36px'; }
+  currentTab = 'progress';
+  updateTabVisibility();
+  switchTab('progress');
+}
+
+function exitSandbox() {
+  if (!_inSandbox) return;
+  _inSandbox = false;
+  const raw = localStorage.getItem('jhc3');
+  S = raw
+    ? normalizeStateArrays(Object.assign({}, DEFAULT_STATE, JSON.parse(raw)))
+    : Object.assign({}, DEFAULT_STATE);
+  const banner = document.getElementById('sandbox-banner');
+  if (banner) { banner.style.display = 'none'; document.body.style.paddingTop = ''; }
+  updateTabVisibility();
+  switchTab(JOBSEEKER_TABS.includes(currentTab) && S.mode !== 'coach' ? currentTab : (S.mode === 'coach' ? 'progress' : 'today'));
+  showToast('Back to your real data ✓');
+}
+
 function switchTab(tab) {
   // Guard: silently redirect hidden tabs to progress
   if (S.mode === 'coach' && JOBSEEKER_TABS.includes(tab)) tab = 'progress';
@@ -8479,6 +8606,13 @@ function renderAccount() {
               <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.5;">${opt.desc}</div>
             </div>
           </label>`).join('')}
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:0.8rem;color:var(--text);font-weight:500;">Preview Coach-only experience</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">Loads a demo account. Your real data stays untouched.</div>
+        </div>
+        <button onclick="enterSandbox()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">◆ Preview →</button>
       </div>
     </div>`;
 
