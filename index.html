@@ -1221,8 +1221,8 @@
 
 <div class="tabs-wrap">
   <button class="tab active" data-tab="today"    data-mode-required="full" onclick="switchTab('today')">Today</button>
-  <button class="tab"        data-tab="focus"    data-mode-required="full" onclick="switchTab('focus')">Focus</button>
-  <button class="tab"        data-tab="quests"   onclick="switchTab('quests')">Skills</button>
+  <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
+  <button class="tab"        data-tab="quests"   data-mode-required="full" onclick="switchTab('quests')">Tasks</button>
   <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
   <button class="tab" data-tab="journal" data-mode-required="full" onclick="switchTab('journal')">Journal</button>
@@ -3190,6 +3190,14 @@ function pinToFocus(id) {
 function renderFocusTimer() {
   const wrap = document.getElementById('focus-wrap');
   if (!wrap) return;
+
+  // Coach-only mode: skip toggle, go straight to skills
+  if (S.mode === 'coach') {
+    focusView = 'skills';
+    wrap.innerHTML = '';
+    renderSkills();
+    return;
+  }
 
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
     <button class="view-toggle-btn ${focusView==='timer'?'active':''}" onclick="focusView='timer';renderFocusTimer()">Timer</button>
@@ -6772,7 +6780,7 @@ function checkAchievements() {
 // ── NAV ──────────────────────────────────────────────────────
 
 // Tabs hidden in coach-only mode
-const JOBSEEKER_TABS = ['today', 'focus', 'network', 'journal'];
+const JOBSEEKER_TABS = ['today', 'quests', 'network', 'journal'];
 
 function updateTabVisibility() {
   const isCoach = S.mode === 'coach';
@@ -6782,9 +6790,12 @@ function updateTabVisibility() {
     btn.style.display = isCoach ? 'none' : '';
   });
 
-  // In full mode: quests tab = "Tasks". In coach mode: "Skills"
-  const questsBtn = document.querySelector('[data-tab="quests"]');
-  if (questsBtn) questsBtn.textContent = isCoach ? 'Skills' : 'Tasks';
+  // In full mode: focus tab = "Focus". In coach mode: "Skills"
+  const focusBtn = document.querySelector('[data-tab="focus"]');
+  if (focusBtn) focusBtn.textContent = isCoach ? 'Skills' : 'Focus';
+
+  // In coach mode lock focus tab to skills view
+  if (isCoach) focusView = 'skills';
 
   // If currently on a hidden tab, redirect to progress
   if (isCoach && JOBSEEKER_TABS.includes(currentTab)) {
@@ -6811,9 +6822,10 @@ function enterSandbox() {
   S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, SANDBOX_DEMO_STATE));
   const banner = document.getElementById('sandbox-banner');
   if (banner) { banner.style.display = 'flex'; document.body.style.paddingTop = '36px'; }
-  currentTab = 'progress';
+  focusView = 'skills';
+  currentTab = 'focus';
   updateTabVisibility();
-  switchTab('progress');
+  switchTab('focus');
 }
 
 function exitSandbox() {
