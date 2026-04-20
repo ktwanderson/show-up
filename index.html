@@ -74,6 +74,7 @@
       --green:      #3a5649;
       --green-lt:   rgba(58,86,73,0.07);
       --red:        #b03428;
+      --error:      #b03428;
       --orange:     #9a7c1c;
       --text:       #1a1a1a;
       --text-dim:   #8a857a;
@@ -163,7 +164,7 @@
       border-radius: 0;
       transition: width 0.6s cubic-bezier(0.34,1.2,0.64,1);
     }
-    .xp-bar-label { display: block; font-size: 0.63rem; color: var(--text-dim); margin-top: 4px; font-family: 'Montserrat', sans-serif; letter-spacing: 0.03em; }
+    .xp-bar-label { display: block; font-size: 0.62rem; color: var(--text-dim); margin-top: 4px; font-family: 'Montserrat', sans-serif; letter-spacing: 0.03em; }
 
     /* ── TABS ────────────────────────────────────────── */
     .tabs-wrap {
@@ -228,7 +229,7 @@
       margin-bottom: 20px;
     }
     .field-note-icon { display: none; }
-    .field-note-text { font-size: 0.79rem; color: var(--text-dim); line-height: 1.7; }
+    .field-note-text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.7; }
 
     /* ── ENERGY SELECTOR ─────────────────────────────── */
     .energy-row { display: flex; gap: 8px; margin: 20px 0 12px; }
@@ -263,7 +264,7 @@
       border-top: 1px solid var(--border);
       border-radius: 0;
       color: var(--text-dim);
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       cursor: pointer;
       transition: color 0.15s;
       font-family: 'DM Sans', sans-serif;
@@ -389,7 +390,7 @@
     .task-text { flex: 1; font-size: 0.86rem; line-height: 1.55; color: var(--text); word-break: break-word; }
     .task-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
     .xp-badge {
-      font-size: 0.63rem; color: var(--text-dim);
+      font-size: 0.62rem; color: var(--text-dim);
       padding: 0; white-space: nowrap;
       font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
     }
@@ -402,10 +403,10 @@
       font-family: 'Montserrat', sans-serif; letter-spacing: 0.04em;
     }
     .pin-btn:hover { color: var(--amber); }
-    .pin-tag { font-size: 0.66rem; color: var(--amber); white-space: nowrap; }
+    .pin-tag { font-size: 0.68rem; color: var(--amber); white-space: nowrap; }
     .del-btn {
       background: none; border: none; color: var(--text-dim);
-      cursor: pointer; font-size: 0.73rem; padding: 2px 5px;
+      cursor: pointer; font-size: 0.72rem; padding: 2px 5px;
       border-radius: 2px; opacity: 0; transition: opacity 0.15s, color 0.15s;
     }
     .del-btn:hover { opacity: 1 !important; color: var(--red); }
@@ -642,7 +643,7 @@
 
     /* ── XP FLOAT ────────────────────────────────────── */
     .xp-float {
-      position: fixed; font-weight: 700; font-size: 0.88rem;
+      position: fixed; font-weight: 700; font-size: 0.85rem;
       color: var(--amber); pointer-events: none;
       animation: floatUp 0.9s ease forwards; z-index: 300;
     }
@@ -783,7 +784,7 @@
     }
     .pin-prompt {
       font-size: 0.65rem; color: var(--text-dim);
-      font-family: 'Montserrat', sans-serif; letter-spacing: 0.07em;
+      font-family: 'Montserrat', sans-serif; letter-spacing: var(--ls-caps);
       text-transform: uppercase; margin-bottom: 36px; min-height: 1.2em;
       text-align: center;
     }
@@ -814,7 +815,7 @@
     .pin-key.ghost  { pointer-events: none; color: transparent; }
     .pin-key.back   { font-size: 1rem; color: var(--text-dim); }
     .pin-error-msg  {
-      margin-top: 20px; font-size: 0.63rem; color: var(--red);
+      margin-top: 20px; font-size: 0.62rem; color: var(--red);
       font-family: 'Montserrat', sans-serif; letter-spacing: 0.06em;
       text-transform: uppercase; min-height: 1em; text-align: center;
     }
@@ -840,7 +841,7 @@
     .data-action-btn:hover { background: var(--border); }
     .data-action-btn.danger { color: var(--red); }
     .data-desc {
-      font-size: 0.73rem; color: var(--text-dim); line-height: 1.5; flex: 1;
+      font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; flex: 1;
     }
 
 /* ── NETWORK TAB ─────────────────────────────────────── */
@@ -935,7 +936,7 @@
 }
 .contact-inline-input:focus { outline: 1px solid var(--border-hl); }
 .contact-interaction-entry {
-  font-size: 0.76rem; color: var(--text-mid); line-height: 1.6;
+  font-size: 0.78rem; color: var(--text-mid); line-height: 1.6;
   padding: 8px 0; border-bottom: 1px solid var(--border);
 }
 .contact-interaction-entry:last-child { border-bottom: none; }
@@ -969,7 +970,7 @@
 .net-add-btn {
   background: none; border: 1px solid var(--border); border-radius: 2px;
   font-size: 0.7rem; font-family: 'Montserrat', sans-serif;
-  letter-spacing: 0.05em; color: var(--text-dim);
+  letter-spacing: var(--ls-ui); color: var(--text-dim);
   padding: 7px 14px; cursor: pointer; transition: all 0.15s;
 }
 .net-add-btn:hover { border-color: var(--border-hl); color: var(--text-mid); }
@@ -1056,7 +1057,7 @@
 .rej-log-date {
   font-size: 0.62rem;
   font-family: 'Montserrat', sans-serif;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
   color: var(--text-dim);
   margin-bottom: 4px;
@@ -1088,7 +1089,7 @@
 <div id="sandbox-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:var(--amber);padding:7px 16px;align-items:center;justify-content:center;gap:12px;font-family:'Montserrat',sans-serif;">
   <span style="font-size:0.7rem;color:#fff;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">◆ Preview mode</span>
   <span style="font-size:0.72rem;color:rgba(255,255,255,0.85);letter-spacing:0.02em;">— your real data is untouched</span>
-  <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
+  <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
 </div>
 
 <div id="signin-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
@@ -1097,7 +1098,7 @@
     <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:48px;">Daily rhythm · Job search</div>
     <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:8px;font-weight:500;">Sign in to sync across all your devices</div>
     <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:32px;line-height:1.6;">Your data stays private and syncs automatically between your Mac and iPhone.</div>
-    <button id="google-signin-btn" onclick="signInWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;background:var(--surface);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.02em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border-hl)'" onmouseout="this.style.borderColor='var(--border)'">
+    <button id="google-signin-btn" onclick="signInWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;background:var(--surface);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.02em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border-hl)'" onmouseout="this.style.borderColor='var(--border)'">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
       Continue with Google
     </button>
@@ -1126,9 +1127,9 @@
         </label>
         <div id="ob-workout-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
-          <input type="number" id="ob-workout-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <input type="number" id="ob-workout-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
           <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
-          <select id="ob-workout-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+          <select id="ob-workout-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
             <option value="week">week</option>
             <option value="month">month</option>
           </select>
@@ -1142,9 +1143,9 @@
         </label>
         <div id="ob-journal-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
-          <input type="number" id="ob-journal-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <input type="number" id="ob-journal-target" value="3" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
           <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
-          <select id="ob-journal-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+          <select id="ob-journal-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
             <option value="week">week</option>
             <option value="month">month</option>
           </select>
@@ -1158,9 +1159,9 @@
         </label>
         <div id="ob-outside-goal" style="padding-left:26px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:0.78rem;color:var(--text-mid);">Goal:</span>
-          <input type="number" id="ob-outside-target" value="5" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+          <input type="number" id="ob-outside-target" value="5" min="1" max="31" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
           <span style="font-size:0.78rem;color:var(--text-mid);">times per</span>
-          <select id="ob-outside-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+          <select id="ob-outside-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
             <option value="week">week</option>
             <option value="month">month</option>
           </select>
@@ -1675,6 +1676,8 @@ const PIPELINE_STAGES = [
   { key: 'rejected',   label: 'Rejected',     color: '#c0392b' },
   { key: 'withdrawn',  label: 'Withdrawn',    color: '#8c8880' },
 ];
+
+const INTERVIEW_STAGE_KEYS = new Set(['phone','interview1','interview2','final']);
 
 const COMPANY_STATUSES = [
   { key: 'researching', label: 'Researching', color: '#8c8880' },
@@ -2504,7 +2507,7 @@ function renderToday() {
         <div class="field-note-text">${randomPick(NOTES)}</div>
       </div>
       <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:4px">How are you showing up today?</div>
-      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:12px">There's no wrong answer. This shapes what you aim for today.</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px">There's no wrong answer. This shapes what you aim for today.</div>
       <div class="energy-row">
         <button class="energy-btn" onclick="setEnergy('light')">
           <span class="e-icon">○</span>
@@ -2635,8 +2638,8 @@ function renderToday() {
     })()}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div>
-        <div style="font-size:0.76rem;color:var(--text-dim)">${dateStr}</div>
-        <div style="font-size:0.92rem;font-weight:600;color:var(--text);margin-top:2px">${ec.icon} ${ec.label}</div>
+        <div style="font-size:0.78rem;color:var(--text-dim)">${dateStr}</div>
+        <div style="font-size:0.95rem;font-weight:600;color:var(--text);margin-top:2px">${ec.icon} ${ec.label}</div>
       </div>
       <button onclick="resetCheckin()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;padding:4px 0;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Change</button>
     </div>
@@ -2659,7 +2662,7 @@ function renderToday() {
       const rolledTasks = S.rolledOverTasks.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
       if (rolledTasks.length === 0) return '';
       return `<div style="margin-bottom:16px;border:1px solid var(--border);border-left:3px solid var(--border-hl);border-radius:3px;padding:12px 14px;">
-        <div style="font-size:0.65rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:10px;">From yesterday</div>
+        <div style="font-size:0.65rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;margin-bottom:10px;">From yesterday</div>
         ${rolledTasks.map(t => `
           <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
             <div style="flex:1;font-size:0.84rem;color:var(--text-mid);line-height:1.3;">${escHtml(t.text)}</div>
@@ -2757,7 +2760,7 @@ function renderToday() {
       <div style="display:flex;align-items:center;gap:8px">
         <div class="session-dots">${sessionDots}</div>
         <span style="font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif">${S.focusBlocksToday}</span>
-        <button onclick="event.stopPropagation();logFocusSessionManually()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;line-height:1.4;">+</button>
+        <button onclick="event.stopPropagation();logFocusSessionManually()" style="background:none;border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;line-height:1.4;">+</button>
       </div>
     </div>
     ` : ''}
@@ -2904,15 +2907,15 @@ function setEnergy(energy) {
         <div style="display:flex;justify-content:center;gap:24px;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:20px;">
           <div>
             <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;line-height:1;color:var(--text);">${prev}</div>
-            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">prev streak</div>
+            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">prev streak</div>
           </div>
           <div style="width:1px;background:var(--border);"></div>
           <div>
             <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;line-height:1;color:var(--amber);">${best}</div>
-            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">your best</div>
+            <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:4px;">your best</div>
           </div>
         </div>
-        <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:20px;">Your best — ${best} ${best === 1 ? 'day' : 'days'} — is still yours.</div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:20px;">Your best — ${best} ${best === 1 ? 'day' : 'days'} — is still yours.</div>
         <button onclick="closeModal()" style="width:100%;padding:11px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Pick up where I left off</button>
       </div>
     `), 400);
@@ -3164,18 +3167,18 @@ function openFocusPicker() {
   inner.innerHTML = `
     <div style="text-align:left">
       <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:3px">Pick a task</div>
-      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:12px">Select one to add to today's focus</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px">Select one to add to today's focus</div>
       <div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:5px">
         ${active.map(t => {
           const cat = CATS[t.cat] || {};
-          return `<div onclick="pinToFocus(${t.id})" style="padding:10px 11px;background:var(--surface2);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px">
+          return `<div onclick="pinToFocus(${t.id})" style="padding:10px 11px;background:var(--surface2);border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:8px">
             ${catDot(t.cat, '20px')}
-            <div style="flex:1;font-size:0.81rem;color:var(--text)">${escHtml(t.text)}</div>
-            <div style="font-size:0.63rem;color:var(--text-dim);white-space:nowrap">${cat.label||''}</div>
+            <div style="flex:1;font-size:0.82rem;color:var(--text)">${escHtml(t.text)}</div>
+            <div style="font-size:0.62rem;color:var(--text-dim);white-space:nowrap">${cat.label||''}</div>
           </div>`;
         }).join('')}
       </div>
-      <button onclick="closeModal()" style="margin-top:12px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);padding:9px;border-radius:8px;cursor:pointer;font-size:0.81rem">Cancel</button>
+      <button onclick="closeModal()" style="margin-top:12px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);padding:9px;border-radius:3px;cursor:pointer;font-size:0.82rem">Cancel</button>
     </div>`;
   document.getElementById('overlay').classList.add('show');
 }
@@ -3275,7 +3278,7 @@ function renderFocusTimer() {
         <button class="timer-mode-btn ${timer.mode==='long'?'active':''}" onclick="setTimerMode('long')">Long Break</button>
       </div>
       <div class="timer-display" id="timer-display">${mins}:${secs}</div>
-      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:20px">${modeLabel} · ${S.focusBlocksToday} session${S.focusBlocksToday!==1?'s':''} completed today</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:20px">${modeLabel} · ${S.focusBlocksToday} session${S.focusBlocksToday!==1?'s':''} completed today</div>
       <div class="timer-controls">
         <button class="timer-btn primary" onclick="toggleTimer()" id="timer-start-btn">${timer.running ? 'Pause' : 'Start'}</button>
         <button class="timer-btn secondary" onclick="resetTimer()">Reset</button>
@@ -3359,7 +3362,7 @@ function renderFocusHistory() {
             <span style="font-size:0.7rem;color:var(--text-dim);">${s.durationMins||25} min</span>
           </div>
           ${taskLabel ? `<div style="font-size:0.82rem;color:var(--text);line-height:1.4;">${escHtml(taskLabel)}</div>` : ''}
-          ${s.reflection ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:3px;line-height:1.45;">↳ ${escHtml(s.reflection)}</div>` : ''}
+          ${s.reflection ? `<div style="font-size:0.78rem;color:var(--text-mid);margin-top:3px;line-height:1.45;">↳ ${escHtml(s.reflection)}</div>` : ''}
         </div>
       </div>`;
     });
@@ -3374,15 +3377,15 @@ function renderFocusHistory() {
     <div style="display:flex;gap:16px;margin-bottom:20px;">
       <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
         <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${S.focusLog.length}</div>
-        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">sessions</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-top:2px;">sessions</div>
       </div>
       <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
         <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${totalHours}h</div>
-        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">total focus</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-top:2px;">total focus</div>
       </div>
       <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:2px;">
         <div style="font-size:1.4rem;font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">${S.focusBlocksToday}</div>
-        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">today</div>
+        <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-top:2px;">today</div>
       </div>
     </div>
     ${html}
@@ -3412,10 +3415,10 @@ function renderSkills() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:0.86rem;font-weight:600;color:var(--text);">${escHtml(sk.name)}</div>
-            <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">${catLabel}</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-top:2px;">${catLabel}</div>
           </div>
           <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:${lvColor};flex-shrink:0;">Lv ${sk.level} · ${levelLabel}</span>
-          <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${sk.sessionsTotal} session${sk.sessionsTotal!==1?'s':''}</div>
+          <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${sk.sessionsTotal} session${sk.sessionsTotal!==1?'s':''}</div>
         </div>
         <div style="height:2px;background:var(--border);border-radius:1px;margin-bottom:8px;overflow:hidden;">
           <div style="width:${barWidth}%;height:100%;background:var(--amber);border-radius:1px;transition:width 0.4s;"></div>
@@ -3451,7 +3454,7 @@ function logSkillSession(skillId) {
   showModal(`
     <div style="text-align:left;">
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">${escHtml(skill.name)}</div>
-      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px;">Level ${skill.level} · Log a session</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px;">Level ${skill.level} · Log a session</div>
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Notes (optional)</div>
       <textarea id="skill-session-notes" placeholder="What did you study or practice? What clicked?" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;resize:none;outline:none;line-height:1.6;min-height:72px;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:8px;margin-top:20px;">
@@ -3519,7 +3522,7 @@ function openSkillLibrary() {
   showModal(`
     <div style="text-align:left;">
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Add a skill</div>
-      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:12px;">Choose skills to track</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-bottom:12px;">Choose skills to track</div>
       <div style="max-height:60vh;overflow-y:auto;">${grouped}</div>
       <button onclick="closeModal()" style="margin-top:20px;width:100%;padding:10px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
     </div>
@@ -3718,7 +3721,7 @@ function displayContinuationFlow(skillId) {
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${sessionCount} session${sessionCount !== 1 ? 's' : ''}</div>
       </div>
-      <div style="font-size:0.92rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back 👋</div>
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back 👋</div>
 
       ${last ? `<div style="background:var(--surface2);border-radius:3px;padding:12px 14px;margin-bottom:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Last session · ${escHtml(lastDate)}</div>
@@ -3815,7 +3818,7 @@ function displayIntroQuestion(skillId) {
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
         ${[0,1,2,3].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i===0?'var(--text-mid)':'var(--border)'};"></div>`).join('')}
       </div>
-      <div style="font-size:0.92rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you define <em>${escHtml(skill.name)}</em>?</div>
+      <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you define <em>${escHtml(skill.name)}</em>?</div>
       <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:14px;">No right or wrong answer — this helps calibrate the questions to where you actually are.</div>
       <textarea id="ai-intro-answer" placeholder="Write a few sentences..." style="width:100%;border:1px solid var(--border);background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:10px 12px;outline:none;border-radius:2px;resize:none;min-height:80px;box-sizing:border-box;line-height:1.6;" oninput="document.getElementById('ai-intro-next').style.background=this.value.trim()?'var(--amber)':'var(--surface2)';document.getElementById('ai-intro-next').style.color=this.value.trim()?'#fff':'var(--text-dim)';"></textarea>
       <div style="display:flex;gap:8px;margin-top:14px;">
@@ -3926,7 +3929,7 @@ function displayDiagnosticQuestion() {
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentWithIntro + 1} / ${totalWithIntro}</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">${progressDots}</div>
-      <div style="font-size:0.92rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:18px;">${escHtml(q.question)}</div>
+      <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:18px;">${escHtml(q.question)}</div>
       ${optionsHTML}
       <div style="display:flex;gap:8px;margin-top:16px;">
         ${currentQ > 0 ? `<button onclick="_aiCoachState.currentQ--;displayDiagnosticQuestion()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Back</button>` : ''}
@@ -3951,7 +3954,7 @@ function displayAnswerReview() {
     if (isCorrect) correct++;
     const dot = isCorrect
       ? `<span style="color:#2d8a5e;font-size:0.8rem;flex-shrink:0;">✓</span>`
-      : `<span style="color:var(--error,#c0392b);font-size:0.8rem;flex-shrink:0;">✗</span>`;
+      : `<span style="color:var(--error);font-size:0.8rem;flex-shrink:0;">✗</span>`;
     return `
       <div style="padding:12px 0;border-bottom:1px solid var(--border);">
         <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;">
@@ -3960,7 +3963,7 @@ function displayAnswerReview() {
         </div>
         ${!isCorrect && correctAns ? `
           <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:4px;padding-left:20px;">
-            <span style="color:var(--error,#c0392b);">You answered:</span> ${escHtml(userAns || 'no answer')}
+            <span style="color:var(--error);">You answered:</span> ${escHtml(userAns || 'no answer')}
           </div>
           <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;padding-left:20px;">
             <span style="color:#2d8a5e;">Correct:</span> ${escHtml(correctAns)}
@@ -3970,7 +3973,7 @@ function displayAnswerReview() {
   }).join('');
 
   const pct = Math.round((correct / questions.length) * 100);
-  const scoreColor = pct >= 67 ? '#2d8a5e' : pct >= 34 ? 'var(--amber)' : 'var(--error,#c0392b)';
+  const scoreColor = pct >= 67 ? '#2d8a5e' : pct >= 34 ? 'var(--amber)' : 'var(--error)';
 
   showModal(`
     <div style="text-align:left;max-height:70vh;overflow-y:auto;">
@@ -4177,7 +4180,7 @@ function openSkillContent(skillId) {
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;">${escHtml(skill.name)}</div>
         <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--amber);">Lv ${skill.level}</span>
       </div>
-      <div style="font-size:0.66rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:16px;">${levelLabel}</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-bottom:16px;">${levelLabel}</div>
       <div style="border-left:2px solid var(--amber);padding:4px 0 4px 14px;margin-bottom:20px;">
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.75;">${escHtml(content)}</div>
       </div>
@@ -4395,7 +4398,7 @@ function renderCapacityBar() {
 
   return `<div style="margin-top:8px;margin-bottom:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);font-family:'Montserrat',sans-serif;">Sprint</div>
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);font-family:'Montserrat',sans-serif;">Sprint</div>
       <div style="font-size:0.72rem;color:${isOver ? 'var(--red)' : 'var(--text-dim)'};font-family:'Montserrat',sans-serif;">
         <span style="font-weight:700;color:${isOver ? 'var(--red)' : 'var(--text)'}">${committedPts}</span> / ${capacity} pts${isOver ? ' · over capacity' : ''}
       </div>
@@ -4529,7 +4532,7 @@ function makeQuestTaskHTML(task, showCat) {
 
   const goalPicker = goalPickerOpen ? `
     <div style="padding:8px 0 8px 28px;" onclick="event.stopPropagation()">
-      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Link to week goal</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-bottom:6px;">Link to week goal</div>
       ${getWeekGoalPickerHTML(task.id)}
     </div>` : '';
 
@@ -4673,14 +4676,14 @@ function openEditTask(id) {
   row.innerHTML = `
     <div style="display:flex;gap:6px;align-items:center;width:100%;flex-wrap:wrap;padding:4px 0;">
       <input id="edit-task-text-${id}" type="text" value="${escHtml(task.text)}"
-        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:0.85rem;font-family:'Montserrat',sans-serif;"
+        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.85rem;font-family:'Montserrat',sans-serif;"
         onkeydown="if(event.key==='Enter')saveEditTask(${id});if(event.key==='Escape')renderQuests();" />
       <select id="edit-task-cat-${id}"
-        style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:0.8rem;font-family:'Montserrat',sans-serif;">
+        style="padding:5px 6px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.8rem;font-family:'Montserrat',sans-serif;">
         ${catOptions}
       </select>
-      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
-      <button onclick="renderQuests()" style="padding:5px 10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Cancel</button>
+      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
+      <button onclick="renderQuests()" style="padding:5px 10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Cancel</button>
     </div>`;
   const inp = document.getElementById('edit-task-text-' + id);
   if (inp) { inp.focus(); inp.select(); }
@@ -4843,14 +4846,14 @@ function renderPipeline() {
     if (entries.length === 0) return;
     const stageInfo = PIPELINE_STAGES.find(s => s.key === stageKey);
     html += `<div style="margin-bottom:12px;">
-      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
+      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
       ${entries.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   });
 
   if (closed.length > 0) {
     html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
+      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
       ${closed.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   }
@@ -4867,8 +4870,10 @@ function renderPipelineEntry(e) {
   ).join('');
 
   const isInterviewStage = ['phone','interview1','interview2','final'].includes(e.stage);
-  const hasPrep = e.prepPeople || e.prepQuestions || e.prepStories || e.prepAsk;
-  const hasDebrief = e.debriefWentWell || e.debriefImprove || e.debriefFollowUp;
+  const hasPrep = e.prepPeople || e.prepQuestions || e.prepStories || e.prepAsk ||
+    (e.prepHistory||[]).some(r => r.prep && (r.prep.people||r.prep.questions||r.prep.stories||r.prep.ask));
+  const hasDebrief = e.debriefWentWell || e.debriefImprove || e.debriefFollowUp ||
+    (e.prepHistory||[]).some(r => r.debrief && (r.debrief.wentWell||r.debrief.improve||r.debrief.followUp));
 
   const fL = `font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;display:block;`;
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
@@ -4889,15 +4894,17 @@ function renderPipelineEntry(e) {
         ${(() => {
           const hist = (e.stageHistory || []);
           if (!hist.length) return '';
-          return `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;">` +
+          return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;">` +
             hist.map(h => {
               const si = PIPELINE_STAGES.find(s => s.key === h.stage);
               if (!si) return '';
               const isCurrent = h.stage === e.stage;
-              return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isCurrent?'var(--amber)':'var(--text-dim)'};background:${isCurrent?'var(--amber-lt)':'transparent'};border:1px solid ${isCurrent?'var(--amber-ring)':'var(--border)'};border-radius:2px;padding:2px 6px;">` +
-                `<span style="width:5px;height:5px;border-radius:50%;background:${si.color};flex-shrink:0;"></span>${escHtml(si.label)}` +
-                (h.date ? `<span style="opacity:0.6;margin-left:2px;">${escHtml(h.date.slice(5))}</span>` : '') +
-              `</span>`;
+              return `<div style="display:inline-flex;align-items:center;gap:5px;">` +
+                `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isCurrent?'var(--amber)':'var(--text-dim)'};background:${isCurrent?'var(--amber-lt)':'transparent'};border:1px solid ${isCurrent?'var(--amber-ring)':'var(--border)'};border-radius:2px;padding:2px 6px;">` +
+                  `<span style="width:5px;height:5px;border-radius:50%;background:${si.color};flex-shrink:0;"></span>${escHtml(si.label)}` +
+                `</span>` +
+                `<input type="date" value="${escHtml(h.date||'')}" title="Edit date" onchange="editStageDate(${e.id},'${h.stage}',this.value)" onclick="event.stopPropagation()" style="font-size:0.62rem;font-family:'Montserrat',sans-serif;color:var(--text-dim);background:transparent;border:none;border-bottom:1px solid var(--border);outline:none;cursor:pointer;padding:1px 0;width:92px;">` +
+              `</div>`;
             }).join('') +
           `</div>`;
         })()}
@@ -4965,6 +4972,28 @@ function renderPipelineEntry(e) {
         <label style="${fL}">Questions to ask them</label>
         <textarea id="pe-prepAsk-${e.id}" placeholder="What do you want to learn about the role, team, or company?" onblur="savePipelineField(${e.id},'prepAsk')" style="${tA}">${escHtml(e.prepAsk||'')}</textarea>
       </div>
+      ${(() => {
+        const history = (e.prepHistory||[]).filter(r => r.prep && (r.prep.people||r.prep.questions||r.prep.stories||r.prep.ask));
+        if (!history.length) return '';
+        return `<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:14px;">
+          <div style="${fL}margin-bottom:10px;">Previous rounds</div>
+          ${history.map(r => {
+            const si = PIPELINE_STAGES.find(s => s.key === r.stage);
+            const label = (si?.label || r.stage) + (r.date ? ` · ${r.date.slice(5)}` : '');
+            return `<details style="margin-bottom:8px;border:1px solid var(--border);border-radius:2px;">
+              <summary style="padding:8px 10px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-mid);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+                ${escHtml(label)}<span style="opacity:0.4;font-size:0.65rem;">▾</span>
+              </summary>
+              <div style="padding:10px 10px 12px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);">
+                ${r.prep.people ? `<div><div style="${fL}">Who you met</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.prep.people)}</div></div>` : ''}
+                ${r.prep.questions ? `<div><div style="${fL}">Questions prepared</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.prep.questions)}</div></div>` : ''}
+                ${r.prep.stories ? `<div><div style="${fL}">Stories & examples</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.prep.stories)}</div></div>` : ''}
+                ${r.prep.ask ? `<div><div style="${fL}">Questions to ask</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.prep.ask)}</div></div>` : ''}
+              </div>
+            </details>`;
+          }).join('')}
+        </div>`;
+      })()}
     </div>`;
 
   const debriefTab = `
@@ -4986,6 +5015,31 @@ function renderPipelineEntry(e) {
         <label style="${fL}">Your gut read</label>
         <textarea id="pe-debriefGutRead-${e.id}" placeholder="How do you feel it went? Red flags? Green lights? Energy of the team?" onblur="savePipelineField(${e.id},'debriefGutRead')" style="${tA}">${escHtml(e.debriefGutRead||'')}</textarea>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+        <button onclick="event.stopPropagation();openEmailDrafter(${e.id},'thankyou')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft thank-you</button>
+      </div>
+      ${(() => {
+        const history = (e.prepHistory||[]).filter(r => r.debrief && (r.debrief.wentWell||r.debrief.improve||r.debrief.followUp||r.debrief.gutRead));
+        if (!history.length) return '';
+        return `<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;">
+          <div style="${fL}margin-bottom:10px;">Past round debriefs</div>
+          ${history.map(r => {
+            const si = PIPELINE_STAGES.find(s => s.key === r.stage);
+            const label = (si?.label || r.stage) + (r.date ? ` · ${r.date.slice(5)}` : '');
+            return `<details style="margin-bottom:8px;border:1px solid var(--border);border-radius:2px;">
+              <summary style="padding:8px 10px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-mid);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+                ${escHtml(label)}<span style="opacity:0.4;font-size:0.65rem;">▾</span>
+              </summary>
+              <div style="padding:10px 10px 12px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);">
+                ${r.debrief.wentWell ? `<div style="border-left:2px solid var(--teal);padding-left:10px;"><div style="${fL}color:var(--teal);">✓ What went well</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.debrief.wentWell)}</div></div>` : ''}
+                ${r.debrief.improve ? `<div style="border-left:2px solid var(--amber);padding-left:10px;"><div style="${fL}color:var(--amber);">↑ Areas to improve</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.debrief.improve)}</div></div>` : ''}
+                ${r.debrief.followUp ? `<div style="border-left:2px solid var(--border);padding-left:10px;"><div style="${fL}">→ Follow-up actions</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.debrief.followUp)}</div></div>` : ''}
+                ${r.debrief.gutRead ? `<div style="border-left:2px solid var(--border);padding-left:10px;"><div style="${fL}">♦ Gut read</div><div style="font-size:0.78rem;color:var(--text-mid);line-height:1.55;white-space:pre-wrap;">${escHtml(r.debrief.gutRead)}</div></div>` : ''}
+              </div>
+            </details>`;
+          }).join('')}
+        </div>`;
+      })()}
     </div>`;
 
   return `<div style="border-bottom:1px solid var(--border);">
@@ -5059,7 +5113,7 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
 
   if (result.error) {
     wrap.innerHTML = `
-      <div style="font-size:0.75rem;color:var(--error,#e57373);padding:6px 0;margin-bottom:6px;">${result.message}</div>
+      <div style="font-size:0.75rem;color:var(--error);padding:6px 0;margin-bottom:6px;">${result.message}</div>
       <textarea id="pe-prepQuestions-${id}" placeholder="What questions do you expect? What's tricky about this role?" onblur="savePipelineField(${id},'prepQuestions')" style="background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:70px;">${escHtml(e.prepQuestions||'')}</textarea>`;
     return;
   }
@@ -5078,9 +5132,10 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
 }
 
 // ── FEATURE 1: EMAIL DRAFTER ─────────────────────────────────
-function openEmailDrafter(id) {
+function openEmailDrafter(id, defaultType) {
   const e = S.pipeline.find(x => x.id === id);
   if (!e) return;
+  const autoType = defaultType || (INTERVIEW_STAGE_KEYS.has(e.stage) ? 'thankyou' : 'followup');
   const inner = document.getElementById('modal-inner');
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
@@ -5091,11 +5146,11 @@ function openEmailDrafter(id) {
       <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:14px;">${escHtml(e.role||'Role')} · ${escHtml(e.company||'Company')}</div>
       <label style="${fL}">Type</label>
       <select id="ed-type" style="${iS}">
-        <option value="cover">Cover Letter</option>
-        <option value="followup">Follow-up after apply</option>
-        <option value="thankyou">Thank-you after interview</option>
-        <option value="checkin">Check-in after silence</option>
-        <option value="referral">Referral ask</option>
+        <option value="cover" ${autoType==='cover'?'selected':''}>Cover Letter</option>
+        <option value="followup" ${autoType==='followup'?'selected':''}>Follow-up after apply</option>
+        <option value="thankyou" ${autoType==='thankyou'?'selected':''}>Thank-you after interview</option>
+        <option value="checkin" ${autoType==='checkin'?'selected':''}>Check-in after silence</option>
+        <option value="referral" ${autoType==='referral'?'selected':''}>Referral ask</option>
       </select>
       <label style="${fL}">Channel</label>
       <select id="ed-channel" style="${iS}">
@@ -5106,7 +5161,7 @@ function openEmailDrafter(id) {
       <input id="ed-goal" placeholder="e.g. Get a call, express enthusiasm, ask for update…" style="${iI}">
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
+        <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -5122,25 +5177,44 @@ async function generateEmailDraft(id) {
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Writing…</div>`;
   const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage) || PIPELINE_STAGES[0];
-  const context = [
+  const contextParts = [
     e.role ? `Role: ${e.role}` : '',
     e.company ? `Company: ${e.company}` : '',
     `Stage: ${stageInfo.label}`,
     e.notes ? `Notes: ${e.notes}` : '',
     e.prepPeople ? `Contacts/interviewers: ${e.prepPeople}` : '',
-  ].filter(Boolean).join('\n');
+  ];
+  // For thank-you notes, pull in debrief data from current round and most recent past round
+  if (type === 'thankyou') {
+    const currentDebrief = [e.debriefWentWell, e.debriefImprove, e.debriefFollowUp].filter(Boolean);
+    if (currentDebrief.length) {
+      if (e.debriefWentWell) contextParts.push(`What went well in the interview: ${e.debriefWentWell}`);
+      if (e.debriefFollowUp) contextParts.push(`Planned follow-up points: ${e.debriefFollowUp}`);
+    } else {
+      const lastRound = (e.prepHistory||[]).slice().reverse().find(r => r.debrief && (r.debrief.wentWell||r.debrief.followUp));
+      if (lastRound) {
+        if (lastRound.debrief.wentWell) contextParts.push(`What went well in the interview: ${lastRound.debrief.wentWell}`);
+        if (lastRound.debrief.followUp) contextParts.push(`Planned follow-up points: ${lastRound.debrief.followUp}`);
+        if (lastRound.prep?.people) contextParts.push(`Contacts/interviewers: ${lastRound.prep.people}`);
+      }
+    }
+  }
+  const context = contextParts.filter(Boolean).join('\n');
+  const paragraphGuide = type === 'thankyou'
+    ? 'Exactly 3 short paragraphs. Paragraph 1: thank them by name if known, reference the role and company. Paragraph 2: highlight 1–3 specific topics or moments from the conversation that resonated with you — be concrete, not generic. Paragraph 3: brief expression of continued enthusiasm and next steps. Keep total length under 200 words. Do not use hollow phrases like "I wanted to reach out" or "I hope this finds you well".'
+    : '2–4 paragraphs, confident but not stiff.';
   const prompt = `You are a career coach helping a job seeker in ad tech write a professional but warm outreach email.
 Context:
 ${context}
 Type: ${typeLabels[type] || type}
 Channel: ${channel}
 ${goal ? `Goal: ${goal}` : ''}
-Write a ${typeLabels[type] || type} message. For email, include a Subject: line. 2-4 paragraphs, confident but not stiff.
+Write a ${typeLabels[type] || type} message. For email, include a Subject: line. ${paragraphGuide}
 Return ONLY the message text.`;
   const result = await callClaude(prompt, { maxTokens: 700 });
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
   if (result.error) {
-    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Draft Email</div><div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Draft Email</div><div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
     return;
   }
   const draft = (result.text || '').trim();
@@ -5150,7 +5224,8 @@ Return ONLY the message text.`;
       <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">${escHtml(typeLabels[type]||type)} · ${escHtml(channel)}</div>
       <label style="${fL}">Your draft</label>
       <textarea id="ed-result" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:220px;">${escHtml(draft)}</textarea>
-      <div style="display:flex;gap:8px;margin-top:14px;">
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button id="ed-gmail-btn" onclick="saveCurrentDraftToGmail()" style="flex:2;min-width:140px;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save to Gmail Draft</button>
         <button onclick="navigator.clipboard.writeText(document.getElementById('ed-result').value).then(()=>showToast('Copied!'))" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Copy</button>
         <button onclick="openEmailDrafter(${id})" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Try again</button>
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
@@ -5213,7 +5288,7 @@ Return ONLY JSON with these fields.`;
   const result = await callClaude(prompt, { maxTokens: 800 });
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
   if (result.error) {
-    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Salary Intel</div><div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    inner.innerHTML = `<div style="padding:4px 0;text-align:left;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Salary Intel</div><div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:20px;">${result.message}</div><button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
     return;
   }
   const d = result.json || {};
@@ -5221,7 +5296,7 @@ Return ONLY JSON with these fields.`;
     ? arr.map(x => `<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;"><span style="color:${color};flex-shrink:0;margin-top:2px;">◦</span><span style="font-size:0.8rem;color:var(--text);line-height:1.45;">${escHtml(x)}</span></div>`).join('')
     : `<span style="font-size:0.78rem;color:var(--text-dim);">—</span>`;
   const sr = d.salaryRange || {};
-  const mpColor = d.marketPosition === 'above market' ? 'var(--teal)' : d.marketPosition === 'below market' ? 'var(--error,#e57373)' : 'var(--amber)';
+  const mpColor = d.marketPosition === 'above market' ? 'var(--teal)' : d.marketPosition === 'below market' ? 'var(--error)' : 'var(--amber)';
   const salaryBandText = sr.low && sr.high ? `$${Number(sr.low).toLocaleString()} – $${Number(sr.high).toLocaleString()}` : '—';
   inner.innerHTML = `
     <div style="padding:4px 0 8px;text-align:left;max-height:70vh;overflow-y:auto;">
@@ -5232,11 +5307,11 @@ Return ONLY JSON with these fields.`;
         <div style="font-size:1.3rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;">${salaryBandText}</div>
         ${sr.mid ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">Midpoint ~$${Number(sr.mid).toLocaleString()}</div>` : ''}
         ${d.totalComp ? `<div style="font-size:0.74rem;color:var(--text-mid);margin-top:8px;line-height:1.4;">Total comp: ${escHtml(d.totalComp)}</div>` : ''}
-        ${d.marketPosition ? `<div style="margin-top:10px;display:inline-block;background:none;border:1px solid ${mpColor};border-radius:2px;padding:3px 10px;font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:${mpColor};text-transform:uppercase;">${escHtml(d.marketPosition)}</div>` : ''}
+        ${d.marketPosition ? `<div style="margin-top:10px;display:inline-block;background:none;border:1px solid ${mpColor};border-radius:2px;padding:3px 10px;font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);color:${mpColor};text-transform:uppercase;">${escHtml(d.marketPosition)}</div>` : ''}
       </div>
       ${d.negotiationTips && d.negotiationTips.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Negotiation Tips</label>${listHTML(d.negotiationTips, 'var(--amber)')}</div>` : ''}
       ${d.questionsToAsk && d.questionsToAsk.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Questions to Ask</label>${listHTML(d.questionsToAsk, 'var(--teal)')}</div>` : ''}
-      ${d.redFlags && d.redFlags.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Red Flags to Watch</label>${listHTML(d.redFlags, 'var(--error,#e57373)')}</div>` : ''}
+      ${d.redFlags && d.redFlags.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Red Flags to Watch</label>${listHTML(d.redFlags, 'var(--error)')}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="(() => { const entry = S.pipeline.find(x=>x.id===${id}); if(entry){ entry.notes = (entry.notes?entry.notes+'\\n\\n':'') + 'Salary range (${escHtml(yoe)} yoe): ${salaryBandText}'; save(); showToast('Saved to notes'); } })()" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Save to notes</button>
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
@@ -5307,7 +5382,7 @@ function rejectionRowHTML(r, stageLabel, stageColor) {
       ${r.stage ? `<span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:${stageColor(r.stage)};border:1px solid ${stageColor(r.stage)};border-radius:2px;padding:2px 6px;">${stageLabel(r.stage)}</span>` : ''}
       <span style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">${dateStr}</span>
     </div>
-    ${feelingsSnip ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:6px;line-height:1.4;">${feelingsSnip}</div>` : ''}
+    ${feelingsSnip ? `<div style="font-size:0.78rem;color:var(--text-mid);margin-top:6px;line-height:1.4;">${feelingsSnip}</div>` : ''}
     ${lessonSnip ? `<div style="font-size:0.74rem;color:var(--text-dim);margin-top:4px;font-style:italic;line-height:1.4;">${lessonSnip}</div>` : ''}
   </div>`;
 }
@@ -5335,7 +5410,7 @@ Return JSON: {stuckAt: string, patterns: string[], actions: string[], encouragem
   const result = await callClaude(prompt, { maxTokens: 600 });
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
   if (result.error) {
-    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">Pattern Analysis</div><div style="font-size:0.78rem;color:var(--error,#e57373);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">Pattern Analysis</div><div style="font-size:0.78rem;color:var(--error);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
     return;
   }
   const d = result.json || {};
@@ -5366,7 +5441,7 @@ function openResumeGap(keywords, mustHave) {
       <textarea id="rg-resume" placeholder="Paste your full resume text here…" oninput="S.resume=this.value;save()" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;margin-bottom:4px;">${escHtml(S.resume||'')}</textarea>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="runResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Check gaps</button>
+        <button onclick="runResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Check gaps</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -5395,12 +5470,12 @@ Return JSON: {
   const result = await callClaude(prompt, { maxTokens: 800 });
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
   if (result.error) {
-    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Resume Gap Check</div><div style="font-size:0.78rem;color:var(--error,#e57373);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
+    inner.innerHTML = `<div style="padding:4px 0;"><div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Resume Gap Check</div><div style="font-size:0.78rem;color:var(--error);">${result.message}</div><button onclick="closeModal()" style="margin-top:16px;width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button></div>`;
     return;
   }
   const d = result.json || {};
   const score = typeof d.coverageScore === 'number' ? d.coverageScore : 0;
-  const scoreColor = score >= 70 ? 'var(--teal)' : score >= 45 ? 'var(--amber)' : 'var(--error,#e57373)';
+  const scoreColor = score >= 70 ? 'var(--teal)' : score >= 45 ? 'var(--amber)' : 'var(--error)';
   const pillsHTML = (arr, color) => arr && arr.length
     ? arr.map(x => `<span style="display:inline-block;background:var(--surface2);border:1px solid ${color};border-radius:2px;padding:3px 8px;font-size:0.72rem;color:${color};margin:0 4px 5px 0;font-family:'DM Sans',sans-serif;">${escHtml(x)}</span>`).join('')
     : `<span style="font-size:0.78rem;color:var(--text-dim);">None</span>`;
@@ -5414,8 +5489,8 @@ Return JSON: {
         <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Coverage Score</div>
         <div style="font-size:2rem;font-weight:700;color:${scoreColor};font-family:'Montserrat',sans-serif;">${score}<span style="font-size:1rem;">/100</span></div>
       </div>
-      ${d.missingMustHave && d.missingMustHave.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Must-Haves</label>${listHTML(d.missingMustHave,'var(--error,#e57373)')}</div>` : ''}
-      ${d.missingKeywords && d.missingKeywords.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Keywords</label><div style="margin-top:4px;">${pillsHTML(d.missingKeywords,'var(--error,#e57373)')}</div></div>` : ''}
+      ${d.missingMustHave && d.missingMustHave.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Must-Haves</label>${listHTML(d.missingMustHave,'var(--error)')}</div>` : ''}
+      ${d.missingKeywords && d.missingKeywords.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Missing Keywords</label><div style="margin-top:4px;">${pillsHTML(d.missingKeywords,'var(--error)')}</div></div>` : ''}
       ${d.weakMatches && d.weakMatches.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Weak Matches (underrepresented)</label><div style="margin-top:4px;">${pillsHTML(d.weakMatches,'var(--amber)')}</div></div>` : ''}
       ${d.strongMatches && d.strongMatches.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Strong Matches</label><div style="margin-top:4px;">${pillsHTML(d.strongMatches,'var(--teal)')}</div></div>` : ''}
       ${d.topSuggestions && d.topSuggestions.length ? `<div style="margin-bottom:14px;"><label style="${fL}">Top Resume Edits</label>${listHTML(d.topSuggestions,'var(--teal)')}</div>` : ''}
@@ -5466,20 +5541,20 @@ function renderQuestionBank() {
   }
   filtered.slice().reverse().forEach(q => {
     const isOpen = _qbOpenId === q.id;
-    const tagsHTML = (q.tags||[]).map(t => `<span style="display:inline-block;background:var(--surface2);border-radius:2px;padding:2px 7px;font-size:0.66rem;color:var(--text-dim);margin:0 3px 3px 0;font-family:'Montserrat',sans-serif;">${escHtml(t)}</span>`).join('');
+    const tagsHTML = (q.tags||[]).map(t => `<span style="display:inline-block;background:var(--surface2);border-radius:2px;padding:2px 7px;font-size:0.68rem;color:var(--text-dim);margin:0 3px 3px 0;font-family:'Montserrat',sans-serif;">${escHtml(t)}</span>`).join('');
     const answerPreview = q.answer ? escHtml(q.answer.slice(0,100)) + (q.answer.length>100?'…':'') : '';
     html += `<div style="border-bottom:1px solid var(--border);">
       <div onclick="_qbOpenId=${isOpen?'null':q.id};renderNetwork()" style="padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
         <div style="font-size:0.84rem;color:var(--text);line-height:1.4;margin-bottom:5px;">${escHtml(q.question||'')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:${answerPreview&&!isOpen?'4':'0'}px;">${tagsHTML}</div>
         ${q.role||q.company ? `<div style="font-size:0.7rem;color:var(--text-dim);">${[q.role,q.company].filter(Boolean).map(escHtml).join(' · ')}</div>` : ''}
-        ${answerPreview && !isOpen ? `<div style="font-size:0.76rem;color:var(--text-mid);margin-top:4px;line-height:1.4;">${answerPreview}</div>` : ''}
+        ${answerPreview && !isOpen ? `<div style="font-size:0.78rem;color:var(--text-mid);margin-top:4px;line-height:1.4;">${answerPreview}</div>` : ''}
       </div>
       ${isOpen ? `<div style="padding-bottom:14px;">
         <div style="font-size:0.78rem;color:var(--text);line-height:1.55;white-space:pre-wrap;background:var(--surface2);border-radius:2px;padding:10px 12px;margin-bottom:10px;">${escHtml(q.answer||'(no answer saved)')}</div>
         <div style="display:flex;gap:8px;">
           <button onclick="openAddToQuestionBank(${JSON.stringify(q.question)},${JSON.stringify(q.role||'')},${JSON.stringify(q.company||'')})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Edit</button>
-          <button onclick="deleteFromQuestionBank(${q.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--error,#e57373);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete</button>
+          <button onclick="deleteFromQuestionBank(${q.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--error);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete</button>
         </div>
       </div>` : ''}
     </div>`;
@@ -5509,7 +5584,7 @@ function openAddToQuestionBank(prefillQuestion, prefillRole, prefillCompany) {
       </div>
       <div style="display:flex;gap:8px;margin-top:20px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="saveToQuestionBank()" style="flex:2;padding:9px;background:var(--teal,#2d7a6b);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save</button>
+        <button onclick="saveToQuestionBank()" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -5590,7 +5665,7 @@ ${raw.slice(0, 5000)}`;
     inner.innerHTML = `
       <div style="padding:4px 0;text-align:left;">
         <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Bulk Import</div>
-        <div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:16px;">${result.message}</div>
+        <div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:16px;">${result.message}</div>
         <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
         <button onclick="closeModal()" style="width:100%;padding:9px;border:none;background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Close</button>
       </div>`;
@@ -5663,10 +5738,36 @@ function updatePipelineStage(id, stage) {
     if (!e.stageHistory.find(h => h.stage === stage)) {
       e.stageHistory.push({ stage, date: todayLocal() });
     }
+    // Archive current prep/debrief when advancing between interview stages
+    if (INTERVIEW_STAGE_KEYS.has(e.stage) && INTERVIEW_STAGE_KEYS.has(stage)) {
+      const hasData = e.prepPeople || e.prepQuestions || e.prepStories || e.prepAsk ||
+                      e.debriefWentWell || e.debriefImprove || e.debriefFollowUp || e.debriefGutRead;
+      if (hasData) {
+        if (!e.prepHistory) e.prepHistory = [];
+        const stageDate = (e.stageHistory.find(h => h.stage === e.stage) || {}).date || todayLocal();
+        e.prepHistory.push({
+          stage: e.stage, date: stageDate,
+          prep: { people: e.prepPeople||'', questions: e.prepQuestions||'', stories: e.prepStories||'', ask: e.prepAsk||'' },
+          debrief: { wentWell: e.debriefWentWell||'', improve: e.debriefImprove||'', followUp: e.debriefFollowUp||'', gutRead: e.debriefGutRead||'' }
+        });
+        e.prepPeople = ''; e.prepQuestions = ''; e.prepStories = ''; e.prepAsk = '';
+        e.debriefWentWell = ''; e.debriefImprove = ''; e.debriefFollowUp = ''; e.debriefGutRead = '';
+      }
+    }
   }
   e.stage = stage;
   save();
   renderNetwork();
+}
+
+function editStageDate(id, stageKey, newDate) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const h = (e.stageHistory || []).find(h => h.stage === stageKey);
+  if (h) h.date = newDate;
+  const ph = (e.prepHistory || []).find(r => r.stage === stageKey);
+  if (ph) ph.date = newDate;
+  save();
 }
 
 function savePipelineField(id, field) {
@@ -5881,7 +5982,7 @@ No extra text outside the JSON.`;
     inner.innerHTML = `
       <div style="padding:4px 0;text-align:left;">
         <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ JD Analyzer</div>
-        <div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div>
+        <div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:20px;">${result.message}</div>
         <button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button>
       </div>`;
     return;
@@ -5983,7 +6084,7 @@ function renderCompanies() {
     industries.forEach(ind => {
       const cos = sorted.filter(c => (c.industry || '') === ind);
       html += `<div style="margin-bottom:16px;">
-        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${ind ? escHtml(ind) : 'No industry'} · ${cos.length}</div>
+        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;margin-bottom:6px;">${ind ? escHtml(ind) : 'No industry'} · ${cos.length}</div>
         ${cos.map(c => renderCompanyRow(c)).join('')}
       </div>`;
     });
@@ -5994,7 +6095,7 @@ function renderCompanies() {
       if (cos.length === 0) return;
       const statusInfo = COMPANY_STATUSES.find(s => s.key === statusKey);
       html += `<div style="margin-bottom:16px;">
-        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;font-family:'Montserrat',sans-serif;margin-bottom:6px;">${statusInfo.label} · ${cos.length}</div>
+        <div style="font-size:0.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;margin-bottom:6px;">${statusInfo.label} · ${cos.length}</div>
         ${cos.map(c => renderCompanyRow(c)).join('')}
       </div>`;
     });
@@ -6016,7 +6117,7 @@ function renderCompanyRow(c) {
     <div onclick="toggleCompanyDetail(${c.id})" style="display:flex;align-items:center;gap:10px;padding:11px 0;cursor:pointer;">
       <div style="width:7px;height:7px;border-radius:50%;background:${statusInfo.color};flex-shrink:0;opacity:0.7;"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:0.88rem;color:var(--text);">${escHtml(c.name)}</div>
+        <div style="font-weight:600;font-size:0.85rem;color:var(--text);">${escHtml(c.name)}</div>
         ${c.industry ? `<div style="font-size:0.75rem;color:var(--text-dim);">${escHtml(c.industry)}</div>` : ''}
       </div>
       ${linkedContacts.length > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${linkedContacts.length} contact${linkedContacts.length!==1?'s':''}</div>` : ''}
@@ -6334,8 +6435,8 @@ function confirmRejection() {
   inner.innerHTML = `
     <div style="text-align:center;padding:8px 0">
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:16px">Logged</div>
-      <div style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:8px">Your feelings are valid.<br>You're allowed to sit with this.</div>
-      <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.6;margin-bottom:24px">${countLine}</div>
+      <div style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:8px">Your feelings are valid.<br>You're allowed to sit with this.</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:24px">${countLine}</div>
       ${_rejQuote ? `<div class="rej-quote" style="font-size:0.82rem;margin-bottom:6px">"${escHtml(_rejQuote.text)}"</div>${_rejQuote.author ? `<div class="rej-author">— ${escHtml(_rejQuote.author)}</div>` : ''}` : ''}
       <button class="modal-btn" onclick="closeModal()">Keep going</button>
     </div>`;
@@ -6477,7 +6578,7 @@ function renderProgress() {
         <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:2px;">${a.name}</div>
         <div style="font-size:0.72rem;color:var(--text-dim);">${a.desc}</div>
       </div>
-      ${earned?`<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:0.07em;color:var(--amber);font-weight:700;">✓</div>`:''}
+      ${earned?`<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--amber);font-weight:700;">✓</div>`:''}
     </div>`;
   }).join('');
 
@@ -6492,7 +6593,7 @@ function renderProgress() {
       <div class="stat-card">
         <div class="stat-value">${S.showUpStreak}</div>
         <div class="stat-label">day streak</div>
-        ${(S.maxShowUpStreak||0)>0?`<div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;margin-top:3px;">best ${S.maxShowUpStreak}</div>`:''}
+        ${(S.maxShowUpStreak||0)>0?`<div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);margin-top:3px;">best ${S.maxShowUpStreak}</div>`:''}
       </div>
       <div class="stat-card">
         <div class="stat-value">${S.doneBy.apply||0}</div>
@@ -6515,10 +6616,10 @@ function renderProgress() {
       <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
       <div style="display:flex;gap:4px;align-items:flex-end;padding-bottom:4px;">${weekBars}</div>
       <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--amber);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Apply</span></div>
-        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--teal);opacity:0.7;border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Network</span></div>
-        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--border);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Other tasks</span></div>
-        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:rgba(100,120,180,0.35);border-radius:1px;"></div><span style="font-size:0.63rem;color:var(--text-dim);">Focus sessions</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--amber);border-radius:1px;"></div><span style="font-size:0.62rem;color:var(--text-dim);">Apply</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--teal);opacity:0.7;border-radius:1px;"></div><span style="font-size:0.62rem;color:var(--text-dim);">Network</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:var(--border);border-radius:1px;"></div><span style="font-size:0.62rem;color:var(--text-dim);">Other tasks</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;background:rgba(100,120,180,0.35);border-radius:1px;"></div><span style="font-size:0.62rem;color:var(--text-dim);">Focus sessions</span></div>
       </div>
     </div>
 
@@ -6971,7 +7072,7 @@ function _lmStep1() {
   inner.innerHTML = `
     <div style="text-align:left;">
       ${_lmHeader(1)}
-      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:4px;">What kind of meeting was this?</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;">What kind of meeting was this?</div>
       <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px;">${escHtml(_lm.title)} · ${escHtml(_lm.time)}</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${types.map(t => `
@@ -7012,21 +7113,21 @@ function _lmStep2(search) {
             <div style="font-size:0.84rem;color:var(--text);font-weight:${selected?'600':'400'};">${escHtml(c.first||'')} ${escHtml(c.last||'')}</div>
             ${c.company?`<div style="font-size:0.72rem;color:var(--text-dim);">${escHtml(c.company)}</div>`:''}
           </div>
-          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;">✓ selected</span>`:''}
+          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);">✓ selected</span>`:''}
         </div>`;
       }).join('')
     : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0;">${query ? 'No contacts match' : 'No contacts yet'}</div>`;
 
   const pipelineRows = linkedJobs.length ? `
     <div style="margin-top:10px;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Link to pipeline job?</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Link to pipeline job?</div>
       ${linkedJobs.map(j => {
         const st = PIPELINE_STAGES.find(s=>s.key===j.stage)||PIPELINE_STAGES[0];
         const selected = _lm.pipelineId === j.id;
         return `<div onclick="_lm.pipelineId=${selected?'null':j.id};_lmStep2(document.getElementById('lm-search')?.value||'')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
           <span style="width:6px;height:6px;border-radius:50%;background:${st.color};flex-shrink:0;display:inline-block;"></span>
           <div style="flex:1;font-size:0.82rem;color:${selected?'var(--text)':'var(--text-mid)'};">${escHtml(j.role||'Role TBD')} · ${escHtml(j.company)}</div>
-          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;">✓</span>`:''}
+          ${selected?`<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);">✓</span>`:''}
         </div>`;
       }).join('')}
     </div>` : '';
@@ -7035,7 +7136,7 @@ function _lmStep2(search) {
   inner.innerHTML = `
     <div style="text-align:left;">
       ${_lmHeader(2)}
-      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:12px;">Who did you meet?</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:12px;">Who did you meet?</div>
       <input id="lm-search" type="text" placeholder="Search contacts…" value="${escHtml(search)}"
         oninput="_lmStep2(this.value)"
         style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;margin-bottom:8px;">
@@ -7075,27 +7176,27 @@ function _lmStep3() {
   inner.innerHTML = `
     <div style="text-align:left;">
       ${_lmHeader(3)}
-      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:14px;">Log the interaction</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Log the interaction</div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div>
-          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Date</div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Date</div>
           <input type="date" id="lm-date" value="${escHtml(_lm.logDate)}" onchange="_lm.logDate=this.value"
             style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;">
         </div>
         <div>
-          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">How you met</div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">How you met</div>
           <select id="lm-method" onchange="_lm.logMethod=this.value"
             style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;-webkit-appearance:none;cursor:pointer;">
             ${methods.map(m=>`<option value="${m}" ${_lm.logMethod===m?'selected':''}>${m}</option>`).join('')}
           </select>
         </div>
         <div>
-          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Notes</div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Notes</div>
           <textarea id="lm-notes" placeholder="Key points, impressions, next steps…" oninput="_lm.logNotes=this.value"
             style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;resize:none;min-height:70px;">${escHtml(_lm.logNotes)}</textarea>
         </div>
         <div>
-          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Schedule a follow-up</div>
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Schedule a follow-up</div>
           <input type="date" id="lm-fu-date" value="${escHtml(_lm.followUpDate)}" onchange="_lm.followUpDate=this.value"
             style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;width:100%;box-sizing:border-box;margin-bottom:6px;">
           <input id="lm-fu-note" placeholder="What to follow up about…" value="${escHtml(_lm.followUpNote)}" oninput="_lm.followUpNote=this.value"
@@ -7122,12 +7223,26 @@ function _lmStep4() {
   const isInterview   = ['interview','phone'].includes(_lm.type);
   const isNetworking  = ['networking','coffee'].includes(_lm.type);
 
+  const _lmContactName = (() => {
+    if (_lm.contactId) {
+      const ct = S.contacts.find(c => c.id === _lm.contactId);
+      return ct ? (ct.first || '').trim() : '';
+    }
+    return (_lm.newContact?.first || '').trim();
+  })();
+  const _lmPipelineEntry = _lm.pipelineId ? S.pipeline.find(x => x.id === _lm.pipelineId) : null;
+
   let suggestions;
   if (isInterview) {
+    const debriefTask = _lmPipelineEntry
+      ? `Complete post-interview debrief for ${_lmPipelineEntry.company} in Pipeline`
+      : 'Complete post-interview debrief in Pipeline';
+    const thankYouTask = _lmContactName ? `Write a thank-you note to ${_lmContactName}` : 'Write a thank-you note';
+    const linkedInTask = _lmContactName ? `Connect with ${_lmContactName} on LinkedIn` : 'Connect on LinkedIn';
     suggestions = [
-      { text: 'Complete post-interview debrief in Pipeline', cat: 'research',  checked: true  },
-      { text: 'Write a thank-you note',                      cat: 'followup',  checked: true  },
-      { text: 'Connect on LinkedIn',                         cat: 'network',   checked: true  },
+      { text: debriefTask,                                   cat: 'research',  checked: true  },
+      { text: thankYouTask,                                  cat: 'followup',  checked: true  },
+      { text: linkedInTask,                                  cat: 'network',   checked: true  },
       { text: 'Check in if no response within 5 days',       cat: 'followup',  checked: _lm.followUpDate==='' },
       { text: 'Log a win from the interview',                cat: 'personal',  checked: false },
       { text: 'Send any promised materials or links',        cat: 'followup',  checked: false },
@@ -7151,14 +7266,14 @@ function _lmStep4() {
   inner.innerHTML = `
     <div style="text-align:left;">
       ${_lmHeader(4)}
-      <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:4px;">Add follow-up tasks</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;">Add follow-up tasks</div>
       <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:12px;">Uncheck anything you don't need.</div>
       ${suggestions.map((s, i) => `
         <label style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;">
           <input type="checkbox" id="cfu-${i}" ${s.checked?'checked':''} style="margin-top:3px;flex-shrink:0;accent-color:var(--amber);width:15px;height:15px;">
           <div>
             <div style="font-size:0.84rem;color:var(--text);">${escHtml(s.text)}</div>
-            <div style="font-size:0.63rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;">${CATS[s.cat]?.label||s.cat}</div>
+            <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;">${CATS[s.cat]?.label||s.cat}</div>
           </div>
         </label>`).join('')}
       <div style="margin-top:8px;">
@@ -7295,7 +7410,7 @@ function openCalEventFollowUp(title, time) {
           <input type="checkbox" id="cfu-${i}" ${s.checked ? 'checked' : ''} style="margin-top:3px;flex-shrink:0;accent-color:var(--amber);width:15px;height:15px;">
           <div style="flex:1;">
             <div style="font-size:0.84rem;color:var(--text);line-height:1.4;" id="cfu-txt-${i}">${escHtml(s.text)}</div>
-            <div style="font-size:0.63rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">${CATS[s.cat]?.label || s.cat}</div>
+            <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-top:2px;">${CATS[s.cat]?.label || s.cat}</div>
           </div>
         </label>`).join('')}
       <div style="margin-top:6px;">
@@ -7487,7 +7602,7 @@ function checkWorkoutImport() {
 function showToast(msg) {
   const el = document.createElement('div');
   el.textContent = msg;
-  el.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:9px 18px;border-radius:8px;font-size:0.79rem;z-index:400;animation:fadeToast 2.5s ease forwards;white-space:nowrap;pointer-events:none`;
+  el.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:9px 18px;border-radius:8px;font-size:0.78rem;z-index:400;animation:fadeToast 2.5s ease forwards;white-space:nowrap;pointer-events:none`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2500);
 }
@@ -7573,7 +7688,7 @@ function importContactsCSV() {
           inner.innerHTML = `
             <div style="text-align:left">
               <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px">What type are these contacts?</div>
-              <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:14px">This CSV has no Type column. All contacts will be set to the type you choose.</div>
+              <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px">This CSV has no Type column. All contacts will be set to the type you choose.</div>
               <select class="contact-inline-input" id="import-type-sel" style="margin-bottom:14px">
                 <option value="recruiter">Recruiter</option>
                 <option value="peer">Peer</option>
@@ -7738,7 +7853,7 @@ function openLogInteraction(contactId) {
   inner.innerHTML = `
     <div style="text-align:left">
       <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px">Log interaction</div>
-      <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:14px">${escHtml(contactFullName(c))} \u00b7 ${escHtml(c.company)}</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px">${escHtml(contactFullName(c))} \u00b7 ${escHtml(c.company)}</div>
       <div class="contact-detail-section-label">Date</div>
       <input type="date" class="contact-inline-input" id="li-date" value="${today}" style="margin-bottom:10px">
       <div class="contact-detail-section-label">Method</div>
@@ -8215,7 +8330,7 @@ function renderContactCard(c) {
       <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <div class="card-label" style="margin-bottom:0;">Log interaction</div>
-          <span style="font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;background:var(--amber);color:var(--surface);padding:2px 6px;border-radius:2px;">New</span>
+          <span style="font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-caps);text-transform:uppercase;background:var(--amber);color:var(--surface);padding:2px 6px;border-radius:2px;">New</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:7px">
           <input type="date" class="contact-inline-input" id="qi-date-${c.id}"
@@ -8387,7 +8502,7 @@ Return ONLY the message text — no subject line label (unless it's email, then 
     inner.innerHTML = `
       <div style="padding:4px 0;text-align:left;">
         <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Draft Outreach</div>
-        <div style="font-size:0.78rem;color:var(--error,#e57373);line-height:1.5;margin-bottom:20px;">${result.message}</div>
+        <div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:20px;">${result.message}</div>
         <button onclick="closeModal()" style="width:100%;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);">Close</button>
       </div>`;
     return;
@@ -8465,7 +8580,7 @@ function renderJournal() {
         </div>`
       : noData
         ? `<div style="padding-top:4px;font-size:0.8rem;color:var(--text-dim);line-height:1.7">No days recorded yet.<br>Seal your first day and it'll appear here.</div>`
-        : `<div style="padding-top:4px;font-size:0.76rem;color:var(--text-dim)">Select a day above to see what happened.</div>`
+        : `<div style="padding-top:4px;font-size:0.78rem;color:var(--text-dim)">Select a day above to see what happened.</div>`
     }
   `;
 }
@@ -8481,7 +8596,7 @@ function renderJournalDay(snap) {
           ${catDot(t.cat, '16px')}
           <div style="font-size:0.82rem;color:var(--text-mid);opacity:0.7;text-decoration:line-through">${escHtml(t.text)}</div>
         </div>`).join('')
-    : `<div style="font-size:0.76rem;color:var(--text-dim);padding:8px 0">Nothing completed.</div>`;
+    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0">Nothing completed.</div>`;
 
   const incompleteHtml = snap.incompleteTasks && snap.incompleteTasks.length > 0 ? `
     <div style="margin-top:20px">
@@ -8496,7 +8611,7 @@ function renderJournalDay(snap) {
   const winsHtml = snap.wins && snap.wins.length > 0
     ? snap.wins.map(w => `
         <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem;color:var(--text-mid)">${escHtml(w)}</div>`).join('')
-    : `<div style="font-size:0.76rem;color:var(--text-dim);padding:8px 0">No wins logged.</div>`;
+    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0">No wins logged.</div>`;
 
   return `
     <div style="border-top:1px solid var(--border);padding-top:20px">
@@ -8709,7 +8824,7 @@ function renderAccount() {
         <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px;">How many points you can realistically complete in a week.</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="number" id="capacity-input" value="${S.weeklyCapacity||20}" min="5" max="100"
-            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);padding:6px 0 8px;outline:none;width:60px;text-align:center;">
+            style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0 8px;outline:none;width:60px;text-align:center;">
           <span style="font-size:0.78rem;color:var(--text-dim);">points / week</span>
           <button onclick="S.weeklyCapacity=parseInt(document.getElementById('capacity-input').value)||20;save();renderAccount();showToast('Capacity updated ✓')"
             style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save</button>
@@ -8749,6 +8864,15 @@ function renderAccount() {
           ${localStorage.getItem('showup_gcal_connected') === '1' ? `<button onclick="disconnectGCal()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.68rem;padding:6px 4px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Disconnect</button>` : ''}
         </div>
         ${localStorage.getItem('showup_gcal_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · events sync to your Today tab daily</div>` : ''}
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="font-size:0.75rem;color:var(--text);font-weight:500;margin-bottom:3px;">Gmail Drafts</div>
+          <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:8px;">Save email drafts directly to Gmail. Uses the same Client ID above — you'll approve the Gmail scope once.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button onclick="connectGmail()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${localStorage.getItem('showup_gmail_connected') === '1' ? '↻ Reconnect Gmail' : 'Connect Gmail Drafts'}</button>
+            ${localStorage.getItem('showup_gmail_connected') === '1' ? `<button onclick="disconnectGmail()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.68rem;padding:6px 4px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Disconnect</button>` : ''}
+          </div>
+          ${localStorage.getItem('showup_gmail_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · drafts save directly to your Gmail</div>` : ''}
+        </div>
       ` : ''}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
@@ -8846,6 +8970,118 @@ let _gCalTokenClient = null;
 let _gCalAccessToken = null;
 let _gCalTokenExpiry = 0;
 
+let _gmailTokenClient  = null;
+let _gmailAccessToken  = null;
+let _gmailTokenExpiry  = 0;
+let _pendingGmailDraft = null;  // { subject, body } waiting for auth
+
+function initGmailClient() {
+  const clientId = localStorage.getItem('showup_gcal_client_id');
+  if (!clientId || !window.google?.accounts?.oauth2) return;
+  _gmailTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/gmail.compose',
+    callback: (response) => {
+      if (response.error) { showToast('Gmail auth failed · check your Client ID'); return; }
+      _gmailAccessToken = response.access_token;
+      _gmailTokenExpiry = Date.now() + ((response.expires_in || 3600) * 1000);
+      localStorage.setItem('showup_gmail_connected', '1');
+      renderAccount();
+      if (_pendingGmailDraft) {
+        const pending = _pendingGmailDraft;
+        _pendingGmailDraft = null;
+        _createGmailDraft(pending.subject, pending.body);
+      }
+    }
+  });
+  if (localStorage.getItem('showup_gmail_connected') === '1') {
+    _gmailTokenClient.requestAccessToken({ prompt: 'none' });
+  }
+}
+
+function connectGmail() {
+  const clientId = localStorage.getItem('showup_gcal_client_id');
+  if (!clientId) { showToast('Add your Google Client ID in Account settings first'); return; }
+  if (!window.google?.accounts?.oauth2) { showToast('Google API loading — try again in a moment'); return; }
+  if (!_gmailTokenClient) initGmailClient();
+  if (!_gmailTokenClient) return;
+  _gmailTokenClient.requestAccessToken({ prompt: '' });
+}
+
+function disconnectGmail() {
+  _gmailAccessToken = null;
+  _gmailTokenClient = null;
+  _gmailTokenExpiry = 0;
+  localStorage.removeItem('showup_gmail_connected');
+  showToast('Gmail drafts disconnected');
+  renderAccount();
+}
+
+async function saveCurrentDraftToGmail() {
+  const draftEl = document.getElementById('ed-result');
+  if (!draftEl) return;
+  const text = draftEl.value.trim();
+  const subjectMatch = text.match(/^Subject:\s*(.+)/im);
+  const subject = subjectMatch ? subjectMatch[1].trim() : '';
+  const body = subjectMatch ? text.replace(/^Subject:\s*.+\r?\n?/im, '').trim() : text;
+  await saveToGmailDraft(subject, body);
+}
+
+async function saveToGmailDraft(subject, body) {
+  if (!window.google?.accounts?.oauth2) {
+    showToast('Google API not loaded — refresh and try again');
+    return;
+  }
+  if (!_gmailTokenClient) initGmailClient();
+  if (!_gmailTokenClient) {
+    showToast('Add your Google Client ID in Account settings first');
+    return;
+  }
+  if (!_gmailAccessToken || Date.now() > _gmailTokenExpiry) {
+    _pendingGmailDraft = { subject, body };
+    _gmailTokenClient.requestAccessToken({ prompt: localStorage.getItem('showup_gmail_connected') === '1' ? 'none' : '' });
+    return;
+  }
+  _createGmailDraft(subject, body);
+}
+
+async function _createGmailDraft(subject, body) {
+  const btn = document.getElementById('ed-gmail-btn');
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  const raw = [
+    subject ? `Subject: ${subject}` : '',
+    'Content-Type: text/plain; charset=UTF-8',
+    'MIME-Version: 1.0',
+    '',
+    body
+  ].filter((l, i) => i > 0 || l).join('\r\n');
+  // Base64url encode (UTF-8 safe)
+  const bytes = new TextEncoder().encode(raw);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  try {
+    const resp = await fetch('https://www.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${_gmailAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { raw: encoded } })
+    });
+    if (resp.status === 401) {
+      _gmailAccessToken = null;
+      _pendingGmailDraft = { subject, body };
+      _gmailTokenClient.requestAccessToken({ prompt: '' });
+      return;
+    }
+    if (!resp.ok) throw new Error('Gmail API error ' + resp.status);
+    showToast('Draft saved to Gmail ✓ — open Gmail to add recipient');
+    if (btn) { btn.textContent = 'Saved ✓'; }
+  } catch(e) {
+    console.error('Gmail draft error:', e);
+    showToast('Gmail draft failed — check console');
+    if (btn) { btn.textContent = 'Save to Gmail'; btn.disabled = false; }
+  }
+}
+
 function initGCalClient() {
   const clientId = localStorage.getItem('showup_gcal_client_id');
   if (!clientId || !window.google?.accounts?.oauth2) return;
@@ -8864,6 +9100,8 @@ function initGCalClient() {
   if (localStorage.getItem('showup_gcal_connected') === '1') {
     _gCalTokenClient.requestAccessToken({ prompt: 'none' });
   }
+  // Init Gmail client at the same time (same client ID)
+  initGmailClient();
 }
 
 function connectGCal() {
@@ -8923,7 +9161,8 @@ function saveGCalClientId() {
   const val = input.value.trim();
   if (val) localStorage.setItem('showup_gcal_client_id', val);
   else localStorage.removeItem('showup_gcal_client_id');
-  _gCalTokenClient = null; // reset so it reinitialises with new ID
+  _gCalTokenClient = null;  // reset so it reinitialises with new ID
+  _gmailTokenClient = null; // reset Gmail client too (same ID)
   showToast('Client ID saved');
   renderAccount();
 }
