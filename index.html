@@ -2073,6 +2073,7 @@ let networkSort = 'recent';
 let questsView = 'tasks';
 let pipelineOpenId = null;
 let _pipelineTab = {}; // id → 'detail' | 'prep' | 'debrief'
+let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'digest'
 let networkView = 'people';
 let focusView = 'timer';
 let _pendingImportRows = null;
@@ -2806,6 +2807,7 @@ function renderToday() {
           </div>
           <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
           <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
+          ${days >= 3 ? `<button onclick="event.stopPropagation();showLetGoMenu(${c.id},this)" style="background:none;border:none;padding:3px 5px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">let go</button>` : ''}
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
@@ -4922,8 +4924,16 @@ function renderPipelineEntry(e) {
         <div><label style="${fL}">Next step</label><input id="pe-next-${e.id}" value="${escHtml(e.nextStep||'')}" placeholder="e.g. Phone screen Apr 5" onblur="savePipelineField(${e.id},'nextStep')" style="${iI}"></div>
       </div>
       <div>
-        <label style="${fL}">Notes</label>
-        <textarea id="pe-notes-${e.id}" onblur="savePipelineField(${e.id},'notes')" style="${tA}">${escHtml(e.notes||'')}</textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <label style="${fL}margin-bottom:0;">Notes</label>
+          <button id="digest-btn-${e.id}-notes" onclick="event.stopPropagation();digestPipelineSection(${e.id},'notes')" style="background:none;border:none;padding:0;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--teal);cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
+        </div>
+        ${(() => {
+          const dV = (_pipelineDigestView[e.id] || {}).notes || 'digest';
+          const digest = e.notesDigest;
+          const rawTA = `<textarea id="pe-notes-${e.id}" onblur="savePipelineField(${e.id},'notes')" style="${tA}">${escHtml(e.notes||'')}</textarea>`;
+          return renderDigestBlock(e.id, 'notes', digest, rawTA);
+        })()}
       </div>
       ${(() => {
         const linkedCo = (S.companies||[]).find(co => co.name && co.name.toLowerCase() === e.company.toLowerCase());
@@ -4952,8 +4962,16 @@ function renderPipelineEntry(e) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
           <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Generate questions</button>
+          <button id="digest-btn-${e.id}-prep" onclick="event.stopPropagation();digestPipelineSection(${e.id},'prep')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
         </div>
       </div>
+      ${(() => {
+        const dV = (_pipelineDigestView[e.id] || {}).prep || 'digest';
+        if (e.prepDigest && dV === 'digest') {
+          return renderDigestBlock(e.id, 'prep', e.prepDigest, '');
+        }
+        const toggleLink = e.prepDigest ? `<div style="margin-bottom:6px;"><span onclick="event.stopPropagation();togglePipelineDigestView(${e.id},'prep','digest')" style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">view digest</span></div>` : '';
+        return toggleLink + `
       <div>
         <label style="${fL}">Who you're meeting</label>
         <textarea id="pe-prepPeople-${e.id}" placeholder="Names, roles, LinkedIn notes…" onblur="savePipelineField(${e.id},'prepPeople')" style="${tA}">${escHtml(e.prepPeople||'')}</textarea>
@@ -4971,7 +4989,8 @@ function renderPipelineEntry(e) {
       <div>
         <label style="${fL}">Questions to ask them</label>
         <textarea id="pe-prepAsk-${e.id}" placeholder="What do you want to learn about the role, team, or company?" onblur="savePipelineField(${e.id},'prepAsk')" style="${tA}">${escHtml(e.prepAsk||'')}</textarea>
-      </div>
+      </div>`;
+      })()}
       ${(() => {
         const history = (e.prepHistory||[]).filter(r => r.prep && (r.prep.people||r.prep.questions||r.prep.stories||r.prep.ask));
         if (!history.length) return '';
@@ -4998,7 +5017,20 @@ function renderPipelineEntry(e) {
 
   const debriefTab = `
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Fill this in within an hour while it's fresh. It compounds over multiple rounds.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Fill this in within an hour while it's fresh. It compounds over multiple rounds.</div>
+        <button id="digest-btn-${e.id}-debrief" onclick="event.stopPropagation();digestPipelineSection(${e.id},'debrief')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
+      </div>
+      ${(() => {
+        const dV = (_pipelineDigestView[e.id] || {}).debrief || 'digest';
+        if (e.debriefDigest && dV === 'digest') {
+          return renderDigestBlock(e.id, 'debrief', e.debriefDigest, '') +
+            `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+              <button onclick="event.stopPropagation();openEmailDrafter(${e.id},'thankyou')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft thank-you</button>
+            </div>`;
+        }
+        const toggleLink = e.debriefDigest ? `<div><span onclick="event.stopPropagation();togglePipelineDigestView(${e.id},'debrief','digest')" style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">view digest</span></div>` : '';
+        return toggleLink + `
       <div>
         <label style="${fL}">What went well</label>
         <textarea id="pe-debriefWentWell-${e.id}" placeholder="Moments that landed, questions you nailed, good energy…" onblur="savePipelineField(${e.id},'debriefWentWell')" style="${tA}">${escHtml(e.debriefWentWell||'')}</textarea>
@@ -5017,7 +5049,8 @@ function renderPipelineEntry(e) {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id},'thankyou')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft thank-you</button>
-      </div>
+      </div>`;
+      })()}
       ${(() => {
         const history = (e.prepHistory||[]).filter(r => r.debrief && (r.debrief.wentWell||r.debrief.improve||r.debrief.followUp||r.debrief.gutRead));
         if (!history.length) return '';
@@ -5129,6 +5162,107 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
 
   wrap.innerHTML = `<textarea id="pe-prepQuestions-${id}" onblur="savePipelineField(${id},'prepQuestions')" style="background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:120px;">${escHtml(newVal)}</textarea>
   <button onclick="openAddToQuestionBank()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Save to Q Bank</button>`;
+}
+
+// ── DIGEST: Notes / Prep / Debrief ───────────────────────────
+async function digestPipelineSection(id, section) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  let rawContent, storageKey, prompt;
+
+  if (section === 'notes') {
+    rawContent = e.notes;
+    if (!rawContent?.trim()) { showToast('Add some notes first'); return; }
+    storageKey = 'notesDigest';
+    prompt = `You are helping a job seeker in ad tech organize their raw job notes into a clean, scannable summary.
+
+Here are their raw notes for ${e.role || 'a role'} at ${e.company || 'a company'}:
+${rawContent}
+
+Extract and organize into clearly labeled sections. Only include sections with actual content — don't invent. Possible sections: ROLE OVERVIEW, COMPANY CONTEXT, KEY PEOPLE, CULTURE SIGNALS, REQUIREMENTS, COMPENSATION / LOGISTICS, OPEN QUESTIONS.
+
+Format rules: each section header on its own line in ALL CAPS followed by a colon. Content as concise bullet points using — as the bullet character. Blank line between sections. No markdown, no asterisks, no JSON.`;
+  } else if (section === 'prep') {
+    const parts = [
+      e.prepPeople    ? `WHO YOU'RE MEETING:\n${e.prepPeople}`    : '',
+      e.prepQuestions ? `QUESTIONS TO PREPARE:\n${e.prepQuestions}` : '',
+      e.prepStories   ? `STORIES & EXAMPLES:\n${e.prepStories}`   : '',
+      e.prepAsk       ? `QUESTIONS TO ASK:\n${e.prepAsk}`         : '',
+    ].filter(Boolean).join('\n\n');
+    if (!parts) { showToast('Fill in some prep fields first'); return; }
+    storageKey = 'prepDigest';
+    rawContent = parts;
+    prompt = `You are helping a job seeker in ad tech create a concise prep brief for an interview at ${e.company || 'a company'} for ${e.role || 'a role'}.
+
+Prep content:
+${parts}
+
+Create a scannable cheat sheet. Use only the relevant sections from: WHO YOU'RE MEETING, KEY THEMES TO HIT, TOP QUESTIONS TO EXPECT, STRONG STORIES TO USE, QUESTIONS TO ASK THEM.
+
+Format: section headers in ALL CAPS followed by a colon, bullet points using — as bullet, blank line between sections. Keep bullets punchy — one idea per line. No markdown.`;
+  } else if (section === 'debrief') {
+    const parts = [
+      e.debriefWentWell  ? `WHAT WENT WELL:\n${e.debriefWentWell}`    : '',
+      e.debriefImprove   ? `WHAT TO IMPROVE:\n${e.debriefImprove}`    : '',
+      e.debriefFollowUp  ? `FOLLOW-UP ACTIONS:\n${e.debriefFollowUp}` : '',
+      e.debriefGutRead   ? `GUT READ:\n${e.debriefGutRead}`           : '',
+    ].filter(Boolean).join('\n\n');
+    if (!parts) { showToast('Fill in some debrief fields first'); return; }
+    storageKey = 'debriefDigest';
+    rawContent = parts;
+    prompt = `You are helping a job seeker in ad tech distill their post-interview debrief for ${e.company || 'a company'}.
+
+Debrief notes:
+${parts}
+
+Distill into a clean summary using only the relevant sections: KEY WINS, AREAS TO SHARPEN, FOLLOW-UP ACTIONS, OVERALL READ.
+
+Format: section headers in ALL CAPS followed by a colon, bullet points using — as bullet, blank line between sections. Crisp — one idea per bullet. No markdown.`;
+  } else return;
+
+  const btn = document.getElementById(`digest-btn-${id}-${section}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Digesting…'; }
+
+  const result = await callClaude(prompt, { maxTokens: 600 });
+
+  if (btn) { btn.disabled = false; btn.textContent = '✦ Digest'; }
+  if (result.error) { showToast(result.message || 'Digest failed'); return; }
+
+  e[storageKey] = (result.text || '').trim();
+  if (!_pipelineDigestView[id]) _pipelineDigestView[id] = {};
+  _pipelineDigestView[id][section] = 'digest';
+  save();
+  renderNetwork();
+}
+
+function togglePipelineDigestView(id, section, mode) {
+  if (!_pipelineDigestView[id]) _pipelineDigestView[id] = {};
+  _pipelineDigestView[id][section] = mode;
+  renderNetwork();
+}
+
+function renderDigestBlock(id, section, digestText, rawContent) {
+  const dV = (_pipelineDigestView[id] || {})[section] || 'digest';
+  const fL = `font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;display:block;`;
+  const tA = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:60px;`;
+
+  const toggle = digestText
+    ? `<span onclick="event.stopPropagation();togglePipelineDigestView(${id},'${section}','${dV==='digest'?'raw':'digest'}')" style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);cursor:pointer;margin-left:8px;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">${dV==='digest'?'view raw':'view digest'}</span>`
+    : '';
+
+  if (digestText && dV === 'digest') {
+    const lines = digestText.split('\n');
+    const rendered = lines.map(ln => {
+      ln = ln.trimEnd();
+      if (!ln) return '<div style="height:8px;"></div>';
+      if (/^[A-Z][A-Z &\/\-]{2,}:/.test(ln)) return `<div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-top:10px;margin-bottom:3px;">${escHtml(ln)}</div>`;
+      if (ln.startsWith('— ') || ln.startsWith('- ')) return `<div style="font-size:0.8rem;color:var(--text-mid);line-height:1.5;padding-left:10px;position:relative;"><span style="position:absolute;left:0;color:var(--text-dim);">—</span>${escHtml(ln.slice(2))}</div>`;
+      return `<div style="font-size:0.8rem;color:var(--text-mid);line-height:1.5;">${escHtml(ln)}</div>`;
+    }).join('');
+    return `<div>${rendered}</div>${toggle}`;
+  }
+
+  return `${rawContent}${toggle}`;
 }
 
 // ── FEATURE 1: EMAIL DRAFTER ─────────────────────────────────
@@ -7033,6 +7167,28 @@ function escHtml(s) {
 
 let _lm = {};  // wizard state
 
+function openLogMeetingForContact(contactId) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const name = contactFullName(c);
+  _lm = {
+    title: name + (c.company ? ` · ${c.company}` : ''),
+    time: todayLocal(),
+    type: 'other',
+    contactId,
+    newContact: null,
+    pipelineId: null,
+    logDate: todayLocal(),
+    logMethod: c.preferredMethod || 'In person',
+    logNotes: '',
+    followUpDate: '',
+    followUpNote: '',
+    tasks: [],
+    step: 1,
+  };
+  _lmRender();
+}
+
 function openLogMeeting(title, time) {
   const isInterview  = /interview|phone screen|screening|hiring|recruiter|final round/i.test(title);
   const isNetworking = /coffee|lunch|connect|catch.?up|informational|networking|intro call/i.test(title);
@@ -7301,7 +7457,7 @@ function _lmFinish() {
     const newC = {
       id: S.nextContactId++, name: `${nc.first} ${nc.last}`.trim(),
       first: nc.first, last: nc.last, company: nc.company||'',
-      role:'', email:'', type:'peer', notes:'', lastContact: null,
+      role:'', email:'', type:'peer', notes:'', about:'', lastContact: null,
       cadence:null, preferredMethod: _lm.logMethod, resumeSent:false,
       nextStep:'', interactions:[], priority:false,
       nextContactDate: _lm.followUpDate||'', followUpNote: _lm.followUpNote||'',
@@ -7759,6 +7915,7 @@ function runContactImport(defaultType) {
       nextStep: nextI >= 0 ? (r[nextI]||'').trim() : '',
       cadence: null,
       notes: combinedNotes,
+      about: '',
       interactions: [],
       priority: false,
       nextContactDate: '',
@@ -7829,6 +7986,7 @@ function saveNewContact() {
     email: (document.getElementById('nc-email')||{}).value?.trim()||'',
     type: (document.getElementById('nc-type')||{}).value||'peer',
     notes: (document.getElementById('nc-notes')||{}).value?.trim()||'',
+    about: '',
     lastContact: null,
     cadence: null,
     preferredMethod: '',
@@ -8060,12 +8218,67 @@ function saveContactFollowup(id) {
   showToast('Follow-up date saved \u2713');
 }
 
+function saveContactAbout(id) {
+  const c = S.contacts.find(x => x.id === id);
+  if (!c) return;
+  const el = document.getElementById(`about-${id}`);
+  if (el) c.about = el.value || '';
+  save();
+}
+
 function saveContactFollowupNote(id) {
   const c = S.contacts.find(x => x.id === id);
   if (!c) return;
   const el = document.getElementById(`fu-note-${id}`);
   if (el) c.followUpNote = el.value || '';
   save();
+}
+
+function showLetGoMenu(contactId, btn) {
+  const existing = document.getElementById('letgo-menu');
+  if (existing) { existing.remove(); if (existing.dataset.cid == contactId) return; }
+  const menu = document.createElement('div');
+  menu.id = 'letgo-menu';
+  menu.dataset.cid = contactId;
+  menu.style.cssText = 'position:absolute;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px 0;min-width:160px;';
+  const opts = [
+    { label: 'Snooze 2 weeks', action: () => releaseContactCadence(contactId, 14) },
+    { label: 'Snooze 1 month', action: () => releaseContactCadence(contactId, 30) },
+    { label: 'Remove from list', action: () => releaseContactCadence(contactId, 0), red: true },
+  ];
+  opts.forEach(o => {
+    const el = document.createElement('div');
+    el.textContent = o.label;
+    el.style.cssText = `padding:8px 14px;font-size:0.75rem;font-family:'DM Sans',sans-serif;color:${o.red ? 'var(--red)' : 'var(--text-mid)'};cursor:pointer;transition:background 0.1s;`;
+    el.onmouseenter = () => el.style.background = 'var(--surface2)';
+    el.onmouseleave = () => el.style.background = '';
+    el.onclick = (ev) => { ev.stopPropagation(); menu.remove(); o.action(); };
+    menu.appendChild(el);
+  });
+  btn.style.position = 'relative';
+  btn.appendChild(menu);
+  menu.style.right = '0';
+  menu.style.top = '100%';
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
+
+function releaseContactCadence(contactId, snooze) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  if (snooze) {
+    const d = new Date(); d.setDate(d.getDate() + snooze);
+    c.nextContactDate = d.toISOString().slice(0, 10);
+    c.followUpNote = c.followUpNote || '';
+    showToast(`Snoozed ${snooze} days ✓`);
+  } else {
+    c.cadence = null;
+    c.nextContactDate = '';
+    c.followUpNote = '';
+    showToast('Removed from reach-out list ✓');
+  }
+  save();
+  renderToday();
+  if (currentTab === 'network') renderNetwork();
 }
 
 function dismissFollowUpNudge(contactId) {
@@ -8319,6 +8532,7 @@ function renderContactCard(c) {
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
         <button class="contact-action-btn" onclick="event.stopPropagation();openEditContact(${c.id})">Edit</button>
         <button class="contact-action-btn danger" onclick="event.stopPropagation();deleteContact(${c.id})">Remove</button>
+        <button class="contact-action-btn" onclick="event.stopPropagation();openLogMeetingForContact(${c.id})" style="color:var(--amber);border-color:var(--amber);">↳ Log meeting</button>
         <button class="contact-action-btn" onclick="event.stopPropagation();openOutreachDrafter(${c.id})" style="color:var(--amber);border-color:var(--amber);margin-left:auto;">✦ Draft outreach</button>
       </div>
 
@@ -8345,7 +8559,7 @@ function renderContactCard(c) {
         <button class="contact-action-btn" onclick="event.stopPropagation();quickLogInteraction(${c.id})">Log it</button>
 
         <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-          <div class="contact-detail-section-label">Planned follow-up</div>
+          <div class="contact-detail-section-label">Next outreach</div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
             <input type="date" id="fu-date-${c.id}" value="${escHtml(c.nextContactDate||'')}" class="contact-inline-input" style="flex:1;padding:7px 10px;">
             <button onclick="saveContactFollowup(${c.id})" class="contact-action-btn" style="white-space:nowrap;flex-shrink:0;">Save</button>
@@ -8385,10 +8599,17 @@ function renderContactCard(c) {
         })()}
 
         <div style="margin-top:10px;">
-          <div class="contact-detail-section-label">Notes</div>
-          <textarea class="contact-inline-input" id="note-${c.id}" rows="3"
+          <div class="contact-detail-section-label">Next steps</div>
+          <textarea class="contact-inline-input" id="note-${c.id}" rows="2"
             placeholder="Next steps, context, things to remember..."
             onblur="saveContactNotes(${c.id})">${escHtml(c.notes || c.nextStep || '')}</textarea>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="contact-detail-section-label">About</div>
+          <textarea class="contact-inline-input" id="about-${c.id}" rows="3"
+            placeholder="Alma mater, interests, how you met, personal context..."
+            onblur="saveContactAbout(${c.id})">${escHtml(c.about || '')}</textarea>
         </div>
       </div>
 
