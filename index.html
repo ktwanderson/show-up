@@ -2038,7 +2038,7 @@ const STATE_VERSION = 2;
 // Ship new features dark by setting the flag to false.
 // Flip to true when ready to enable for all users.
 const FEATURE_FLAGS = {
-  interviewPrep:     false,  // #13 — interview prep Q&A section (not yet built)
+  interviewPrep:     true,   // #13 — interview prep review mode
   diagnosticV2:      false,  // #1  — harder AI diagnostic questions (not yet built)
   rolledOverSection: true,   // #6  — "From yesterday" section on Today tab
   sprintTriage:      true,   // #23 — Monday sprint triage modal
@@ -5319,6 +5319,7 @@ function renderPipelineEntry(e) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Prepare before the conversation. Fill in what you know.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();openPrepReview(${e.id})" style="flex-shrink:0;background:var(--amber);border:1px solid var(--amber);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Review</button>` : ''}
           <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
           <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Generate questions</button>
           <button id="digest-btn-${e.id}-prep" onclick="event.stopPropagation();digestPipelineSection(${e.id},'prep')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
@@ -6345,6 +6346,45 @@ function deletePipelineEntry(id) {
   pipelineOpenId = null;
   save();
   renderNetwork();
+}
+
+function openPrepReview(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const inner = document.getElementById('modal-inner');
+  const hd = `font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:8px;margin-top:20px;display:block;`;
+  const body = `font-size:0.9rem;color:var(--text);line-height:1.7;white-space:pre-wrap;`;
+  const dim = `font-size:0.84rem;color:var(--text-mid);line-height:1.7;white-space:pre-wrap;`;
+
+  const sections = [
+    e.prepPeople    && { label: 'Who you\'re meeting', text: e.prepPeople },
+    e.prepQuestions && { label: 'Questions to prepare for', text: e.prepQuestions },
+    e.prepStories   && { label: 'Your stories & examples', text: e.prepStories },
+    e.prepAsk       && { label: 'Questions to ask them', text: e.prepAsk },
+  ].filter(Boolean);
+
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;">◆ Interview prep</div>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-dim);font-size:1.1rem;cursor:pointer;padding:0;line-height:1;">×</button>
+      </div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:4px;">${escHtml(e.role||'Role')} · ${escHtml(e.company||'')}</div>
+      <div style="height:1px;background:var(--border);margin-bottom:4px;"></div>
+      ${sections.length === 0
+        ? `<div style="padding:24px 0;text-align:center;font-size:0.82rem;color:var(--text-dim);">No prep notes yet — fill them in on the Prep tab.</div>`
+        : sections.map((s, i) => `
+          <div style="margin-top:${i===0?'4':'0'}px;">
+            <span style="${hd}">${escHtml(s.label)}</span>
+            <div style="${s.label.includes('stories') ? body : dim}">${escHtml(s.text)}</div>
+          </div>`).join('<div style="height:1px;background:var(--border);margin-top:18px;"></div>')
+      }
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:8px;">
+        <button onclick="closeModal();_pipelineTab[${id}]='debrief';pipelineOpenId=${id};renderNetwork()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">→ Debrief after</button>
+        <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Done</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
 }
 
 function openPrepImport(pipelineId) {
@@ -9117,18 +9157,19 @@ function renderContactCard(c) {
         })()}
 
         <div style="margin-top:10px;">
-          <div class="contact-detail-section-label">Next steps</div>
+          <div class="contact-detail-section-label">Notes</div>
           <textarea class="contact-inline-input" id="note-${c.id}" rows="2"
             placeholder="Next steps, context, things to remember..."
             onblur="saveContactNotes(${c.id})">${escHtml(c.notes || c.nextStep || '')}</textarea>
         </div>
 
-        <div style="margin-top:10px;">
-          <div class="contact-detail-section-label">About</div>
-          <textarea class="contact-inline-input" id="about-${c.id}" rows="3"
-            placeholder="Alma mater, interests, how you met, personal context..."
-            onblur="saveContactAbout(${c.id})">${escHtml(c.about || '')}</textarea>
-        </div>
+        ${c.about ? `<div style="margin-top:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+            <div class="contact-detail-section-label" style="margin-bottom:0;">About</div>
+            <button onclick="event.stopPropagation();openEditContact(${c.id})" style="background:none;border:none;font-size:0.65rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">Edit →</button>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.6;font-style:italic;">${escHtml(c.about)}</div>
+        </div>` : ''}
       </div>
 
     </div>` : '';
