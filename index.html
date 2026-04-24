@@ -1230,7 +1230,7 @@
   <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
   <button class="tab" data-tab="journal" data-mode-required="full" onclick="switchTab('journal')">Journal</button>
-  <button class="tab" data-tab="account" onclick="switchTab('account')">Account</button>
+  <button class="tab" data-tab="account" onclick="switchTab('account')" style="position:relative;">Account<span id="account-badge" style="display:none;position:absolute;top:6px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--amber);"></span></button>
 </div>
 </div>
 
@@ -1997,6 +1997,29 @@ const SANDBOX_DEMO_STATE_FULL = {
   todaySealed:false, postSealCompletions:0, triageDoneThisWeek:'',
 };
 
+// ── RELEASE NOTES ────────────────────────────────────────────
+// Add a new entry here with each meaningful deploy.
+// version must match the Sentry release string in the <head>.
+const FEEDBACK_FORM_URL = ''; // Paste your Google Form URL here
+
+const RELEASE_NOTES = [
+  {
+    version: '0.13',
+    date: '2026-04-23',
+    items: [
+      'Sprint planning — flag tasks for this week with ◆, Monday triage modal with smart suggestions',
+      'Seal the Day — completions after close are tracked, not dropped',
+      'Demo mode — Coach-only and Coach + Job Seeker previews in Account',
+      'Coach — new topics: FreeWheel, Amazon DSP, CTV, Identity, Martech, SPO, Ad Sales, Ad Measurement',
+      'Email drafts — cleaner, more direct output with stronger prompting',
+      'Pipeline — paste job descriptions directly; first stage renamed to Tracking',
+      'Contacts — Edit/Remove buttons moved to top of card',
+      'Meeting follow-up tasks now include contact name',
+      'Mobile — search input and View button tap fixes',
+    ],
+  },
+];
+
 const ACHIEVEMENTS = [
   { id: 'checkin_1',   icon: '◉', name: 'Day One',          desc: 'Complete your first daily check-in',       check: s => s.showUpStreak >= 1 },
   { id: 'checkin_5',   icon: '|', name: 'Five Days',        desc: 'Check in 5 days in a row',                 check: s => s.maxShowUpStreak >= 5 },
@@ -2290,6 +2313,7 @@ const DEFAULT_STATE = {
   outsideGoalPeriod: 'week',
   trackedHabits: ['workout', 'journal', 'outside'],
   onboardingComplete: false,
+  lastSeenVersion: '',
   skills: [],
   nextSkillId: 1,
   weeklyCapacity: 20,
@@ -2705,6 +2729,7 @@ function streakLabel(n) {
 // ── RENDER ───────────────────────────────────────────────────
 function render() {
   updateHeader();
+  updateAccountBadge();
   if (currentTab === 'today')    renderToday();
   if (currentTab === 'focus')    renderFocusTimer();
   if (currentTab === 'quests')   renderQuests();
@@ -9356,9 +9381,41 @@ function importData() {
 }
 
 // ── ACCOUNT ──────────────────────────────────────────────────
+function updateAccountBadge() {
+  const badge = document.getElementById('account-badge');
+  if (badge) badge.style.display = hasUnseenRelease() ? 'block' : 'none';
+}
+
+function hasUnseenRelease() {
+  const latest = RELEASE_NOTES[0]?.version || '';
+  return latest && latest !== (S.lastSeenVersion || '');
+}
+
 function renderAccount() {
   const wrap = document.getElementById('account-wrap');
   if (!wrap) return;
+
+  // Mark release notes as seen
+  if (hasUnseenRelease()) {
+    S.lastSeenVersion = RELEASE_NOTES[0].version;
+    save();
+    updateAccountBadge();
+  }
+
+  // What's New section
+  const whatsNewSection = RELEASE_NOTES.length > 0 ? `
+    <div style="margin-bottom:28px;padding:14px 16px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-label">What's new</div>
+        <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${RELEASE_NOTES[0].date}</span>
+      </div>
+      <ul style="margin:0;padding-left:14px;display:flex;flex-direction:column;gap:5px;">
+        ${RELEASE_NOTES[0].items.map(item => `
+          <li style="font-size:0.78rem;color:var(--text-mid);line-height:1.5;">${escHtml(item)}</li>
+        `).join('')}
+      </ul>
+    </div>` : '';
+
   const nameSection = `
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:8px">Your name</div>
@@ -9414,7 +9471,7 @@ function renderAccount() {
       </div>
     </div>`;
 
-  wrap.innerHTML = nameSection + modeSection + `
+  wrap.innerHTML = whatsNewSection + nameSection + modeSection + `
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Data</div>
       <div style="display:flex;flex-direction:column;gap:14px">
@@ -9539,6 +9596,17 @@ function renderAccount() {
           onblur="saveClaudeApiKey()">
         <button onclick="toggleApiKeyVisibility()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Show</button>
         <button onclick="saveClaudeApiKey();showToast('API key saved ✓')" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Save</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:16px">Feedback</div>
+      <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.6;margin-bottom:14px;">Something broken, confusing, or missing? We read everything.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.5;">Takes about 2 minutes. Your input shapes what gets built next.</div>
+        ${FEEDBACK_FORM_URL
+          ? `<a href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-decoration:none;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Share feedback →</a>`
+          : `<span style="flex-shrink:0;font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Coming soon</span>`
+        }
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
