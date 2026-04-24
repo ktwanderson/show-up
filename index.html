@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Show Up</title>
+  <!-- Sentry error tracking -->
+  <script src="https://js.sentry-cdn.com/9c257fb31fb2d18632ce804d59167119.min.js" crossorigin="anonymous"></script>
+  <script>
+    Sentry.onLoad(function() {
+      Sentry.init({
+        environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
+        release: 'show-up@0.13',
+      });
+    });
+  </script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2d4a3e">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232d4a3e'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23f0c430'/%3E%3Cg stroke='%23f0c430' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='16' y1='26' x2='16' y2='30'/%3E%3Cline x1='2' y1='16' x2='6' y2='16'/%3E%3Cline x1='26' y1='16' x2='30' y2='16'/%3E%3Cline x1='5.5' y1='5.5' x2='8.4' y2='8.4'/%3E%3Cline x1='23.6' y1='23.6' x2='26.5' y2='26.5'/%3E%3Cline x1='26.5' y1='5.5' x2='23.6' y2='8.4'/%3E%3Cline x1='8.4' y1='23.6' x2='5.5' y2='26.5'/%3E%3C/g%3E%3C/svg%3E">
