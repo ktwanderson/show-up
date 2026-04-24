@@ -1666,7 +1666,7 @@ const CATS = {
 };
 
 const PIPELINE_STAGES = [
-  { key: 'prospect',   label: 'Prospect',     color: '#8c8880' },
+  { key: 'prospect',   label: 'Tracking',     color: '#8c8880' },
   { key: 'applied',    label: 'Applied',      color: '#4a6b8a' },
   { key: 'phone',      label: 'Phone Screen', color: '#7a5c8a' },
   { key: 'interview1', label: 'Interview 1',  color: '#a07c08' },
@@ -1714,7 +1714,7 @@ const LEVELS = [
 // Realistic "coach only" user shown during preview mode.
 // Completely isolated — never written to localStorage.
 const SANDBOX_DEMO_STATE = {
-  userName: 'Alex',
+  userName: 'Demo',
   mode: 'coach',
   xp: 1180,
   earned: ['checkin_1','first_win','focus_5'],
@@ -1854,6 +1854,14 @@ const SKILL_LIBRARY = [
   { key: 'gam',            name: 'Google Ad Manager',   category: 'platforms' },
   { key: 'ttd',            name: 'The Trade Desk',      category: 'platforms' },
   { key: 'liveramp',       name: 'LiveRamp',            category: 'platforms' },
+  { key: 'freewheel',      name: 'FreeWheel',           category: 'platforms', context: 'The standard ad server for premium video at broadcast and cable-scale publishers.' },
+  { key: 'amazon_ads',     name: 'Amazon DSP',          category: 'platforms', context: 'Critical for retail media, DTC brands, and publishers with significant Amazon demand.' },
+  { key: 'ad_sales',       name: 'Ad Sales',            category: 'adtech',   context: 'Comes up in every publisher and media company role — from individual contributor to strategist.' },
+  { key: 'spo',            name: 'Supply Path Optimization', category: 'adtech', context: 'A key topic for publishers, DSPs, and anyone in programmatic yield or strategy.' },
+  { key: 'ad_measurement', name: 'Ad Measurement',      category: 'adtech',   context: 'Interviewers test this in analytics, yield, and product roles across every ad tech vertical.' },
+  { key: 'identity',       name: 'Identity Solutions',  category: 'adtech',   context: 'One of the most active areas in the industry — essential for any senior ad tech role.' },
+  { key: 'ctv',            name: 'CTV & Streaming Video', category: 'adtech', context: 'The fastest-growing segment of digital advertising — high employer demand for domain expertise.' },
+  { key: 'martech',        name: 'Martech & CDPs',      category: 'adtech',   context: 'First-party data strategy is now core to publisher, advertiser, and platform roles alike.' },
 ];
 
 const SKILL_CATEGORIES = {
@@ -1966,6 +1974,46 @@ const SKILL_CONTENT = {
     2: `Key LiveRamp products: Data Marketplace (buy/sell audience data), Authenticated Traffic Solution (ATS, for publishers to pass RampIDs on authenticated users), and Data Collaboration (clean room-like matching). For a publisher like AMC Networks, LiveRamp enables selling authenticated audiences to programmatic buyers at premium CPMs — a key revenue strategy in a cookieless world.`,
     3: `At fluency: you can explain the LiveRamp identity graph, articulate how ATS works on the publisher side (user logs in → LiveRamp hashes the email → RampID attached to bid request), evaluate LiveRamp vs. competing identity solutions (UID 2.0, ID5), and discuss the clean room use cases where LiveRamp adds value vs. where a more neutral solution is better.`,
   },
+  freewheel: {
+    1: `FreeWheel (owned by Comcast) is the dominant ad serving platform for premium video publishers — broadcast networks, cable companies, streaming services, and sports properties. While Google Ad Manager dominates display and general video, FreeWheel is purpose-built for the complex rights management, competitive separation, and live event demands of traditional media. AMC Networks, NBC, ESPN, and Fox all use FreeWheel.`,
+    2: `FreeWheel's key differentiators: competitive exclusion (preventing competing ads in the same pod), pod optimization (ordering ads to maximize revenue in a linear-style break), live event handling (simultaneous high-scale delivery for sports), and MRM (Monetization Rights Management) for managing digital ad rights across platforms. Its integration with SSAI vendors makes it central to streaming ad delivery as well as broadcast.`,
+    3: `At fluency: you can describe the FreeWheel architecture (MRM, SmartSuite), explain why premium video publishers choose it over GAM for video (rights management, live scale, competitive separation at pod level), articulate FreeWheel's programmatic integrations (Beeswax acquisition, Strata), and discuss its role in cross-screen measurement. You can walk through a live sports event's ad delivery from a FreeWheel perspective including fallback and error handling.`,
+  },
+  amazon_ads: {
+    1: `Amazon DSP is one of the most powerful demand-side platforms for brands that sell on or are measured through Amazon. It combines Amazon's shopper intent data — search history, purchase behavior, product views — with programmatic display, video, and CTV buying. For brands, Amazon DSP means targeting audiences based on what they actually buy, not just what they browse. For publishers, Amazon is a significant and growing source of programmatic demand.`,
+    2: `Amazon DSP's unique advantage is closed-loop measurement: Amazon owns both the ad platform and the retail data, so it can directly link ad exposure to purchase. Audience types: In-Market (actively shopping a category), Lifestyle (longer-term behavioral patterns), and Lookalike. Separate from DSP, Amazon also offers Sponsored Products, Sponsored Brands, and Sponsored Display — self-serve performance formats critical for DTC and retail brands that operate alongside the DSP.`,
+    3: `At fluency: you can explain when a brand should use Amazon DSP vs. The Trade Desk vs. DV360 (retail/CPG with Amazon presence → Amazon DSP; broad brand awareness across premium content → TTD/DV360), articulate the measurement advantages and data limitations (Amazon shopper data doesn't flow outside its ecosystem), discuss Amazon's publisher network (owned-and-operated plus third-party), and evaluate the tradeoffs of Amazon demand for a sell-side publisher.`,
+  },
+  ad_sales: {
+    1: `Ad sales is the practice of selling digital advertising inventory directly to brands and agencies. It's consultative selling — you're not pitching impressions, you're helping clients achieve business goals (brand awareness, reach, performance, sales lift) using your platform's unique audiences and environments. Most publishers have a direct sales team selling premium inventory alongside programmatic revenue, and the two must be managed together for yield optimization.`,
+    2: `A successful ad sales professional understands the buyer's planning cycle, media mix, and KPIs before walking into the room. Proposals combine direct sold placements (sponsorships, roadblocks, custom content) with programmatic guarantees. Key deal metrics: CPM (cost per thousand impressions), CPCV (cost per completed view), vCPM (viewable CPM), SOV (share of voice for sponsorships), and flat-fee packages. Rate cards set the floor; negotiation happens around added value, makegoods, and audience guarantees.`,
+    3: `At fluency: you can build a multi-channel proposal that ties specific audience targeting to measurable business outcomes, articulate the premium value of direct sold vs. programmatic alternatives (context, exclusivity, creative formats), negotiate deal terms confidently (pricing floors, audience guarantees, makegoods, cancellation windows), and handle objections around viewability, brand safety, and measurement methodology. You understand how to manage yield across direct and programmatic without cannibalizing either.`,
+  },
+  spo: {
+    1: `Supply Path Optimization (SPO) is the practice of buyers selecting which sell-side paths — SSPs and ad exchanges — to route their bids through. Instead of bidding through every available SSP, buyers analyze which paths deliver the best reach, win rates, pricing transparency, and inventory quality, then consolidate spend on preferred routes. SPO has reshaped how DSPs, SSPs, and publishers relate to each other over the past several years.`,
+    2: `Why SPO matters: publishers sell the same impression through multiple SSPs, creating "path duplication" — a single impression may reach a DSP through Google, Magnite, PubMatic, and Index Exchange simultaneously. DSPs use SPO to select the most direct, lowest-fee path. Key signals: bid win rate, CPM efficiency, unique reach, and MFA (made-for-advertising) site rate. Publishers use ads.txt and sellers.json to declare authorized resellers and make their supply chain verifiable.`,
+    3: `At fluency: you can explain how ads.txt/sellers.json work and why they reduce fraud and improve path transparency, articulate the publisher's incentive to earn preferred-path status (preferred SSPs receive more demand), discuss fee transparency and the difference between total advertiser spend and publisher net revenue, and evaluate SPO strategy for both a DSP and a publisher looking to improve fill quality, win rates, and CPM yield.`,
+  },
+  ad_measurement: {
+    1: `Ad measurement determines whether advertising worked. Core metrics: impressions (was the ad served?), viewability (could a human actually see it?), brand safety (did it appear next to appropriate content?), reach and frequency (who saw it, how often?), and conversion (did it drive a desired action?). Measurement is increasingly complex as third-party cookies phase out, CTV grows, and walled gardens limit data sharing.`,
+    2: `Key methodologies: Multi-Touch Attribution (MTA) assigns credit across multiple touchpoints in a conversion path — better than last-click but dependent on cookies. Marketing Mix Modeling (MMM) uses statistical regression to attribute sales to media spend at a macro level — cookieless but less granular. Incrementality testing (holdout studies) measures true causal lift vs. a control group — the gold standard but expensive. MRC viewability standards: display requires 50% of pixels in view for 1 second; video requires 50% pixels for 2 continuous seconds.`,
+    3: `At fluency: you can evaluate which measurement approach fits a given campaign goal and budget, explain why last-click attribution systematically overstates performance channels and understates brand media, articulate why MMM is regaining favor as cookies deprecate, and discuss the core challenges of cross-screen measurement — especially in CTV where panel sizes are small, device graphs are probabilistic, and census-level data is fragmented across walled gardens. You can advise on measurement vendor selection (IAS, DoubleVerify, Nielsen, iSpot).`,
+  },
+  identity: {
+    1: `Identity solutions are technologies that enable advertisers to recognize and target audiences without relying on third-party cookies. As Google phases out cookies in Chrome and Apple tightens mobile identifier access, the industry is building alternatives based on hashed emails, authenticated user IDs, and probabilistic modeling. Identity is one of the most active and contested areas in digital advertising — essential knowledge for any senior role across buy side, sell side, or platforms.`,
+    2: `Key identity solutions: UID 2.0 (open-source email-based identifier backed by The Trade Desk, now adopted by publishers and SSPs), RampID (LiveRamp's proprietary ID, widely used in clean rooms and data collaboration), ID5 (independent identity graph), and first-party data strategies (publishers building authenticated, logged-in audiences). Walled gardens — Google, Meta, Amazon — maintain their own identity systems that don't interoperate with the open web, creating a fragmented landscape.`,
+    3: `At fluency: you can explain the difference between deterministic identity (exact match via hashed email — high accuracy, requires user authentication) and probabilistic identity (modeled match via device signals — broader reach, lower accuracy), articulate the privacy regulatory landscape (GDPR, CCPA, and how they constrain ID approaches), evaluate which identity solution fits a publisher or advertiser's specific use case, and discuss Google's Privacy Sandbox — what it proposes, what it doesn't solve, and why the industry's response has been skeptical.`,
+  },
+  ctv: {
+    1: `CTV (Connected TV) refers to internet-connected TV devices — smart TVs, Roku, Apple TV, Fire TV, gaming consoles — used to stream video content. AVOD (ad-supported video on demand) is the ad-funded streaming model (Peacock Free, Tubi, Pluto TV). FAST (Free Ad-Supported Streaming TV) refers to linear-style channels delivered over streaming (Pluto TV's channel guide). CTV ad spend is growing rapidly as audiences shift from linear broadcast and cable, making it one of the most strategically important areas in digital media.`,
+    2: `CTV ad delivery: VAST (Video Ad Serving Template) is the IAB standard for video ad delivery instructions. SSAI (Server-Side Ad Insertion) stitches ads into the video stream server-side — resistant to ad blockers, behaves like broadcast TV, but harder to measure at the user level. CSAI (Client-Side Ad Insertion) calls for ads within the player — simpler to implement but blockable. FreeWheel and Google Ad Manager are the dominant video ad servers. Measurement challenge: CTV lacks cookies, so targeting and attribution rely on IP addresses, device IDs, ACR data (automatic content recognition from smart TVs), and authenticated IDs.`,
+    3: `At fluency: you can describe the full CTV ad delivery stack (order management → ad server → SSAI → CDN → player), articulate the measurement gaps and why they matter (panel limitations, fragmented device graphs, no cross-publisher deduplication), discuss the business model landscape (AVOD vs. SVOD vs. FAST and the revenue and audience implications for publishers), and evaluate CTV targeting capabilities (household targeting, ACR data, UID 2.0 on authenticated streamers). You can speak to FreeWheel vs. GAM for premium video and explain why SSAI vs. CSAI is a meaningful architectural decision.`,
+  },
+  martech: {
+    1: `Martech (marketing technology) is the software stack brands use to manage customer relationships, run campaigns, and analyze performance. At its core is the CRM (Customer Relationship Management system, e.g., Salesforce) — tracking every interaction with a prospect or customer. A CDP (Customer Data Platform) extends this by unifying customer data from every channel into a single, persistent profile that can be activated for advertising, email, and personalization. For publishers and advertisers alike, first-party data strategy built on martech is now a competitive necessity.`,
+    2: `The DMP vs. CDP distinction is critical: A DMP (Data Management Platform — e.g., Adobe Audience Manager) is third-party-cookie dependent, handles anonymous audience segments, and is primarily used for programmatic targeting. A CDP (e.g., Segment, Salesforce CDP, Tealium) collects first-party data, is identity-resolved to known users, and stores persistent profiles that survive beyond the session and cookie deprecation. As cookies go away, the industry is migrating from DMPs to CDPs for durable audience strategy.`,
+    3: `At fluency: you can map the full martech stack from data collection (tags, SDKs, CDPs) through segmentation to activation (pushing audiences to DSPs, email platforms, personalization engines), evaluate CDP vendors for a publisher or advertiser use case, articulate why first-party data strategy is now a competitive moat, and explain how martech integrates with adtech — specifically how a publisher's CDP can feed authenticated audiences into the programmatic bidstream via UID 2.0 or LiveRamp ATS for premium CPM uplift.`,
+  },
 };
 
 function getSkillContent(key, level) {
@@ -2020,6 +2068,8 @@ const DEFAULT_STATE = {
   focusBlocksToday: 0,
   gotOutsideToday: false,
   todaySealed: false,
+  postSealCompletions: 0,
+  triageDoneThisWeek: '',
   carryOverIds: [],
   todayCalEvents: [],
   dailySnapshots: [],
@@ -2357,8 +2407,9 @@ function checkDayReset() {
     S.gotOutsideToday   = false;
     S.workedOutToday    = false;
     S.journaledToday    = false;
-    S.todaySealed       = false;
-    S.carryOverIds      = [];
+    S.todaySealed           = false;
+    S.postSealCompletions   = 0;
+    S.carryOverIds          = [];
     S.todayCalEvents    = [];
     save();
   }
@@ -2819,7 +2870,7 @@ function renderToday() {
       ${S.todaySealed
         ? `<div style="display:flex;align-items:center;gap:10px">
             <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
-            <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase">Day closed</span>
+            <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase">Day closed${(S.postSealCompletions||0) > 0 ? ` · <span style="color:var(--amber);text-transform:none;letter-spacing:0.02em;">+${S.postSealCompletions} after close</span>` : ''}</span>
            </div>`
         : `<button onclick="openCloseOut()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Close out the day \u2192</button>`
       }
@@ -3002,6 +3053,10 @@ function completeFocusTask(id, event) {
     }
   }
 
+  if (S.todaySealed && S.todayFocusIds.includes(id)) {
+    S.postSealCompletions = (S.postSealCompletions || 0) + 1;
+    saveDaySnapshot(true);
+  }
   save();
   floatXP(event, `+${xp}`);
   renderToday();
@@ -3147,6 +3202,7 @@ function closeOutWin() {
 }
 
 function sealDay() {
+  S.postSealCompletions = 0;
   saveDaySnapshot(true);
   S.todaySealed = true;
   save();
@@ -3811,16 +3867,19 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
 function displayIntroQuestion(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill) return;
+  const libEntry = SKILL_LIBRARY.find(sl => sl.key === skill.key);
+  const context = libEntry?.context || '';
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 4</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
+      <div style="display:flex;gap:6px;margin-bottom:${context ? '12px' : '20px'};justify-content:center;">
         ${[0,1,2,3].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i===0?'var(--text-mid)':'var(--border)'};"></div>`).join('')}
       </div>
-      <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you define <em>${escHtml(skill.name)}</em>?</div>
+      ${context ? `<div style="font-size:0.74rem;color:var(--amber);margin-bottom:16px;line-height:1.5;font-style:italic;">${escHtml(context)}</div>` : ''}
+      <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you describe <em>${escHtml(skill.name)}</em>?</div>
       <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:14px;">No right or wrong answer — this helps calibrate the questions to where you actually are.</div>
       <textarea id="ai-intro-answer" placeholder="Write a few sentences..." style="width:100%;border:1px solid var(--border);background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:10px 12px;outline:none;border-radius:2px;resize:none;min-height:80px;box-sizing:border-box;line-height:1.6;" oninput="document.getElementById('ai-intro-next').style.background=this.value.trim()?'var(--amber)':'var(--surface2)';document.getElementById('ai-intro-next').style.color=this.value.trim()?'#fff':'var(--text-dim)';"></textarea>
       <div style="display:flex;gap:8px;margin-top:14px;">
@@ -4384,31 +4443,41 @@ function renderCapacityBar() {
   const ws = getWeekStart();
   const wEnd = new Date(ws);
   wEnd.setDate(wEnd.getDate() + 6);
-  const wEndStr = wEnd.toISOString().slice(0,10);
+  const wEndStr = wEnd.toISOString().slice(0, 10);
 
-  // Parent tasks (those with subtasks) act as containers — count leaf tasks only to avoid double-counting
+  // Count leaf tasks only (parent containers excluded to avoid double-counting)
   const parentIds = new Set(S.tasks.filter(t => t.parentId).map(t => t.parentId));
-  const activeTasks = S.tasks.filter(t => !t.done && !parentIds.has(t.id));
-  const committedPts = activeTasks.reduce((sum, t) => sum + (t.points || 1), 0);
+  const sprintActive  = S.tasks.filter(t => t.urgent && !t.done  && !parentIds.has(t.id));
+  const sprintDone    = S.tasks.filter(t => t.urgent && t.done   && !parentIds.has(t.id) && t.doneDate >= ws && t.doneDate <= wEndStr);
+  const committedPts  = sprintActive.reduce((sum, t) => sum + (t.points || 1), 0);
+  const donePts       = sprintDone.reduce((sum, t) => sum + (t.points || 1), 0);
+  const totalPts      = committedPts + donePts;
 
-  const completedThisWeek = S.tasks.filter(t => t.done && !parentIds.has(t.id) && t.doneDate >= ws && t.doneDate <= wEndStr);
-  const donePts = completedThisWeek.reduce((sum, t) => sum + (t.points || 1), 0);
+  const capacity  = S.weeklyCapacity || 20;
+  const loadPct   = Math.min(100, Math.round((totalPts / capacity) * 100));
+  const isOver    = totalPts > capacity;
 
-  const capacity = S.weeklyCapacity || 20;
-  const loadPct = Math.min(100, Math.round((committedPts / capacity) * 100));
-  const isOver = committedPts > capacity;
+  if (sprintActive.length === 0 && sprintDone.length === 0) {
+    return `<div style="margin-top:8px;margin-bottom:14px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="font-size:0.72rem;color:var(--text-dim);">No sprint tasks flagged yet</div>
+      <button onclick="openSprintTriage()" style="background:none;border:none;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;touch-action:manipulation;">◆ Plan sprint</button>
+    </div>`;
+  }
 
   return `<div style="margin-top:8px;margin-bottom:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);font-family:'Montserrat',sans-serif;">Sprint</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);font-family:'Montserrat',sans-serif;">This Week</div>
+        <button onclick="openSprintTriage()" style="background:none;border:none;font-size:0.6rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;opacity:0.55;transition:opacity 0.15s;touch-action:manipulation;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'">triage</button>
+      </div>
       <div style="font-size:0.72rem;color:${isOver ? 'var(--red)' : 'var(--text-dim)'};font-family:'Montserrat',sans-serif;">
-        <span style="font-weight:700;color:${isOver ? 'var(--red)' : 'var(--text)'}">${committedPts}</span> / ${capacity} pts${isOver ? ' · over capacity' : ''}
+        <span style="font-weight:700;color:${isOver ? 'var(--red)' : 'var(--text)'}">${totalPts}</span> / ${capacity} pts${isOver ? ' · over' : ''}
       </div>
     </div>
     <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;">
-      <div style="height:100%;width:${loadPct}%;background:${isOver ? 'var(--red)' : 'var(--amber)'};border-radius:2px;transition:width 0.3s;"></div>
+      <div style="height:100%;width:${loadPct}%;background:${isOver ? 'var(--red)' : 'var(--teal)'};border-radius:2px;transition:width 0.3s;"></div>
     </div>
-    ${donePts > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px;">${donePts} pts completed this week</div>` : ''}
+    ${donePts > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px;">${donePts} pts done this week</div>` : ''}
   </div>`;
 }
 
@@ -4419,9 +4488,12 @@ function renderQuests() {
 
   // Only count top-level tasks in tab badges (subtasks are nested under their parent)
   const active = S.tasks.filter(t => !t.done && !t.parentId);
-  const catTabsHTML = ['all', ...Object.keys(CATS)].map(c => {
-    const count = c === 'all' ? active.length : active.filter(t => t.cat === c).length;
-    const label = c === 'all' ? 'All' : CATS[c].label;
+  const urgentCount = active.filter(t => t.urgent).length;
+  const catTabsHTML = ['thisweek', 'all', ...Object.keys(CATS)].map(c => {
+    let count, label;
+    if (c === 'thisweek') { count = urgentCount; label = 'This Week'; }
+    else if (c === 'all') { count = active.length; label = 'All'; }
+    else { count = active.filter(t => t.cat === c).length; label = CATS[c].label; }
     return `<button class="cat-tab ${currentQuestCat===c?'active':''}" onclick="switchQuestCat('${c}')">${label} <span class="ct-badge">${count}</span></button>`;
   }).join('');
 
@@ -4438,17 +4510,21 @@ function renderQuests() {
     </div>`;
 
   // Only show top-level tasks (no parentId) — subtasks render under their parent
-  const activeTasks = currentQuestCat === 'all'
+  const activeTasks = currentQuestCat === 'thisweek'
+    ? S.tasks.filter(t => !t.done && !t.parentId && t.urgent).sort((a,b) => (b.points||1)-(a.points||1))
+    : currentQuestCat === 'all'
     ? S.tasks.filter(t => !t.done && !t.parentId)
     : S.tasks.filter(t => !t.done && !t.parentId && t.cat === currentQuestCat);
-  const doneTasks = currentQuestCat === 'all'
+  const doneTasks = currentQuestCat === 'thisweek'
+    ? S.tasks.filter(t => t.done && !t.parentId && t.urgent)
+    : currentQuestCat === 'all'
     ? S.tasks.filter(t => t.done && !t.parentId)
     : S.tasks.filter(t => t.done && !t.parentId && t.cat === currentQuestCat);
 
-  const catForNew = currentQuestCat === 'all' ? 'todo' : currentQuestCat;
-  const ph = currentQuestCat === 'all' ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
+  const catForNew = (currentQuestCat === 'all' || currentQuestCat === 'thisweek') ? 'todo' : currentQuestCat;
+  const ph = currentQuestCat === 'thisweek' ? 'Add a task for this week…' : currentQuestCat === 'all' ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
 
-  const catSelectHTML = currentQuestCat === 'all' ? `
+  const catSelectHTML = (currentQuestCat === 'all' || currentQuestCat === 'thisweek') ? `
     <select class="add-select" id="quick-cat">
       ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
     </select>` : '';
@@ -4461,18 +4537,21 @@ function renderQuests() {
     <option value="5">5</option>
   </select>`;
 
-  const emptyMsg = currentQuestCat === 'all'
+  const emptyMsg = currentQuestCat === 'thisweek'
+    ? `No tasks flagged for this week yet. Tap ◆ on any task, or <span onclick="openSprintTriage()" style="text-decoration:underline;cursor:pointer;color:var(--teal);">open triage</span> to plan your sprint.`
+    : currentQuestCat === 'all'
     ? 'No tasks yet. Add something to work on.'
     : `No ${CATS[currentQuestCat]?.label || currentQuestCat} tasks yet.`;
+  const showCatInList = currentQuestCat === 'all' || currentQuestCat === 'thisweek';
   const tasksHTML = activeTasks.length === 0
     ? `<div class="empty"><div class="empty-icon">◦</div>${emptyMsg}</div>`
-    : activeTasks.map(t => makeQuestTaskHTML(t, currentQuestCat === 'all')).join('');
+    : activeTasks.map(t => makeQuestTaskHTML(t, showCatInList)).join('');
 
   const doneHTML = doneTasks.length > 0 ? `
     <div style="margin-top:6px">
       <button class="done-toggle" id="done-tog" onclick="toggleDoneList()">▶ Show ${doneTasks.length} completed</button>
       <div id="done-list" style="display:none;margin-top:6px">
-        ${doneTasks.map(t => makeQuestTaskHTML(t, currentQuestCat === 'all')).join('')}
+        ${doneTasks.map(t => makeQuestTaskHTML(t, showCatInList)).join('')}
       </div>
     </div>` : '';
 
@@ -4527,6 +4606,13 @@ function makeQuestTaskHTML(task, showCat) {
   const linkedGoalText = isLinkedToGoal ? weekGoals[task.weekGoalIdx] : null;
   const goalPickerOpen = _goalPickerOpenId === task.id;
 
+  const urgentBtn = !task.done ? `<button onclick="toggleUrgent(${task.id},event)" title="${task.urgent ? 'Remove from this week' : 'Flag for this week'}" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.72rem;font-family:'Montserrat',sans-serif;color:${task.urgent ? 'var(--teal)' : 'var(--text-dim)'};opacity:${task.urgent ? '1' : '0.22'};transition:all 0.15s;touch-action:manipulation;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='${task.urgent ? '1' : '0.22'}'">${'◆'}</button>` : '';
+
+  const contactTag = task.contactId && !task.done ? (() => {
+    const c = S.contacts.find(x => x.id === task.contactId);
+    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">↗ ${escHtml(contactFullName(c))}</span>` : '';
+  })() : '';
+
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
     <button onclick="toggleGoalPicker(${task.id},event)" title="Link to week goal"
       style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:opacity 0.15s;color:${isLinkedToGoal?'var(--amber)':'var(--text-dim)'};opacity:${isLinkedToGoal?'1':'0.3'};"
@@ -4553,9 +4639,10 @@ function makeQuestTaskHTML(task, showCat) {
       <div id="task-row-${task.id}" style="border-bottom:1px solid var(--border);padding:0;">
         <div class="task ${task.done?'done':isInProgress?'in-progress':''}" style="border-bottom:none;padding-bottom:6px;">
           <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
-          <div class="task-text" style="font-weight:500;">${escHtml(task.text)}</div>
+          <div class="task-text" style="font-weight:500;">${escHtml(task.text)}${contactTag}</div>
           <div class="task-meta">
             ${showCat ? catDot(task.cat, '18px') : ''}
+            ${urgentBtn}
             ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
             ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
             ${goalLinkBtn}
@@ -4595,10 +4682,11 @@ function makeQuestTaskHTML(task, showCat) {
         <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
         ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
         ${!task.done ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
-        <div class="task-text">${escHtml(task.text)}</div>
+        <div class="task-text">${escHtml(task.text)}${contactTag}</div>
         <div class="task-meta">
           ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
           ${showCat ? catDot(task.cat, '18px') : ''}
+          ${urgentBtn}
           ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
           ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
           ${goalLinkBtn}
@@ -4715,13 +4803,14 @@ function addQuestTask() {
   if (!inp) return;
   const text = inp.value.trim();
   if (!text) return;
-  const cat = currentQuestCat === 'all'
+  const cat = (currentQuestCat === 'all' || currentQuestCat === 'thisweek')
     ? (document.getElementById('quick-cat')?.value || 'admin')
     : currentQuestCat;
   const pointsSel = document.getElementById('task-points-sel');
   const pts = parseInt(pointsSel?.value || '1');
   const newId = S.nextId++;
-  S.tasks.unshift({ id: newId, text, cat, done: false, createdAt: Date.now(), points: pts });
+  const urgent = currentQuestCat === 'thisweek' ? true : false;
+  S.tasks.unshift({ id: newId, text, cat, done: false, createdAt: Date.now(), points: pts, urgent });
   S.totalAdded++;
   trackEvent('task_add', { cat, pts });
   save();
@@ -4916,8 +5005,12 @@ function renderPipelineEntry(e) {
         <div><label style="${fL}">Role</label><input id="pe-role-${e.id}" value="${escHtml(e.role||'')}" onblur="savePipelineField(${e.id},'role')" style="${iI}"></div>
       </div>
       <div>
-        <label style="${fL}">Job posting URL</label>
-        <input id="pe-url-${e.id}" value="${escHtml(e.jdUrl||'')}" placeholder="https://..." onblur="savePipelineField(${e.id},'jdUrl')" style="${iI}">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+          <label style="${fL}margin-bottom:0;">Job description</label>
+          <span style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">URL · paste · both</span>
+        </div>
+        <input id="pe-url-${e.id}" value="${escHtml(e.jdUrl||'')}" placeholder="https://job-posting-url..." onblur="savePipelineField(${e.id},'jdUrl')" style="${iI}margin-bottom:6px;">
+        <textarea id="pe-jdText-${e.id}" onblur="savePipelineField(${e.id},'jdText')" placeholder="Or paste the job description here…" style="${tA}min-height:52px;">${escHtml(e.jdText||'')}</textarea>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div><label style="${fL}">Applied date</label><input type="date" id="pe-date-${e.id}" value="${e.appliedDate||''}" onblur="savePipelineField(${e.id},'appliedDate')" style="${iI}"></div>
@@ -4940,11 +5033,11 @@ function renderPipelineEntry(e) {
         const linkedContacts = (S.contacts||[]).filter(ct => ct.company && ct.company.toLowerCase() === e.company.toLowerCase());
         const coHTML = linkedCo ? `<div>
           <div style="${fL}">Target company</div>
-          <div onclick="networkView='companies';switchTab('network');setTimeout(()=>{companyOpenId=${linkedCo.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(linkedCo.name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>
+          <div onclick="event.stopPropagation();networkView='companies';switchTab('network');setTimeout(()=>{companyOpenId=${linkedCo.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:10px 0;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(linkedCo.name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>
         </div>` : '';
         const ctHTML = linkedContacts.length > 0 ? `<div>
           <div style="${fL}">Contacts here</div>
-          ${linkedContacts.map(ct => `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role?`<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>`:''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
+          ${linkedContacts.map(ct => `<div onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role?`<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>`:''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
         </div>` : '';
         return coHTML + ctHTML;
       })()}
@@ -5335,16 +5428,20 @@ async function generateEmailDraft(id) {
   }
   const context = contextParts.filter(Boolean).join('\n');
   const paragraphGuide = type === 'thankyou'
-    ? 'Exactly 3 short paragraphs. Paragraph 1: thank them by name if known, reference the role and company. Paragraph 2: highlight 1–3 specific topics or moments from the conversation that resonated with you — be concrete, not generic. Paragraph 3: brief expression of continued enthusiasm and next steps. Keep total length under 200 words. Do not use hollow phrases like "I wanted to reach out" or "I hope this finds you well".'
-    : '2–4 paragraphs, confident but not stiff.';
-  const prompt = `You are a career coach helping a job seeker in ad tech write a professional but warm outreach email.
+    ? 'Exactly 3 short paragraphs. No bullet points. Paragraph 1: open with a direct, warm thank-you — use their name if known, name the role and company. Paragraph 2: reference 1–2 specific things from the actual conversation (use the interview notes provided) — concrete details, not generic enthusiasm. Paragraph 3: one sentence of continued interest and a clear next step or offer to provide anything needed. Total length: 120–160 words. Do not use: "I wanted to reach out", "I hope this finds you well", "I am writing to", "I was thrilled", or any hollow opener. Write the way a confident, self-aware professional sounds — direct, warm, not performative.'
+    : type === 'checkin'
+    ? '2 short paragraphs. Direct opener referencing the last interaction. One clear ask or update. Under 100 words. No filler phrases.'
+    : type === 'followup'
+    ? '2–3 paragraphs. Reference the application stage and something specific about the role or company. End with a clear next-step ask. Under 150 words.'
+    : '2–3 paragraphs, confident and direct. No filler openers.';
+  const prompt = `You are helping a job seeker in ad tech and digital media write a concise, effective outreach message. Write in first person with a warm, direct, professional tone — not corporate, not stiff, not overly enthusiastic. Be specific, not generic. Sound like a real person.
 Context:
 ${context}
 Type: ${typeLabels[type] || type}
 Channel: ${channel}
 ${goal ? `Goal: ${goal}` : ''}
 Write a ${typeLabels[type] || type} message. For email, include a Subject: line. ${paragraphGuide}
-Return ONLY the message text.`;
+Return ONLY the message text, nothing else.`;
   const result = await callClaude(prompt, { maxTokens: 700 });
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;`;
   if (result.error) {
@@ -5931,8 +6028,12 @@ function openAddPipelineEntry() {
         <input id="np-company" placeholder="Company name" style="${mInput}">
         <label style="${mFieldLabel}">Role</label>
         <input id="np-role" placeholder="Job title" style="${mInput}">
-        <label style="${mFieldLabel}">Job posting <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></label>
-        <input id="np-url" placeholder="https://..." style="${mInput}">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <label style="${mFieldLabel}">Job description <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></label>
+          <span style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">URL · paste · both</span>
+        </div>
+        <input id="np-url" placeholder="https://job-posting-url..." style="${mInput}">
+        <textarea id="np-jd-text" placeholder="Or paste the job description here…" style="${mInput}resize:vertical;min-height:52px;border:none;border-bottom:1px solid var(--border);margin-top:6px;padding:4px 0;"></textarea>
         <label style="${mFieldLabel}">Stage</label>
         <select id="np-stage" style="${mInput}-webkit-appearance:none;appearance:none;cursor:pointer;">
           ${PIPELINE_STAGES.filter(s=>!['rejected','withdrawn'].includes(s.key)).map(s=>`<option value="${s.key}">${s.label}</option>`).join('')}
@@ -5953,9 +6054,10 @@ function saveNewPipelineEntry() {
   const company = (document.getElementById('np-company')||{}).value?.trim();
   if (!company) { showToast('Company name required'); return; }
   const role = (document.getElementById('np-role')||{}).value?.trim() || '';
-  const stage = (document.getElementById('np-stage')||{}).value || 'applied';
+  const stage = (document.getElementById('np-stage')||{}).value || 'prospect';
   const appliedDate = (document.getElementById('np-date')||{}).value || '';
-  const jdUrl = (document.getElementById('np-url')||{}).value?.trim() || '';
+  const jdUrl  = (document.getElementById('np-url')||{}).value?.trim() || '';
+  const jdText = (document.getElementById('np-jd-text')||{}).value?.trim() || '';
   const dupe = S.pipeline.find(e =>
     e.company.toLowerCase() === company.toLowerCase() &&
     (e.role||'').toLowerCase() === role.toLowerCase()
@@ -5965,7 +6067,7 @@ function saveNewPipelineEntry() {
     showToast(`⚠ ${company}${role ? ' · ' + role : ''} is already in your pipeline (${stInfo?.label || dupe.stage})`);
     return;
   }
-  S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, nextStep: '', notes: '' });
+  S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, jdText, nextStep: '', notes: '' });
   save();
   closeModal();
   networkView = 'pipeline';
@@ -6782,6 +6884,116 @@ function renderProgress() {
   `;
 }
 
+// ── SPRINT / URGENCY ─────────────────────────────────────────
+function getSuggestedUrgentIds() {
+  const ws = getWeekStart();
+  const wEnd = new Date(ws);
+  wEnd.setDate(wEnd.getDate() + 6);
+  const wEndStr = wEnd.toISOString().slice(0, 10);
+  return new Set((S.tasks || []).filter(t => {
+    if (t.done || t.parentId) return false;
+    if (t.weekGoalIdx !== undefined && t.weekGoalIdx !== null) return true;
+    if (t.cat === 'followup' && t.createdAt && (Date.now() - t.createdAt) > 3 * 24 * 60 * 60 * 1000) return true;
+    if (t.contactId) {
+      const c = (S.contacts || []).find(x => x.id === t.contactId);
+      if (c?.nextContactDate && c.nextContactDate <= wEndStr) return true;
+    }
+    return false;
+  }).map(t => t.id));
+}
+
+function toggleUrgent(id, event) {
+  event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  task.urgent = !task.urgent;
+  save();
+  renderQuests();
+  if (currentTab === 'today') renderToday();
+}
+
+function updateTriageSummary() {
+  const allActive = (S.tasks || []).filter(t => !t.done && !t.parentId);
+  let checkedPts = 0, checkedCount = 0;
+  allActive.forEach(t => {
+    const el = document.getElementById(`tri-${t.id}`);
+    if (el && el.checked) { checkedPts += (t.points || 1); checkedCount++; }
+  });
+  const capacity = parseInt(document.getElementById('triage-capacity')?.value || '20');
+  const over = checkedPts > capacity;
+  const el = document.getElementById('triage-summary');
+  if (el) el.innerHTML = `${checkedCount} task${checkedCount !== 1 ? 's' : ''} · <span style="color:${over ? 'var(--red)' : 'var(--teal)'};font-weight:${over ? '700' : '400'}">${checkedPts} pts</span> of ${capacity} committed${over ? ' · over capacity' : ''}`;
+}
+
+function openSprintTriage() {
+  const suggested = getSuggestedUrgentIds();
+  const allActive = (S.tasks || []).filter(t => !t.done && !t.parentId);
+  const capacity = S.weeklyCapacity || 20;
+  if (allActive.length === 0) { showToast('No tasks to triage yet'); return; }
+
+  const grouped = {};
+  allActive.forEach(t => {
+    const cat = t.cat || 'admin';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(t);
+  });
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Sprint planning</div>
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:4px;">Flag this week's tasks</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">◆ marks a task for this sprint. Suggestions are pre-checked based on your goals and signals.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:14px;">
+        <label style="font-size:0.72rem;color:var(--text-mid);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Weekly capacity (pts)</label>
+        <input type="number" id="triage-capacity" value="${capacity}" min="1" max="100" oninput="updateTriageSummary()" style="width:48px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);text-align:right;outline:none;padding:2px 0;">
+      </div>
+      <div id="triage-task-list" style="max-height:52vh;overflow-y:auto;">
+        ${Object.entries(grouped).map(([cat, tasks]) => {
+          const catInfo = CATS[cat] || {};
+          return `<div style="margin-bottom:14px;">
+            <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">${escHtml(catInfo.label || cat)}</div>
+            ${tasks.map(t => {
+              const isSuggested = suggested.has(t.id);
+              const isChecked = t.urgent || isSuggested;
+              return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;touch-action:manipulation;">
+                <input type="checkbox" id="tri-${t.id}" ${isChecked ? 'checked' : ''} onchange="updateTriageSummary()" style="width:15px;height:15px;flex-shrink:0;accent-color:var(--teal);cursor:pointer;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:0.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.text)}</div>
+                  ${isSuggested && !t.urgent ? `<div style="font-size:0.6rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-top:1px;">◆ suggested</div>` : ''}
+                </div>
+                <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${t.points || 1}pt</span>
+              </label>`;
+            }).join('')}
+          </div>`;
+        }).join('')}
+      </div>
+      <div id="triage-summary" style="padding:8px 0;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;border-top:1px solid var(--border);margin-top:4px;min-height:22px;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveSprintTriage()" style="flex:2;padding:10px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Confirm sprint →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(updateTriageSummary, 50);
+}
+
+function saveSprintTriage() {
+  const newCapacity = parseInt(document.getElementById('triage-capacity')?.value || '20');
+  if (newCapacity > 0) S.weeklyCapacity = newCapacity;
+  const allActive = (S.tasks || []).filter(t => !t.done && !t.parentId);
+  allActive.forEach(t => {
+    const el = document.getElementById(`tri-${t.id}`);
+    if (el) t.urgent = el.checked;
+  });
+  S.triageDoneThisWeek = getWeekStart();
+  save();
+  closeModal();
+  currentQuestCat = 'thisweek';
+  if (currentTab === 'tasks') renderQuests();
+  showToast('Sprint confirmed ◆');
+}
+
 // ── WEEKLY PLANNING ──────────────────────────────────────────
 function getWeekStart(date) {
   const d = date ? new Date(date) : new Date();
@@ -6847,6 +7059,10 @@ function saveWeeklyPlan() {
   save();
   renderToday();
   showToast('Week plan saved \u2713');
+  // On Mondays, prompt sprint triage after saving the week plan
+  if (isMonday() && S.triageDoneThisWeek !== getWeekStart()) {
+    setTimeout(() => openSprintTriage(), 500);
+  }
 }
 
 function saveWeeklyReview() {
@@ -7404,11 +7620,13 @@ function _lmStep4() {
       { text: 'Send any promised materials or links',        cat: 'followup',  checked: false },
     ];
   } else if (isNetworking) {
+    const tyNote   = _lmContactName ? `Send a thank-you note to ${_lmContactName}` : 'Send a follow-up thank-you note';
+    const liTask   = _lmContactName ? `Connect with ${_lmContactName} on LinkedIn`  : 'Connect on LinkedIn';
     suggestions = [
-      { text: 'Send a follow-up thank-you note',             cat: 'followup',  checked: true  },
-      { text: 'Connect on LinkedIn',                         cat: 'network',   checked: true  },
-      { text: 'Log notes from the conversation',             cat: 'research',  checked: false },
-      { text: 'Send any resources or intros promised',       cat: 'followup',  checked: false },
+      { text: tyNote,                                          cat: 'followup',  checked: true  },
+      { text: liTask,                                          cat: 'network',   checked: true  },
+      { text: 'Log notes from the conversation',               cat: 'research',  checked: false },
+      { text: 'Send any resources or intros promised',         cat: 'followup',  checked: false },
     ];
   } else {
     suggestions = [
@@ -8480,7 +8698,7 @@ function renderNetwork() {
     <div class="network-toolbar">
       <div style="position:relative;flex:1;min-width:140px;">
         <input class="network-search" id="net-search-input" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
-          oninput="networkSearch=this.value;renderNetwork();const _si=document.getElementById('net-search-input');if(_si){const _p=_si.value.length;_si.focus();_si.setSelectionRange(_p,_p);}" style="width:100%;padding-right:${networkSearch?'24px':'2px'};">
+          oninput="networkSearch=this.value;clearTimeout(window._nsDebounce);window._nsDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('net-search-input');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="width:100%;padding-right:${networkSearch?'24px':'2px'};" autocomplete="off" autocorrect="off" autocapitalize="off">
         ${networkSearch ? `<button onclick="networkSearch='';renderNetwork()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.9rem;padding:2px 4px;line-height:1;">×</button>` : ''}
       </div>
     </div>
