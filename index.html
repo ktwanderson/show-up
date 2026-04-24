@@ -1570,6 +1570,29 @@ function normalizeStateArrays(s) {
       if (!c.interactions) c.interactions = [];
     });
   }
+  return migrateState(s);
+}
+
+// ── STATE MIGRATION ───────────────────────────────────────────
+// Runs on every load. Add a versioned block here whenever DEFAULT_STATE
+// has a breaking change — rename a field, transform values, etc.
+// Always increment STATE_VERSION at the top of the file to match.
+function migrateState(s) {
+  const v = s.stateVersion || 0;
+
+  // v0/v1 → v2: backfill doneDate on completed tasks that only have doneAt
+  if (v < 2) {
+    (s.tasks || []).forEach(t => {
+      if (t.done && t.doneAt && !t.doneDate) {
+        t.doneDate = new Date(t.doneAt).toISOString().slice(0, 10);
+      }
+    });
+  }
+
+  // ── add future migrations here ───────────────────────────────
+  // if (v < 3) { ... }
+
+  s.stateVersion = STATE_VERSION;
   return s;
 }
 
@@ -2007,6 +2030,20 @@ const SANDBOX_DEMO_STATE_FULL = {
   todaySealed:false, postSealCompletions:0, triageDoneThisWeek:'',
 };
 
+// ── VERSION & FEATURE FLAGS ───────────────────────────────────
+// Bump STATE_VERSION whenever DEFAULT_STATE has a breaking schema change.
+// Add a migration block in migrateState() for each version increment.
+const STATE_VERSION = 2;
+
+// Ship new features dark by setting the flag to false.
+// Flip to true when ready to enable for all users.
+const FEATURE_FLAGS = {
+  interviewPrep:     false,  // #13 — interview prep Q&A section (not yet built)
+  diagnosticV2:      false,  // #1  — harder AI diagnostic questions (not yet built)
+  rolledOverSection: true,   // #6  — "From yesterday" section on Today tab
+  sprintTriage:      true,   // #23 — Monday sprint triage modal
+};
+
 // ── RELEASE NOTES ────────────────────────────────────────────
 // Add a new entry here with each meaningful deploy.
 // version must match the Sentry release string in the <head>.
@@ -2324,6 +2361,7 @@ const DEFAULT_STATE = {
   trackedHabits: ['workout', 'journal', 'outside'],
   onboardingComplete: false,
   lastSeenVersion: '',
+  stateVersion: 0,
   skills: [],
   nextSkillId: 1,
   weeklyCapacity: 20,
@@ -2938,7 +2976,7 @@ function renderToday() {
       </div>`;
     })()}
 
-    ${(S.rolledOverTasks && S.rolledOverTasks.length > 0) ? (() => {
+    ${(FEATURE_FLAGS.rolledOverSection && S.rolledOverTasks && S.rolledOverTasks.length > 0) ? (() => {
       const rolledTasks = S.rolledOverTasks.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
       if (rolledTasks.length === 0) return '';
       return `<div style="margin-bottom:16px;border:1px solid var(--border);border-left:3px solid var(--border-hl);border-radius:3px;padding:12px 14px;">
@@ -4838,7 +4876,7 @@ function makeQuestTaskHTML(task, showCat) {
 
   const contactTag = task.contactId && !task.done ? (() => {
     const c = S.contacts.find(x => x.id === task.contactId);
-    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">↗ ${escHtml(contactFullName(c))}</span>` : '';
+    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">↗ ${escHtml(contactFullName(c))}</span>` : '';
   })() : '';
 
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
@@ -7260,12 +7298,19 @@ function getWeekStats() {
   const wEnd = new Date(ws);
   wEnd.setDate(wEnd.getDate() + 6);
   const wEndStr = wEnd.toISOString().slice(0,10);
-  const tasks = S.tasks.filter(t => t.done && t.doneDate >= ws && t.doneDate <= wEndStr);
+  const tasks = S.tasks.filter(t => {
+    if (!t.done) return false;
+    const d = t.doneDate || (t.doneAt ? new Date(t.doneAt).toISOString().slice(0,10) : null);
+    return d && d >= ws && d <= wEndStr;
+  });
+  const weekFocusBlocks = (S.dailySnapshots || [])
+    .filter(s => s.date >= ws && s.date <= wEndStr)
+    .reduce((sum, s) => sum + (s.focusSessions || 0), 0);
   return {
     tasksCompleted: tasks.length,
     applyCount: tasks.filter(t => t.cat === 'apply').length,
     networkCount: tasks.filter(t => t.cat === 'network').length,
-    focusBlocks: S.focusBlocksToday,
+    focusBlocks: weekFocusBlocks,
   };
 }
 
@@ -7288,7 +7333,7 @@ function saveWeeklyPlan() {
   renderToday();
   showToast('Week plan saved \u2713');
   // On Mondays, prompt sprint triage after saving the week plan
-  if (isMonday() && S.triageDoneThisWeek !== getWeekStart()) {
+  if (FEATURE_FLAGS.sprintTriage && isMonday() && S.triageDoneThisWeek !== getWeekStart()) {
     setTimeout(() => openSprintTriage(), 500);
   }
 }
@@ -7431,17 +7476,21 @@ function renderWeekReviewHTML() {
       ${goals.map(g => `<div style="font-size:0.84rem;color:var(--text-mid);padding:3px 0;">\u00b7 ${escHtml(g)}</div>`).join('')}
     </div>` : ''}
     <div style="display:flex;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0;margin-bottom:14px;">
-      <div style="flex:1;padding:0 14px;border-right:1px solid var(--border);">
+      <div style="flex:1;padding:0 10px;border-right:1px solid var(--border);">
         <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.tasksCompleted}</div>
         <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">tasks done</div>
       </div>
-      <div style="flex:1;padding:0 14px;border-right:1px solid var(--border);">
+      <div style="flex:1;padding:0 10px;border-right:1px solid var(--border);">
         <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.applyCount}</div>
         <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">applied</div>
       </div>
-      <div style="flex:1;padding:0 14px;">
+      <div style="flex:1;padding:0 10px;border-right:1px solid var(--border);">
         <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.networkCount}</div>
         <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">networked</div>
+      </div>
+      <div style="flex:1;padding:0 10px;">
+        <div style="font-size:1.6rem;font-weight:200;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1;">${stats.focusBlocks}</div>
+        <div style="font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-top:4px;font-family:'Montserrat',sans-serif;">focus sessions</div>
       </div>
     </div>
     <div style="display:grid;gap:2px;margin-bottom:14px;">
@@ -7892,7 +7941,14 @@ function _lmStep4() {
           </select>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:18px;">
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-bottom:7px;">ADD TASKS TO</div>
+        <div style="display:flex;gap:6px;">
+          <button id="lm-dest-backlog" onclick="_lm.taskDest='backlog';document.getElementById('lm-dest-backlog').style.background='var(--text)';document.getElementById('lm-dest-backlog').style.color='var(--surface)';document.getElementById('lm-dest-today').style.background='transparent';document.getElementById('lm-dest-today').style.color='var(--text-mid)';" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--text);color:var(--surface);transition:all 0.15s;">Backlog</button>
+          <button id="lm-dest-today" onclick="_lm.taskDest='today';document.getElementById('lm-dest-today').style.background='var(--text)';document.getElementById('lm-dest-today').style.color='var(--surface)';document.getElementById('lm-dest-backlog').style.background='transparent';document.getElementById('lm-dest-backlog').style.color='var(--text-mid)';" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:var(--text-mid);transition:all 0.15s;">Today's Focus</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
         <button onclick="_lm.step=3;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
         <button onclick="_lmFinish()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save everything →</button>
       </div>
@@ -7923,6 +7979,11 @@ function _lmFinish() {
     const ct = S.contacts.find(c => c.id === contactId);
     if (ct) {
       if (!ct.interactions) ct.interactions = [];
+      const dupeOnDate = ct.interactions.some(ix => ix.date === _lm.logDate);
+      if (dupeOnDate) {
+        showToast('An interaction is already logged for this date — change the date on the previous step to add another');
+        return;
+      }
       ct.interactions.unshift({ date: _lm.logDate, method: _lm.logMethod, notes: _lm.logNotes });
       ct.lastContact = _lm.logDate;
       if (_lm.followUpDate) { ct.nextContactDate = _lm.followUpDate; ct.followUpNote = _lm.followUpNote; }
@@ -7930,7 +7991,8 @@ function _lmFinish() {
     }
   }
 
-  // Add tasks
+  // Add tasks — route to Today's Focus or backlog based on user choice
+  const taskDest = _lm.taskDest || 'backlog';
   const selected = _calFollowUpSuggestions.filter((s, i) => {
     const el = document.getElementById(`cfu-${i}`); return el && el.checked;
   });
@@ -7939,8 +8001,12 @@ function _lmFinish() {
   if (customText) selected.push({ text: customText, cat: customCat });
 
   selected.forEach(s => {
-    S.tasks.unshift({ id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 });
+    const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
+    S.tasks.unshift(task);
     S.totalAdded++;
+    if (taskDest === 'today' && !S.todayFocusIds.includes(task.id)) {
+      S.todayFocusIds.push(task.id);
+    }
   });
 
   save();
@@ -7949,7 +8015,7 @@ function _lmFinish() {
   const parts = [];
   if (contactId) parts.push('interaction logged');
   if (_lm.followUpDate) parts.push('follow-up scheduled');
-  if (selected.length) parts.push(`${selected.length} task${selected.length!==1?'s':''} added`);
+  if (selected.length) parts.push(`${selected.length} task${selected.length!==1?'s':''} → ${taskDest === 'today' ? "today's focus" : 'backlog'}`);
   showToast(parts.length ? parts.join(' · ') + ' ✓' : 'Saved ✓');
 
   if (currentTab === 'today')   renderToday();
