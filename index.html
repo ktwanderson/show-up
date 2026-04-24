@@ -2039,7 +2039,7 @@ const STATE_VERSION = 2;
 // Flip to true when ready to enable for all users.
 const FEATURE_FLAGS = {
   interviewPrep:     true,   // #13 — interview prep review mode
-  diagnosticV2:      false,  // #1  — harder AI diagnostic questions (not yet built)
+  diagnosticV2:      true,   // #1  — confidence calibration step + scenario-based questions
   rolledOverSection: true,   // #6  — "From yesterday" section on Today tab
   sprintTriage:      true,   // #23 — Monday sprint triage modal
 };
@@ -4139,10 +4139,10 @@ function displayIntroQuestion(skillId) {
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
-        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 4</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 5</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:${context ? '12px' : '20px'};justify-content:center;">
-        ${[0,1,2,3].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i===0?'var(--text-mid)':'var(--border)'};"></div>`).join('')}
+        ${[0,1,2,3,4].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i===0?'var(--text-mid)':'var(--border)'};"></div>`).join('')}
       </div>
       ${context ? `<div style="font-size:0.74rem;color:var(--amber);margin-bottom:16px;line-height:1.5;font-style:italic;">${escHtml(context)}</div>` : ''}
       <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">In your own words, how would you describe <em>${escHtml(skill.name)}</em>?</div>
@@ -4156,31 +4156,83 @@ function displayIntroQuestion(skillId) {
   `);
 }
 
-async function submitIntroAnswer(skillId) {
-  const skill = (S.skills || []).find(sk => sk.id === skillId);
-  if (!skill) return;
+function submitIntroAnswer(skillId) {
   const introText = (document.getElementById('ai-intro-answer') || {}).value?.trim() || '';
   if (!introText) { showToast('Write a few words first'); return; }
+  displayConfidenceQuestion(skillId, introText);
+}
+
+function displayConfidenceQuestion(skillId, introText) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
+  const levels = [
+    { key: 'beginner',    label: 'Just getting started',  sub: 'I know the concept but haven\'t applied it much' },
+    { key: 'familiar',   label: 'Familiar',               sub: 'I\'ve worked with this in practice' },
+    { key: 'experienced', label: 'Experienced',           sub: 'I use this regularly or have deep domain knowledge' },
+  ];
+  const btnStyle = (k) => `display:block;width:100%;text-align:left;padding:13px 15px;margin-bottom:8px;border:1px solid var(--border);background:transparent;border-radius:2px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;`;
+  showModal(`
+    <div style="text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">2 / 5</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
+        ${[0,1,2,3,4].map(i => `<div style="width:8px;height:8px;border-radius:50%;background:${i < 1 ? 'var(--amber)' : i === 1 ? 'var(--text-mid)' : 'var(--border)'};transition:background 0.3s;"></div>`).join('')}
+      </div>
+      <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">How much have you worked with <em>${escHtml(skill.name)}</em>?</div>
+      <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:16px;">This calibrates the difficulty of your questions.</div>
+      ${levels.map(l => `
+        <button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${l.key}')"
+          style="${btnStyle(l.key)}"
+          onmouseover="this.style.borderColor='var(--amber)';this.style.background='rgba(232,184,0,0.04)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.background='transparent'">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);">${escHtml(l.label)}</div>
+          <div style="font-size:0.74rem;color:var(--text-dim);margin-top:2px;">${escHtml(l.sub)}</div>
+        </button>`).join('')}
+      <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px;">← Back</button>
+    </div>
+  `);
+}
+
+async function generateDiagnosticQuestions(skillId, introText, level) {
+  const skill = (S.skills || []).find(sk => sk.id === skillId);
+  if (!skill) return;
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
-      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Generating questions...</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Calibrating questions...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
     </div>
   `);
 
-  const prompt = `You are a learning coach. A user is being assessed on "${skill.name}" in the context of ad tech, digital media, and product management.
+  const levelMeta = {
+    beginner:    { label: 'practitioner building practical knowledge', calibration: 'test applied understanding — how concepts work in real situations, not edge cases or theory' },
+    familiar:    { label: 'mid-level professional',                    calibration: 'test judgment on real tradeoffs — questions this person would face on the job and could get wrong' },
+    experienced: { label: 'senior practitioner',                       calibration: 'test nuanced edge cases, anti-patterns, and expert-level tradeoffs — questions that require deep domain expertise to answer correctly' },
+  };
+  const lm = levelMeta[level] || levelMeta.familiar;
 
-They described it in their own words as:
-"${introText}"
+  const prompt = `You are a senior learning coach assessing a ${lm.label}'s knowledge of "${skill.name}" in ad tech, digital media, and product management.
 
-Based on their definition, generate 3 diagnostic questions that go BEYOND the basics. Assume they already have some familiarity with the topic. Skip introductory or definitional questions — focus on nuanced, applied, or scenario-based understanding. Make the correct answer non-obvious; avoid questions where one option is clearly superior. Each question must have exactly one definitively correct answer.
+Their self-assessment:
+- In their own words: "${introText}"
+- Experience level: ${level}
+
+Generate 3 diagnostic questions. MANDATORY RULES — no exceptions:
+
+1. ZERO definitional questions. Never ask "what is X", "what does Y stand for", or "which of these best describes Z."
+2. Every question must be scenario-based, tradeoff-based, or applied. Frame as: "A team is seeing X — what's the most likely cause?", "Given these constraints, which approach is better?", "Which of these tradeoffs most accurately describes Y?"
+3. All 4 answer options must be plausible to someone at the ${level} level. A subject-matter expert must stop and think to identify the correct answer — wrong answers must NOT be obviously wrong.
+4. The correct answer must require real domain expertise to identify, not process of elimination.
+5. Difficulty calibration: ${lm.calibration}.
+6. Each question must have exactly one definitively correct answer.
 
 Return ONLY valid JSON, no other text:
 [
-  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "A) ...", "explanation": "1-2 sentences explaining why this answer is correct and what the key distinction is.", "type": "multiple_choice"},
+  {"id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "A) ...", "explanation": "1-2 sentences explaining the key distinction and why the other options are wrong.", "type": "multiple_choice"},
   {"id": 2, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "B) ...", "explanation": "...", "type": "multiple_choice"},
   {"id": 3, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "C) ...", "explanation": "...", "type": "multiple_choice"}
 ]
@@ -4197,7 +4249,7 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
         ${isNoKey
           ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
-          : `<button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
+          : `<button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
         }
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
@@ -4211,14 +4263,14 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Claude's response wasn't in the expected format. Try again or use static content.</div>
-        <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
     `);
     return;
   }
 
-  _aiCoachState = { skillId, introAnswer: introText, questions, answers: {}, currentQ: 0 };
+  _aiCoachState = { skillId, introAnswer: introText, experienceLevel: level, questions, answers: {}, currentQ: 0 };
   displayDiagnosticQuestion();
 }
 
@@ -4239,9 +4291,9 @@ function displayDiagnosticQuestion() {
       onmouseout="if(!${isSelected})this.style.borderColor='var(--border)'">${escHtml(opt)}</button>`;
   }).join('');
 
-  // Progress includes the intro question as step 1
-  const totalWithIntro = total + 1;
-  const currentWithIntro = currentQ + 1; // 0-indexed questions start at position 1 after intro
+  // Progress: intro (1) + confidence (2) + MCQ questions (3–5)
+  const totalWithIntro = total + 2;
+  const currentWithIntro = currentQ + 2; // questions are steps 3, 4, 5 (0-indexed: 2, 3, 4)
   const progressDots = Array.from({ length: totalWithIntro }, (_, i) =>
     `<div style="width:8px;height:8px;border-radius:50%;background:${i < currentWithIntro ? 'var(--amber)' : i === currentWithIntro ? 'var(--text-mid)' : 'var(--border)'};transition:background 0.3s;"></div>`
   ).join('');
