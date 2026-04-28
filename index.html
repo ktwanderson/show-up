@@ -620,6 +620,43 @@
       transition: opacity 0.2s;
     }
     .overlay.show { opacity: 1; pointer-events: all; }
+
+    /* ── INTERVIEW MODE OVERLAY ─────────────────────────── */
+    .iv-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: var(--surface);
+      display: flex; flex-direction: column;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s;
+      overflow: hidden;
+    }
+    .iv-overlay.show { opacity: 1; pointer-events: all; }
+    .iv-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .iv-body {
+      flex: 1; overflow-y: auto;
+      padding: 20px;
+      display: grid; gap: 18px;
+    }
+    @media (min-width: 640px) {
+      .iv-body { grid-template-columns: 1fr 1fr; padding: 24px 28px; gap: 20px; }
+      .iv-body .iv-full { grid-column: 1 / -1; }
+    }
+    .iv-section { display: flex; flex-direction: column; gap: 6px; }
+    .iv-section-label {
+      font-size: 0.58rem; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--teal); font-weight: 700;
+    }
+    .iv-section-body {
+      font-size: 0.84rem; line-height: 1.65; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .iv-section-empty { font-size: 0.82rem; color: var(--text-dim); font-style: italic; }
+
     .modal {
       background: var(--surface); border: none;
       border-radius: 2px; padding: 44px 36px; text-align: center;
@@ -1261,6 +1298,11 @@
     <div class="modal-body"  id="mBody"></div>
     <button class="modal-btn" onclick="closeModal()">Keep Going</button>
   </div>
+</div>
+
+<div class="iv-overlay" id="iv-overlay">
+  <div class="iv-header" id="iv-header"></div>
+  <div class="iv-body" id="iv-body"></div>
 </div>
 
 <script>
@@ -2051,6 +2093,19 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.14',
+    date: '2026-04-28',
+    items: [
+      'Interview Mode — full-screen live reference overlay with all prep notes, accessible from any interview stage',
+      'Weekly goals coaching — see last 2 weeks’ goals with repeat flags + AI-powered suggestions tied to your pipeline',
+      'Gmail Inbox — connect Gmail to surface job-related emails on Today tab',
+      'Habit goals — celebration toast + bonus XP when you hit your weekly/monthly target',
+      'Email drafter — "Try again" returns to pre-filled form; draft is editable before copying or saving',
+      'Debrief tab — "Who you met with" field now visible alongside debrief notes',
+      'Bug fix — names and View links clickable from Company tab',
+    ],
+  },
+  {
     version: '0.13',
     date: '2026-04-23',
     items: [
@@ -2392,6 +2447,7 @@ let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'di
 let networkView = 'people';
 let focusView = 'timer';
 let _pendingImportRows = null;
+let _emailDraftRetry = null; // stores last {type, channel, goal} for "Try again"
 let pendingReminderImport = null;
 
 // ── PIN ──────────────────────────────────────────────────────
@@ -3132,6 +3188,35 @@ function renderToday() {
 
     ${followUpNudgesHtml}
 
+    ${(function() {
+      if (localStorage.getItem('showup_gmail_inbox_connected') !== '1') return '';
+      const stored = localStorage.getItem('showup_job_emails');
+      const data = stored ? JSON.parse(stored) : null;
+      const emails = data?.emails || [];
+      const fetchedAt = data?.fetchedAt || '';
+      const count = emails.length;
+      const headerRow = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${_jobInboxOpen && count > 0 ? '10' : '0'}px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="card-label" style="margin-bottom:0;">Job inbox</div>
+          ${count > 0 ? `<span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);">${count} email${count!==1?'s':''} · ${fetchedAt}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="job-inbox-fetch-btn" onclick="fetchJobEmails()" style="background:none;border:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--teal);cursor:pointer;padding:0;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">Fetch</button>
+          ${count > 0 ? `<button onclick="_jobInboxOpen=!_jobInboxOpen;renderToday()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">${_jobInboxOpen ? '▴' : '▾'}</button>` : ''}
+        </div>
+      </div>`;
+      const emailRows = _jobInboxOpen && count > 0 ? emails.map(e => {
+        const fromName = e.from.replace(/<[^>]+>/, '').trim().replace(/"/g, '');
+        const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${e.id}`;
+        return `<a href="${gmailUrl}" target="_blank" rel="noopener" style="display:block;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;">
+          <div style="font-size:0.82rem;color:var(--text);line-height:1.3;margin-bottom:2px;">${escHtml(e.subject || '(no subject)')}</div>
+          <div style="font-size:0.7rem;color:var(--text-dim);">${escHtml(fromName)}</div>
+        </a>`;
+      }).join('') : '';
+      const emptyMsg = count === 0 ? `<div style="font-size:0.78rem;color:var(--text-dim);padding:6px 0;">No emails fetched yet — tap Fetch to pull job-related emails.</div>` : '';
+      return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">${headerRow}${emptyMsg}${emailRows}</div>`;
+    })()}
+
     <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">
       ${S.todaySealed
         ? `<div style="display:flex;align-items:center;gap:10px">
@@ -3348,10 +3433,15 @@ function toggleOutside() {
   const today = new Date().toISOString().slice(0, 10);
   if (!S.outsideLog.includes(today)) S.outsideLog.push(today);
   gainXP(20);
+  const outsideGoal = S.outsideGoal || 5;
+  const outsideCount = getOutsideThisPeriod();
+  const goalHit = outsideCount === outsideGoal;
+  if (goalHit) gainXP(25);
   save();
   updateHeader();
   renderToday();
   checkAchievements();
+  showToast(goalHit ? `Outside goal reached! +25 XP` : 'Got outside logged ✓');
 }
 
 function logWin() {
@@ -5362,6 +5452,7 @@ function renderPipelineEntry(e) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft email</button>
         <button onclick="event.stopPropagation();openSalaryResearch(${e.id})" style="background:${e.stage==='offer'?'var(--amber)':'none'};border:1px solid ${e.stage==='offer'?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 10px;font-size:0.68rem;color:${e.stage==='offer'?'#fff':'var(--text-mid)'};cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✦ Salary intel</button>
+        ${isInterviewStage ? `<button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>` : ''}
       </div>
       <button class="contact-action-btn danger" onclick="deletePipelineEntry(${e.id})">Remove</button>
     </div>`;
@@ -5371,9 +5462,11 @@ function renderPipelineEntry(e) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Prepare before the conversation. Fill in what you know.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="flex-shrink:0;background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>
           ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();openPrepReview(${e.id})" style="flex-shrink:0;background:var(--amber);border:1px solid var(--amber);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Review</button>` : ''}
           <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
           <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Generate questions</button>
+          <button onclick="event.stopPropagation();openQBankFromPipeline(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Q Bank</button>
           <button id="digest-btn-${e.id}-prep" onclick="event.stopPropagation();digestPipelineSection(${e.id},'prep')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
         </div>
       </div>
@@ -5439,10 +5532,15 @@ function renderPipelineEntry(e) {
           return renderDigestBlock(e.id, 'debrief', e.debriefDigest, '') +
             `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
               <button onclick="event.stopPropagation();openEmailDrafter(${e.id},'thankyou')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft thank-you</button>
+              <button onclick="event.stopPropagation();openQBankFromPipeline(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Q Bank</button>
             </div>`;
         }
         const toggleLink = e.debriefDigest ? `<div><span onclick="event.stopPropagation();togglePipelineDigestView(${e.id},'debrief','digest')" style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">view digest</span></div>` : '';
         return toggleLink + `
+      <div>
+        <label style="${fL}">Who you met with</label>
+        <textarea id="pe-debriefPeople-${e.id}" placeholder="Names and roles of interviewers…" onblur="savePipelineField(${e.id},'prepPeople')" style="${tA}">${escHtml(e.prepPeople||'')}</textarea>
+      </div>
       <div>
         <label style="${fL}">What went well</label>
         <textarea id="pe-debriefWentWell-${e.id}" placeholder="Moments that landed, questions you nailed, good energy…" onblur="savePipelineField(${e.id},'debriefWentWell')" style="${tA}">${escHtml(e.debriefWentWell||'')}</textarea>
@@ -5461,6 +5559,7 @@ function renderPipelineEntry(e) {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id},'thankyou')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft thank-you</button>
+        <button onclick="event.stopPropagation();openQBankFromPipeline(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Q Bank</button>
       </div>`;
       })()}
       ${(() => {
@@ -5678,10 +5777,12 @@ function renderDigestBlock(id, section, digestText, rawContent) {
 }
 
 // ── FEATURE 1: EMAIL DRAFTER ─────────────────────────────────
-function openEmailDrafter(id, defaultType) {
+function openEmailDrafter(id, defaultType, prefill) {
   const e = S.pipeline.find(x => x.id === id);
   if (!e) return;
-  const autoType = defaultType || (INTERVIEW_STAGE_KEYS.has(e.stage) ? 'thankyou' : 'followup');
+  const autoType = (prefill && prefill.type) || defaultType || (INTERVIEW_STAGE_KEYS.has(e.stage) ? 'thankyou' : 'followup');
+  const prefillChannel = (prefill && prefill.channel) || 'Email';
+  const prefillGoal = (prefill && prefill.goal) || '';
   const inner = document.getElementById('modal-inner');
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
@@ -5700,11 +5801,11 @@ function openEmailDrafter(id, defaultType) {
       </select>
       <label style="${fL}">Channel</label>
       <select id="ed-channel" style="${iS}">
-        <option value="Email">Email</option>
-        <option value="LinkedIn">LinkedIn</option>
+        <option value="Email" ${prefillChannel==='Email'?'selected':''}>Email</option>
+        <option value="LinkedIn" ${prefillChannel==='LinkedIn'?'selected':''}>LinkedIn</option>
       </select>
       <label style="${fL}">Goal <span style="font-weight:400;letter-spacing:0;text-transform:none;font-family:'DM Sans',sans-serif;font-size:0.7rem">— optional</span></label>
-      <input id="ed-goal" placeholder="e.g. Get a call, express enthusiasm, ask for update…" style="${iI}">
+      <input id="ed-goal" value="${escHtml(prefillGoal)}" placeholder="e.g. Get a call, express enthusiasm, ask for update…" style="${iI}">
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
         <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
@@ -5719,6 +5820,7 @@ async function generateEmailDraft(id) {
   const type    = (document.getElementById('ed-type')    || {}).value || 'followup';
   const channel = (document.getElementById('ed-channel') || {}).value || 'Email';
   const goal    = (document.getElementById('ed-goal')    || {}).value?.trim() || '';
+  _emailDraftRetry = { type, channel, goal };
   const typeLabels = { cover:'Cover Letter', followup:'Follow-up after apply', thankyou:'Thank-you after interview', checkin:'Check-in after silence', referral:'Referral ask' };
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text-dim);font-size:0.82rem;font-family:'DM Sans',sans-serif;">Writing…</div>`;
@@ -5777,7 +5879,7 @@ Return ONLY the message text, nothing else.`;
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
         <button id="ed-gmail-btn" onclick="saveCurrentDraftToGmail()" style="flex:2;min-width:140px;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save to Gmail Draft</button>
         <button onclick="navigator.clipboard.writeText(document.getElementById('ed-result').value).then(()=>showToast('Copied!'))" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Copy</button>
-        <button onclick="openEmailDrafter(${id})" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Try again</button>
+        <button onclick="openEmailDrafter(${id},null,_emailDraftRetry)" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Try again</button>
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
       </div>
     </div>`;
@@ -5867,6 +5969,53 @@ Return ONLY JSON with these fields.`;
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
       </div>
     </div>`;
+}
+
+// ── FEATURE 2b: INTERVIEW MODE ───────────────────────────────
+function openInterviewMode(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage) || PIPELINE_STAGES[0];
+
+  // Pull prep from current entry; fall back to most recent archived round
+  const people    = e.prepPeople    || (e.prepHistory||[]).slice().reverse().find(r => r.prep?.people)?.prep?.people || '';
+  const questions = e.prepQuestions || (e.prepHistory||[]).slice().reverse().find(r => r.prep?.questions)?.prep?.questions || '';
+  const ask       = e.prepAsk       || (e.prepHistory||[]).slice().reverse().find(r => r.prep?.ask)?.prep?.ask || '';
+  const stories   = e.prepStories   || (e.prepHistory||[]).slice().reverse().find(r => r.prep?.stories)?.prep?.stories || '';
+  const notes     = e.notes || '';
+
+  const sec = (label, content, full) => {
+    const body = content
+      ? `<div class="iv-section-body">${escHtml(content)}</div>`
+      : `<div class="iv-section-empty">Nothing noted yet</div>`;
+    return `<div class="iv-section${full ? ' iv-full' : ''}">
+      <div class="iv-section-label">${label}</div>
+      ${body}
+    </div>`;
+  };
+
+  document.getElementById('iv-header').innerHTML = `
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.role||'Role')} · ${escHtml(e.company||'Company')}</div>
+      <div style="font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;color:var(--teal);margin-top:2px;">${escHtml(stageInfo.label).toUpperCase()}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div style="font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">LIVE MODE</div>
+      <button onclick="closeInterviewMode()" style="background:none;border:1px solid var(--border);border-radius:2px;padding:6px 14px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-mid);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Exit</button>
+    </div>`;
+
+  document.getElementById('iv-body').innerHTML =
+    sec('Who you\'re meeting', people) +
+    sec('Questions to prepare for', questions) +
+    sec('Questions to ask them', ask) +
+    sec('Your stories & examples', stories) +
+    (notes ? sec('Notes', notes, true) : '');
+
+  document.getElementById('iv-overlay').classList.add('show');
+}
+
+function closeInterviewMode() {
+  document.getElementById('iv-overlay').classList.remove('show');
 }
 
 // ── FEATURE 3: REJECTIONS VIEW ───────────────────────────────
@@ -6157,6 +6306,11 @@ function saveToQuestionBank() {
   save();
   closeModal();
   if (networkView === 'qbank') renderNetwork();
+}
+
+function openQBankFromPipeline(pipelineId) {
+  const e = S.pipeline.find(x => x.id === pipelineId);
+  openAddToQuestionBank('', e?.role || '', e?.company || '');
 }
 
 function deleteFromQuestionBank(id) {
@@ -6747,7 +6901,7 @@ function renderCompanyRow(c) {
         </div>
         ${linkedContacts.length > 0 ? `<div>
           <div class="rej-field-label">Contacts here</div>
-          ${linkedContacts.map(ct => `<div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role ? `<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>` : ''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
+          ${linkedContacts.map(ct => `<div onclick="event.stopPropagation();networkView='people';switchTab('network');setTimeout(()=>{networkOpenId=${ct.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${ct.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="font-size:0.82rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:6px;touch-action:manipulation;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(ct.first)} ${escHtml(ct.last||'')}${ct.role ? `<span style="color:var(--text-dim);font-size:0.75rem">· ${escHtml(ct.role)}</span>` : ''}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em">VIEW →</span></div>`).join('')}
         </div>` : ''}
         ${(() => { const linkedJobs = (S.pipeline||[]).filter(j => j.company && j.company.toLowerCase() === c.name.toLowerCase()); return linkedJobs.length > 0 ? `<div>
           <div class="rej-field-label">Applied jobs</div>
@@ -7460,20 +7614,47 @@ function dismissWeekPrompt(type) {
 function renderWeekPlannerHTML() {
   const plan = getCurrentWeekPlan();
   const g = plan?.goals || ['','',''];
+  const ws = getWeekStart();
   const wkInputStyle = `width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:8px 0;outline:none;box-sizing:border-box;`;
   const activePts = S.tasks.filter(t => !t.done).reduce((sum, t) => sum + (t.points||1), 0);
   const capacity = S.weeklyCapacity || 20;
   const isOver = activePts > capacity;
+
+  const pastPlans = (S.weeklyPlans || [])
+    .filter(p => p.weekStart < ws && (p.goals||[]).some(Boolean))
+    .sort((a,b) => b.weekStart.localeCompare(a.weekStart))
+    .slice(0, 2);
+
+  const pastHTML = pastPlans.length > 0 ? (() => {
+    return `<div style="margin-bottom:10px;padding:8px 0;border-top:1px solid var(--border);">
+      <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px;">Recent weeks</div>
+      ${pastPlans.map((p, pi) => {
+        const goals = (p.goals||[]).filter(Boolean);
+        const weekLabel = pi === 0 ? 'Last week' : '2 wks ago';
+        const otherGoals = pastPlans.filter((_,i) => i !== pi).flatMap(x => (x.goals||[]).filter(Boolean).map(y => y.trim().toLowerCase()));
+        return `<div style="margin-bottom:5px;">
+          <span style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${weekLabel} · </span>${goals.map(goal => {
+            const repeat = otherGoals.includes(goal.trim().toLowerCase());
+            return `<span style="font-size:0.75rem;color:${repeat?'var(--amber)':'var(--text-dim)'};margin-right:8px;">${repeat?'<span style="font-size:0.55rem;background:var(--amber);color:#fff;padding:1px 3px;border-radius:2px;margin-right:3px;font-family:Montserrat,sans-serif;">repeat</span>':''}${escHtml(goal)}</span>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>`;
+  })() : '';
   return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 8px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="card-label" style="margin-bottom:0;">This week's plan</div>
-      <button onclick="dismissWeekPrompt('plan')" style="background:none;border:none;color:var(--text-dim);font-size:0.9rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">\u00d7</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="suggestWeeklyGoals()" id="wg-suggest-btn" style="background:none;border:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--teal);cursor:pointer;padding:0;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">&#10022; Suggest</button>
+        <button onclick="dismissWeekPrompt('plan')" style="background:none;border:none;color:var(--text-dim);font-size:0.9rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">\u00d7</button>
+      </div>
     </div>
     <div style="display:grid;gap:2px;margin-bottom:8px;">
       <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="${wkInputStyle}">
       <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="${wkInputStyle}">
       <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="${wkInputStyle}">
     </div>
+    ${pastHTML}
     <div style="padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:0.72rem;color:var(--text-dim);">Active sprint load</div>
@@ -7489,6 +7670,56 @@ function renderWeekPlannerHTML() {
       ${_weekPlanEditing ? `<button onclick="cancelWeekPlanEdit()" style="background:none;border:none;color:var(--text-dim);font-size:0.82rem;cursor:pointer;padding:9px 14px;font-family:'DM Sans',sans-serif;">Cancel</button>` : ''}
     </div>
   </div>`;
+}
+
+async function suggestWeeklyGoals() {
+  const btn = document.getElementById('wg-suggest-btn');
+  if (btn) { btn.textContent = 'Thinking…'; btn.style.pointerEvents = 'none'; }
+
+  const ws = getWeekStart();
+  const pastPlans = (S.weeklyPlans || [])
+    .filter(p => p.weekStart < ws && (p.goals||[]).some(Boolean))
+    .sort((a,b) => b.weekStart.localeCompare(a.weekStart))
+    .slice(0, 3);
+
+  const pastGoalLines = pastPlans.map((p, i) => {
+    const label = ['Last week','2 weeks ago','3 weeks ago'][i];
+    return `${label}: ${(p.goals||[]).filter(Boolean).join(' / ')}`;
+  }).join('\n');
+
+  const interviews = (S.pipeline||[]).filter(e => ['phone','interview1','interview2','final'].includes(e.stage));
+  const applied    = (S.pipeline||[]).filter(e => e.stage === 'applied');
+  const openTasks  = (S.tasks||[]).filter(t => !t.done).slice(0, 5).map(t => t.text).join(', ');
+
+  const ctx = [
+    interviews.length ? `Active interviews: ${interviews.map(e=>`${e.role} at ${e.company} (${e.stage})`).join('; ')}` : '',
+    applied.length    ? `Applications in progress: ${applied.map(e=>`${e.role} at ${e.company}`).join('; ')}` : '',
+    openTasks         ? `Open tasks: ${openTasks}` : '',
+    pastGoalLines     ? `Recent weekly goals:\n${pastGoalLines}` : '',
+  ].filter(Boolean).join('\n');
+
+  const prompt = `You are helping a job seeker in ad tech set 3 specific, actionable weekly goals. Each goal should be completable within one week and move their search forward in a concrete way.
+
+Context:
+${ctx || 'Early-stage job search in ad tech and digital media.'}
+
+Rules:
+- Specific and measurable (e.g. "Send 3 cold outreach messages to ad tech recruiters", not "Network more")
+- Avoid repeating recent weeks — push something new or go deeper on what's stalled
+- Tie to their actual pipeline state where possible
+- Under 12 words each
+- Return exactly 3 goals, one per line, no bullets, no numbers, no extra text`;
+
+  const result = await callClaude(prompt, { maxTokens: 200 });
+  if (btn) { btn.textContent = '✶ Suggest'; btn.style.pointerEvents = ''; }
+  if (result.error) { showToast('Could not generate suggestions — check API key'); return; }
+
+  const lines = (result.text||'').trim().split('\n')
+    .map(l => l.replace(/^[-•\d.)\s]+/, '').trim()).filter(Boolean).slice(0, 3);
+  lines.forEach((line, i) => {
+    const el = document.getElementById(`wg-${i+1}`);
+    if (el) el.value = line;
+  });
 }
 
 function renderWeekPlanViewHTML() {
@@ -8272,14 +8503,22 @@ function logWorkout() {
   if (S.workedOutToday) {
     S.workedOutToday = false;
     S.workoutLog = (S.workoutLog || []).filter(d => d !== today);
+    save();
+    renderToday();
   } else {
     S.workedOutToday = true;
     if (!S.workoutLog) S.workoutLog = [];
     if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
+    const goal = S.workoutGoal || 3;
+    const period = S.workoutGoalPeriod || 'week';
+    const count = period === 'month' ? getWorkoutsThisMonth() : getWorkoutsThisWeek();
+    const goalHit = count === goal;
+    if (goalHit) gainXP(25);
+    save();
+    renderToday();
+    updateHeader();
+    showToast(goalHit ? `Workout goal reached! +25 XP` : 'Workout logged ✓');
   }
-  save();
-  renderToday();
-  if (S.workedOutToday) showToast('Workout logged ✓');
 }
 
 function getWorkoutsThisMonth() {
@@ -8340,13 +8579,22 @@ function toggleJournal() {
   if (S.journaledToday) {
     S.journaledToday = false;
     S.journalLog = (S.journalLog || []).filter(d => d !== today);
+    save();
+    renderToday();
   } else {
     S.journaledToday = true;
     if (!S.journalLog) S.journalLog = [];
     if (!S.journalLog.includes(today)) S.journalLog.push(today);
+    const goal = S.journalGoal || 3;
+    const period = S.journalGoalPeriod || 'week';
+    const count = period === 'month' ? getJournalsThisMonth() : getJournalsThisWeek();
+    const goalHit = count === goal;
+    if (goalHit) gainXP(25);
+    save();
+    renderToday();
+    updateHeader();
+    showToast(goalHit ? `Journaling goal reached! +25 XP` : 'Journal logged ✓');
   }
-  save();
-  renderToday();
 }
 
 function checkWorkoutImport() {
@@ -9575,14 +9823,31 @@ function renderAccount() {
   const whatsNewSection = RELEASE_NOTES.length > 0 ? `
     <div style="margin-bottom:28px;padding:14px 16px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="card-label">What's new</div>
+        <div class="card-label">What's new · v${RELEASE_NOTES[0].version}</div>
         <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${RELEASE_NOTES[0].date}</span>
       </div>
-      <ul style="margin:0;padding-left:14px;display:flex;flex-direction:column;gap:5px;">
+      <ul style="margin:0;padding-left:14px;display:flex;flex-direction:column;gap:5px;margin-bottom:${RELEASE_NOTES.length > 1 ? '12' : '0'}px;">
         ${RELEASE_NOTES[0].items.map(item => `
           <li style="font-size:0.78rem;color:var(--text-mid);line-height:1.5;">${escHtml(item)}</li>
         `).join('')}
       </ul>
+      ${RELEASE_NOTES.length > 1 ? `
+      <details style="margin-top:4px;">
+        <summary style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--text-dim);cursor:pointer;list-style:none;padding:4px 0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">All releases ▾</summary>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:14px;">
+          ${RELEASE_NOTES.slice(1).map(r => `
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;color:var(--text-dim);font-weight:700;">v${escHtml(r.version)}</div>
+                <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${escHtml(r.date)}</div>
+              </div>
+              <ul style="margin:0;padding-left:14px;display:flex;flex-direction:column;gap:4px;">
+                ${r.items.map(item => `<li style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;">${escHtml(item)}</li>`).join('')}
+              </ul>
+            </div>
+          `).join('<div style="border-top:1px solid var(--border);"></div>')}
+        </div>
+      </details>` : ''}
     </div>` : '';
 
   const nameSection = `
@@ -9747,6 +10012,15 @@ function renderAccount() {
           </div>
           ${localStorage.getItem('showup_gmail_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · drafts save directly to your Gmail</div>` : ''}
         </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="font-size:0.75rem;color:var(--text);font-weight:500;margin-bottom:3px;">Gmail Inbox</div>
+          <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:8px;">Fetch job-search related emails (interviews, recruiters, LinkedIn) and surface them on your Today tab.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button onclick="connectGmailInbox()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${localStorage.getItem('showup_gmail_inbox_connected') === '1' ? '↻ Reconnect' : 'Connect Gmail Inbox'}</button>
+            ${localStorage.getItem('showup_gmail_inbox_connected') === '1' ? `<button onclick="disconnectGmailInbox()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.68rem;padding:6px 4px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Disconnect</button>` : ''}
+          </div>
+          ${localStorage.getItem('showup_gmail_inbox_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · use "Fetch" on Today tab to pull latest job emails</div>` : ''}
+        </div>
       ` : ''}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
@@ -9859,6 +10133,10 @@ let _gmailTokenClient  = null;
 let _gmailAccessToken  = null;
 let _gmailTokenExpiry  = 0;
 let _pendingGmailDraft = null;  // { subject, body } waiting for auth
+let _gmailReadClient   = null;
+let _gmailReadToken    = null;
+let _gmailReadExpiry   = 0;
+let _jobInboxOpen      = false;
 
 function initGmailClient() {
   const clientId = localStorage.getItem('showup_gcal_client_id');
@@ -9967,6 +10245,89 @@ async function _createGmailDraft(subject, body) {
   }
 }
 
+// ── GMAIL INBOX (READ) ────────────────────────────────────────
+function initGmailReadClient() {
+  const clientId = localStorage.getItem('showup_gcal_client_id');
+  if (!clientId || !window.google?.accounts?.oauth2) return;
+  _gmailReadClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/gmail.readonly',
+    callback: async (response) => {
+      if (response.error) { showToast('Gmail inbox auth failed'); return; }
+      _gmailReadToken  = response.access_token;
+      _gmailReadExpiry = Date.now() + ((response.expires_in || 3600) * 1000);
+      localStorage.setItem('showup_gmail_inbox_connected', '1');
+      await _doFetchJobEmails();
+    },
+  });
+  if (localStorage.getItem('showup_gmail_inbox_connected') === '1') {
+    _gmailReadClient.requestAccessToken({ prompt: 'none' });
+  }
+}
+
+function connectGmailInbox() {
+  if (!window.google?.accounts?.oauth2) { showToast('Google API loading — try again in a moment'); return; }
+  if (!_gmailReadClient) initGmailReadClient();
+  if (!_gmailReadClient) { showToast('Set a Google OAuth Client ID first'); return; }
+  _gmailReadClient.requestAccessToken({ prompt: '' });
+}
+
+function disconnectGmailInbox() {
+  _gmailReadToken = null;
+  _gmailReadClient = null;
+  _gmailReadExpiry = 0;
+  localStorage.removeItem('showup_gmail_inbox_connected');
+  localStorage.removeItem('showup_job_emails');
+  renderToday();
+  showToast('Gmail inbox disconnected');
+}
+
+async function fetchJobEmails() {
+  if (!localStorage.getItem('showup_gcal_client_id')) { showToast('Set a Google OAuth Client ID in Account first'); return; }
+  if (!_gmailReadClient) initGmailReadClient();
+  if (!_gmailReadToken || Date.now() > _gmailReadExpiry) {
+    if (!_gmailReadClient) { showToast('Connect Gmail Inbox in Account first'); return; }
+    _gmailReadClient.requestAccessToken({ prompt: localStorage.getItem('showup_gmail_inbox_connected') === '1' ? 'none' : '' });
+    return;
+  }
+  await _doFetchJobEmails();
+}
+
+async function _doFetchJobEmails() {
+  const fetchBtn = document.getElementById('job-inbox-fetch-btn');
+  if (fetchBtn) { fetchBtn.textContent = 'Fetching…'; fetchBtn.style.pointerEvents = 'none'; }
+
+  const query = encodeURIComponent('(interview OR recruiter OR "job opportunity" OR "open position" OR LinkedIn OR "your application") newer_than:14d');
+  try {
+    const listResp = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=15`,
+      { headers: { Authorization: `Bearer ${_gmailReadToken}` } }
+    );
+    if (listResp.status === 401) { _gmailReadToken = null; showToast('Gmail session expired — reconnect in Account'); return; }
+    const listData = await listResp.json();
+    const messages = listData.messages || [];
+
+    const emails = await Promise.all(messages.slice(0, 12).map(async m => {
+      const r = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        { headers: { Authorization: `Bearer ${_gmailReadToken}` } }
+      );
+      const d = await r.json();
+      const headers = d.payload?.headers || [];
+      const get = name => (headers.find(h => h.name === name) || {}).value || '';
+      return { id: m.id, subject: get('Subject'), from: get('From'), date: get('Date'), snippet: d.snippet || '' };
+    }));
+
+    localStorage.setItem('showup_job_emails', JSON.stringify({ fetchedAt: new Date().toISOString().slice(0,10), emails }));
+    _jobInboxOpen = true;
+    renderToday();
+    showToast(`${emails.length} job email${emails.length !== 1 ? 's' : ''} loaded`);
+  } catch(e) {
+    showToast('Could not fetch emails — check connection');
+    if (fetchBtn) { fetchBtn.textContent = 'Fetch'; fetchBtn.style.pointerEvents = ''; }
+  }
+}
+
 function initGCalClient() {
   const clientId = localStorage.getItem('showup_gcal_client_id');
   if (!clientId || !window.google?.accounts?.oauth2) return;
@@ -9985,8 +10346,9 @@ function initGCalClient() {
   if (localStorage.getItem('showup_gcal_connected') === '1') {
     _gCalTokenClient.requestAccessToken({ prompt: 'none' });
   }
-  // Init Gmail client at the same time (same client ID)
+  // Init Gmail clients at the same time (same client ID)
   initGmailClient();
+  initGmailReadClient();
 }
 
 function connectGCal() {
