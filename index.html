@@ -314,6 +314,7 @@
       transition: opacity 0.15s;
       gap: 10px;
       border-bottom: 1px solid var(--border);
+      touch-action: manipulation;
     }
     .rhythm-row:hover { opacity: 0.75; }
     .rhythm-row.rhythm-done { opacity: 1; }
@@ -323,7 +324,7 @@
     .rhythm-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
     .check-circle {
       width: 20px; height: 20px;
-      border: 1.5px solid transparent;
+      border: 1.5px solid var(--border);
       border-radius: 50%;
       flex-shrink: 0;
       display: flex;
@@ -1133,10 +1134,14 @@
 </head>
 <body>
 
-<div id="sandbox-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:var(--amber);padding:7px 16px;align-items:center;justify-content:center;gap:12px;font-family:'Montserrat',sans-serif;">
+<div id="sandbox-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:var(--amber);padding:7px 16px;align-items:center;justify-content:center;gap:12px;font-family:'Montserrat',sans-serif;flex-wrap:wrap;">
   <span style="font-size:0.7rem;color:#fff;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">◆ Preview mode</span>
   <span id="sandbox-mode-label" style="font-size:0.72rem;color:rgba(255,255,255,0.85);letter-spacing:0.02em;">Coach-only preview</span>
   <span style="font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.02em;">— your real data is untouched</span>
+  <label style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:rgba(255,255,255,0.85);letter-spacing:0.03em;">
+    Spoof day:
+    <input type="date" id="spoof-date-input" onchange="setSpoofDate(this.value)" style="background:rgba(0,0,0,0.18);border:none;border-radius:2px;color:#fff;font-size:0.68rem;padding:3px 6px;font-family:'Montserrat',sans-serif;cursor:pointer;">
+  </label>
   <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
 </div>
 
@@ -1640,8 +1645,10 @@ function migrateState(s) {
 
 // ── DATE HELPERS ──────────────────────────────────────────────
 // Returns today's date as YYYY-MM-DD in LOCAL time (not UTC), used for date inputs.
+function getEffectiveDate() { return _spoofDate ? new Date(_spoofDate) : new Date(); }
+
 function todayLocal() {
-  const d = new Date();
+  const d = getEffectiveDate();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 // Parses a stored YYYY-MM-DD date for display, avoiding the UTC-midnight-to-local-day-shift bug.
@@ -2865,7 +2872,7 @@ function renderToday() {
   const wrap = document.getElementById('today-wrap');
   if (!wrap) return;
 
-  const now = new Date();
+  const now = getEffectiveDate();
   const h = now.getHours();
   const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
@@ -3426,7 +3433,7 @@ function completeFocusTask(id, event) {
 }
 
 function toggleOutside() {
-  if (S.gotOutsideToday) return;
+  if (S.gotOutsideToday) { showToast('Already logged for today ✓'); return; }
   S.gotOutsideToday = true;
   S.totalOutside = (S.totalOutside || 0) + 1;
   if (!S.outsideLog) S.outsideLog = [];
@@ -4032,6 +4039,7 @@ async function callClaude(prompt, options = {}) {
 let _aiCoachState = {};    // tracks current quiz state
 let _calFollowUpSuggestions = []; // calendar follow-up wizard state
 let _inSandbox = false;           // true when previewing demo state
+let _spoofDate = null;            // Date object overriding today in sandbox mode
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
 const _expandedProjects = new Set(); // tracks which parent task IDs are expanded on the Tasks tab
 let _goalPickerOpenId = null;        // task ID currently showing the week-goal picker
@@ -5018,7 +5026,7 @@ function makeQuestTaskHTML(task, showCat) {
 
   const contactTag = task.contactId && !task.done ? (() => {
     const c = S.contacts.find(x => x.id === task.contactId);
-    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">↗ ${escHtml(contactFullName(c))}</span>` : '';
+    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">→ ${escHtml(contactFullName(c))}</span>` : '';
   })() : '';
 
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
@@ -7108,6 +7116,7 @@ function saveEditCompany(id) {
 }
 
 let _rejQuote = null;
+let _editingInteraction = null; // { contactId, index }
 
 function logRejection() {
   _rejQuote = REJECTION_QUOTES[Math.floor(Math.random() * REJECTION_QUOTES.length)];
@@ -7336,6 +7345,87 @@ function renderProgress() {
   const wEndStr = wEnd.toISOString().slice(0,10);
   const ptsThisWeek = (S.tasks||[]).filter(t=>t.done&&t.doneDate&&t.doneDate>=ws&&t.doneDate<=wEndStr).reduce((s,t)=>s+(t.points||1),0);
 
+  // ── Productivity insights ──
+  const snapshots = S.dailySnapshots || [];
+  const totalSnapDays = snapshots.length;
+  const energyStats = {};
+  snapshots.forEach(s => {
+    if (!s.energy || s.energy === 'rest') return;
+    if (!energyStats[s.energy]) energyStats[s.energy] = { days: 0, tasks: 0, focus: 0 };
+    energyStats[s.energy].days++;
+    energyStats[s.energy].tasks += (s.completedTasks || []).length;
+    energyStats[s.energy].focus += s.focusSessions || 0;
+  });
+  const bestEnergy = Object.entries(energyStats)
+    .map(([k, v]) => ({ key: k, avg: v.days > 0 ? v.tasks / v.days : 0, days: v.days }))
+    .filter(x => x.days >= 2)
+    .sort((a, b) => b.avg - a.avg)[0];
+  const snapsWithFocus = snapshots.filter(s => (s.focusSessions || 0) > 0);
+  const snapsNoFocus   = snapshots.filter(s => !(s.focusSessions || 0) && s.energy !== 'rest');
+  const avgWithFocus  = snapsWithFocus.length >= 2 ? (snapsWithFocus.reduce((a, x) => a + (x.completedTasks||[]).length, 0) / snapsWithFocus.length) : null;
+  const avgNoFocus    = snapsNoFocus.length   >= 2 ? (snapsNoFocus.reduce((a, x)   => a + (x.completedTasks||[]).length, 0) / snapsNoFocus.length)   : null;
+  const dowCounts = [0,0,0,0,0,0,0];
+  const DOW_NAMES = ['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
+  (S.tasks||[]).filter(t => t.done && t.doneDate).forEach(t => { dowCounts[new Date(t.doneDate+'T12:00:00').getDay()]++; });
+  const maxDow = Math.max(...dowCounts);
+  const bestDowIdx = maxDow >= 3 ? dowCounts.indexOf(maxDow) : -1;
+  const recent30 = snapshots.slice(-30);
+  const r30done = recent30.reduce((a, x) => a + (x.completedTasks||[]).length, 0);
+  const r30incomplete = recent30.reduce((a, x) => a + (x.incompleteTasks||[]).length, 0);
+  const completionRate = (r30done + r30incomplete) > 0 ? Math.round(r30done / (r30done + r30incomplete) * 100) : null;
+  const insightLines = [];
+  if (bestEnergy) insightLines.push(`On <strong>${ENERGY[bestEnergy.key]?.label || bestEnergy.key}</strong> days you average <strong>${bestEnergy.avg.toFixed(1)}</strong> tasks completed — your most productive mode.`);
+  if (avgWithFocus !== null && avgNoFocus !== null && avgWithFocus > avgNoFocus) insightLines.push(`Days with focus sessions: <strong>${avgWithFocus.toFixed(1)} tasks done</strong> vs ${avgNoFocus.toFixed(1)} without — the timer moves the needle.`);
+  if (bestDowIdx >= 0) insightLines.push(`<strong>${DOW_NAMES[bestDowIdx]}</strong> tend to be your most productive day of the week.`);
+  if (completionRate !== null) insightLines.push(`<strong>${completionRate}%</strong> of your planned tasks get completed — ${completionRate >= 75 ? 'strong follow-through' : completionRate >= 50 ? 'solid, with room to tighten' : 'try planning fewer items per day'}.`);
+  const insightsHTML = insightLines.length > 0 ? `
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">How you work</div>
+      ${insightLines.map(l => `<div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;padding:5px 0;border-bottom:1px solid var(--border);">${l}</div>`).join('')}
+    </div>` : '';
+
+  // ── Top contacts by momentum ──
+  const topContacts = (S.contacts||[])
+    .map(c => ({
+      c,
+      interactions: (c.interactions||[]).length,
+      tasksDone: (S.tasks||[]).filter(t => t.contactId === c.id && t.done).length,
+    }))
+    .map(x => ({ ...x, score: x.interactions + x.tasksDone * 2 }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
+  const topContactsHTML = topContacts.length > 0 ? `
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Contacts in your corner</div>
+      ${topContacts.map(x => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.72rem;font-weight:700;color:var(--text-mid);font-family:'Montserrat',sans-serif;">${escHtml((x.c.first||'?')[0].toUpperCase())}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(x.c))}</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${x.interactions} interaction${x.interactions!==1?'s':''} · ${x.tasksDone} task${x.tasksDone!==1?'s':''} done</div>
+          </div>
+          ${x.c.company ? `<div style="font-size:0.68rem;color:var(--text-dim);text-align:right;flex-shrink:0;">${escHtml(x.c.company)}</div>` : ''}
+        </div>`).join('')}
+    </div>` : '';
+
+  // ── Recommendations ──
+  const recs = [];
+  const totalDoneAll = (S.doneBy ? Object.values(S.doneBy).reduce((a,v)=>a+v,0) : 0);
+  const networkDoneAll = (S.doneBy?.network||0) + (S.doneBy?.followup||0);
+  if (totalDoneAll >= 5 && networkDoneAll / totalDoneAll < 0.20) recs.push('Networking tasks are under 20% of your total work — one follow-up or outreach per day compounds fast.');
+  const avgFocusPerDay = totalSnapDays > 3 ? ((S.totalFocusBlocks||0) / totalSnapDays) : null;
+  if (avgFocusPerDay !== null && avgFocusPerDay < 1) recs.push(`You\'re averaging ${avgFocusPerDay.toFixed(1)} focus sessions per day. Days with focus blocks tend to have more tasks completed.`);
+  if (completionRate !== null && completionRate < 55) recs.push(`${completionRate}% task completion rate — try capping Today\'s Focus at 2–3 items so your list stays realistic.`);
+  if ((S.contacts||[]).length === 0) recs.push('Add your first contact to track who\'s in your network. Warm connections often matter more than applications.');
+  if (totalSnapDays >= 14 && (S.doneBy?.apply||0) === 0) recs.push('No applications logged yet. Even one per week keeps your momentum visible and your skills sharp.');
+  if (avgWithFocus !== null && avgNoFocus !== null && avgWithFocus <= avgNoFocus) recs.push('Focus sessions aren\'t boosting your task count yet — try pairing the timer with your hardest task of the day.');
+  const recsHTML = recs.length > 0 ? `
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Recommendations</div>
+      ${recs.map(r => `<div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;"><span style="color:var(--amber);font-size:0.75rem;margin-top:3px;flex-shrink:0;">→</span><span>${r}</span></div>`).join('')}
+    </div>` : '';
+
   wrap.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -7357,8 +7447,11 @@ function renderProgress() {
       </div>
     </div>
 
+    ${insightsHTML}
     ${funnelHTML}
     ${catBreakdownHTML}
+    ${topContactsHTML}
+    ${recsHTML}
 
     <div class="card">
       <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
@@ -7508,7 +7601,7 @@ function saveSprintTriage() {
 
 // ── WEEKLY PLANNING ──────────────────────────────────────────
 function getWeekStart(date) {
-  const d = date ? new Date(date) : new Date();
+  const d = date ? new Date(date) : getEffectiveDate();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const mon = new Date(d.setDate(diff));
@@ -7520,8 +7613,8 @@ function getCurrentWeekPlan() {
   return S.weeklyPlans.find(p => p.weekStart === ws) || null;
 }
 
-function isMonday() { return new Date().getDay() === 1; }
-function isFriday() { return new Date().getDay() === 5; }
+function isMonday() { return getEffectiveDate().getDay() === 1; }
+function isFriday() { return getEffectiveDate().getDay() === 5; }
 
 function shouldShowWeekPlanner() {
   const ws = getWeekStart();
@@ -7649,13 +7742,20 @@ function renderWeekPlannerHTML() {
         <button onclick="dismissWeekPrompt('plan')" style="background:none;border:none;color:var(--text-dim);font-size:0.9rem;cursor:pointer;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">\u00d7</button>
       </div>
     </div>
-    <div style="display:grid;gap:2px;margin-bottom:8px;">
-      <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="${wkInputStyle}">
-      <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="${wkInputStyle}">
-      <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="${wkInputStyle}">
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Intention</div>
+      <input id="w-intention" placeholder="This week I want to feel…" value="${escHtml(plan?.intention||'')}" style="${wkInputStyle}">
+    </div>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">Goals</div>
+      <div style="display:grid;gap:2px;">
+        <input id="wg-1" placeholder="Goal 1" value="${escHtml(g[0]||'')}" style="${wkInputStyle}">
+        <input id="wg-2" placeholder="Goal 2" value="${escHtml(g[1]||'')}" style="${wkInputStyle}">
+        <input id="wg-3" placeholder="Goal 3" value="${escHtml(g[2]||'')}" style="${wkInputStyle}">
+      </div>
     </div>
     ${pastHTML}
-    <div style="padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:10px;">
+    <div style="padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:0.72rem;color:var(--text-dim);">Active sprint load</div>
         <div style="font-size:0.78rem;font-weight:700;color:${isOver ? 'var(--red)' : 'var(--amber)'};">${activePts} / ${capacity} pts${isOver ? ' ⚠' : ''}</div>
@@ -7664,7 +7764,6 @@ function renderWeekPlannerHTML() {
         <div style="height:100%;width:${Math.min(100,Math.round(activePts/capacity*100))}%;background:${isOver ? 'var(--red)' : 'var(--amber)'};border-radius:2px;"></div>
       </div>
     </div>
-    <input id="w-intention" placeholder="This week I want to feel..." value="${escHtml(plan?.intention||'')}" style="${wkInputStyle}margin-bottom:14px;">
     <div style="display:flex;gap:8px;">
       <button onclick="saveWeeklyPlan()" style="background:var(--text);color:var(--surface);border:none;border-radius:2px;padding:9px 18px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">Save plan</button>
       ${_weekPlanEditing ? `<button onclick="cancelWeekPlanEdit()" style="background:none;border:none;color:var(--text-dim);font-size:0.82rem;cursor:pointer;padding:9px 14px;font-family:'DM Sans',sans-serif;">Cancel</button>` : ''}
@@ -7735,6 +7834,7 @@ function renderWeekPlanViewHTML() {
       <div class="card-label" style="margin-bottom:0;">This week's plan</div>
       <button onclick="editWeekPlan()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;cursor:pointer;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Edit</button>
     </div>
+    ${plan.intention ? `<div style="font-size:0.78rem;color:var(--text-mid);font-style:italic;padding:8px 12px;background:var(--surface2);border-radius:2px;margin-bottom:12px;line-height:1.5;">"${escHtml(plan.intention)}"</div>` : ''}
     ${goals.map((g, i) => {
       const isDone = done[i];
       const linked = linkedTasks(i);
@@ -7768,7 +7868,6 @@ function renderWeekPlanViewHTML() {
         </div>` : ''}
       </div>`;
     }).join('')}
-    ${plan.intention ? `<div style="font-size:0.74rem;color:var(--text-dim);font-style:italic;padding:10px 0 2px;">"${escHtml(plan.intention)}"</div>` : ''}
   </div>`;
 }
 
@@ -7893,14 +7992,17 @@ function saveMode(newMode) {
 function enterSandbox(demoMode) {
   if (_inSandbox) return;
   _inSandbox = true;
+  _spoofDate = null;
   const baseState = (demoMode === 'full') ? SANDBOX_DEMO_STATE_FULL : SANDBOX_DEMO_STATE;
   S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, baseState));
   const banner = document.getElementById('sandbox-banner');
   if (banner) {
     banner.style.display = 'flex';
-    document.body.style.paddingTop = '36px';
+    document.body.style.paddingTop = '44px';
     const lbl = document.getElementById('sandbox-mode-label');
     if (lbl) lbl.textContent = demoMode === 'full' ? 'Coach + Job Seeker preview' : 'Coach-only preview';
+    const inp = document.getElementById('spoof-date-input');
+    if (inp) inp.value = todayLocal();
   }
   focusView = 'skills';
   currentTab = 'focus';
@@ -7911,6 +8013,7 @@ function enterSandbox(demoMode) {
 function exitSandbox() {
   if (!_inSandbox) return;
   _inSandbox = false;
+  _spoofDate = null;
   const raw = localStorage.getItem('jhc3');
   S = raw
     ? normalizeStateArrays(Object.assign({}, DEFAULT_STATE, JSON.parse(raw)))
@@ -7920,6 +8023,21 @@ function exitSandbox() {
   updateTabVisibility();
   switchTab(JOBSEEKER_TABS.includes(currentTab) && S.mode !== 'coach' ? currentTab : (S.mode === 'coach' ? 'progress' : 'today'));
   showToast('Back to your real data ✓');
+}
+
+function setSpoofDate(dateStr) {
+  if (!dateStr) { _spoofDate = null; }
+  else {
+    // Parse as local date (noon to avoid DST edge cases)
+    _spoofDate = new Date(dateStr + 'T12:00:00');
+  }
+  // Reset today's session so energy picker shows on spoofed day if needed,
+  // but keep demo energy so the Today tab renders fully.
+  render();
+  const dayName = _spoofDate
+    ? _spoofDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+    : 'today';
+  showToast(`Day set to ${dayName}`);
 }
 
 function switchTab(tab) {
@@ -8499,26 +8617,22 @@ function scheduleJobSearchTime() {
 
 // ── WORKOUT TRACKING ─────────────────────────────────────────
 function logWorkout() {
+  if (S.workedOutToday) { showToast('Already logged for today ✓'); return; }
   const today = new Date().toISOString().slice(0,10);
-  if (S.workedOutToday) {
-    S.workedOutToday = false;
-    S.workoutLog = (S.workoutLog || []).filter(d => d !== today);
-    save();
-    renderToday();
-  } else {
-    S.workedOutToday = true;
-    if (!S.workoutLog) S.workoutLog = [];
-    if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
-    const goal = S.workoutGoal || 3;
-    const period = S.workoutGoalPeriod || 'week';
-    const count = period === 'month' ? getWorkoutsThisMonth() : getWorkoutsThisWeek();
-    const goalHit = count === goal;
-    if (goalHit) gainXP(25);
-    save();
-    renderToday();
-    updateHeader();
-    showToast(goalHit ? `Workout goal reached! +25 XP` : 'Workout logged ✓');
-  }
+  S.workedOutToday = true;
+  if (!S.workoutLog) S.workoutLog = [];
+  if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
+  gainXP(20);
+  const goal = S.workoutGoal || 3;
+  const period = S.workoutGoalPeriod || 'week';
+  const count = period === 'month' ? getWorkoutsThisMonth() : getWorkoutsThisWeek();
+  const goalHit = count === goal;
+  if (goalHit) gainXP(25);
+  save();
+  renderToday();
+  updateHeader();
+  checkAchievements();
+  showToast(goalHit ? `Workout goal reached! +25 XP` : 'Workout logged ✓');
 }
 
 function getWorkoutsThisMonth() {
@@ -8981,6 +9095,53 @@ function quickLogInteraction(contactId) {
   `);
 }
 
+function saveInteractionEdit(contactId, index) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c || !c.interactions[index]) return;
+  const date   = (document.getElementById(`ix-edit-date-${contactId}-${index}`) || {}).value;
+  const method = (document.getElementById(`ix-edit-method-${contactId}-${index}`) || {}).value || '';
+  const notes  = ((document.getElementById(`ix-edit-notes-${contactId}-${index}`) || {}).value || '').trim();
+  if (!date) { showToast('Please select a date'); return; }
+  const dupe = c.interactions.some((ix, i) => i !== index && ix.date === date);
+  if (dupe) { showToast('Another interaction is already logged for that date'); return; }
+  c.interactions[index] = { ...c.interactions[index], date, method, notes };
+  c.interactions.sort((a, b) => b.date.localeCompare(a.date));
+  if (c.interactions.length > 0) c.lastContact = c.interactions[0].date;
+  _editingInteraction = null;
+  save();
+  networkOpenId = contactId;
+  renderNetwork();
+  showToast('Interaction updated ✓');
+}
+
+function deleteInteraction(contactId, index) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c || !c.interactions[index]) return;
+  const ix = c.interactions[index];
+  const label = parseLocalDate(ix.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  showModal(`
+    <div style="text-align:left">
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Delete interaction?</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Remove the ${escHtml(label)} entry${ix.method ? ' (' + escHtml(ix.method) + ')' : ''}? This can't be undone.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Cancel</button>
+        <button onclick="closeModal();confirmDeleteInteraction(${contactId},${index})" style="flex:1;padding:10px;background:var(--red,#c0392b);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Delete</button>
+      </div>
+    </div>`);
+}
+
+function confirmDeleteInteraction(contactId, index) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c || !c.interactions[index]) return;
+  c.interactions.splice(index, 1);
+  if (c.interactions.length > 0) c.lastContact = c.interactions[0].date;
+  _editingInteraction = null;
+  save();
+  networkOpenId = contactId;
+  renderNetwork();
+  showToast('Interaction deleted');
+}
+
 function addFollowupTask(contactId, destination) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
@@ -9372,11 +9533,34 @@ function renderContactCard(c) {
   const hasSyntheticEntry = !hasRealHistory && c.lastContact && c.preferredMethod;
 
   const historyHTML = hasRealHistory
-    ? c.interactions.slice(0, 8).map(ix => `
-        <div class="contact-interaction-entry">
-          <span class="contact-interaction-date">${parseLocalDate(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}${ix.resumeSent ? ' <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.6rem;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;font-family:\'Montserrat\',sans-serif;vertical-align:middle;">RESUME</span>' : ''}</span>
-          ${ix.notes ? `<br>${escHtml(ix.notes)}` : ''}
-        </div>`).join('')
+    ? c.interactions.slice(0, 8).map((ix, idx) => {
+        const isEditing = _editingInteraction && _editingInteraction.contactId === c.id && _editingInteraction.index === idx;
+        if (isEditing) {
+          return `<div class="contact-interaction-entry" style="padding-bottom:10px;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
+              <input type="date" id="ix-edit-date-${c.id}-${idx}" value="${escHtml(ix.date)}" class="contact-inline-input" style="flex:1;min-width:110px;max-width:150px;">
+              <select id="ix-edit-method-${c.id}-${idx}" class="contact-inline-input" style="flex:1;min-width:120px;">
+                ${['Email','LinkedIn','In person','Zoom','Phone','Text','Other'].map(m => `<option value="${m}" ${ix.method===m?'selected':''}>${m}</option>`).join('')}
+              </select>
+            </div>
+            <textarea id="ix-edit-notes-${c.id}-${idx}" class="contact-inline-input" rows="2" style="margin-bottom:6px;">${escHtml(ix.notes||'')}</textarea>
+            <div style="display:flex;gap:6px;">
+              <button class="contact-action-btn" onclick="event.stopPropagation();saveInteractionEdit(${c.id},${idx})" style="color:var(--green);border-color:var(--green);">Save</button>
+              <button class="contact-action-btn" onclick="event.stopPropagation();_editingInteraction=null;renderNetwork()">Cancel</button>
+            </div>
+          </div>`;
+        }
+        return `<div class="contact-interaction-entry" style="display:flex;align-items:flex-start;gap:6px;">
+          <div style="flex:1;min-width:0;">
+            <span class="contact-interaction-date">${parseLocalDate(ix.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${ix.method ? ' · ' + escHtml(ix.method) : ''}${ix.resumeSent ? ' <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.6rem;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;font-family:\'Montserrat\',sans-serif;vertical-align:middle;">RESUME</span>' : ''}</span>
+            ${ix.notes ? `<br>${escHtml(ix.notes)}` : ''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;margin-top:1px;">
+            <button onclick="event.stopPropagation();_editingInteraction={contactId:${c.id},index:${idx}};renderNetwork()" style="background:none;border:none;padding:2px 4px;cursor:pointer;color:var(--text-dim);font-size:0.7rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;touch-action:manipulation;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">edit</button>
+            <button onclick="event.stopPropagation();deleteInteraction(${c.id},${idx})" style="background:none;border:none;padding:2px 4px;cursor:pointer;color:var(--text-dim);font-size:0.7rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;touch-action:manipulation;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">delete</button>
+          </div>
+        </div>`;
+      }).join('')
     : hasSyntheticEntry
       ? `<div class="contact-interaction-entry">
           <span class="contact-interaction-date">${new Date(c.lastContact).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · ${escHtml(c.preferredMethod)}</span>
