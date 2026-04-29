@@ -6226,7 +6226,7 @@ function renderQuestionBank() {
   }).join('');
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
-      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;renderNetwork()" style="${iI}max-width:200px;">
+      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;clearTimeout(window._qbDebounce);window._qbDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('qb-search');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="${iI}max-width:200px;">
       <div style="display:flex;gap:10px;flex-shrink:0;">
         <button onclick="openBulkQBankImport()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Bulk import</button>
         <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
@@ -6806,8 +6806,8 @@ function renderCompanies() {
     <button onclick="openAddCompany()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-    <input type="text" placeholder="Search companies..." value="${escHtml(companySearch)}"
-      oninput="companySearch=this.value;companyOpenId=null;renderNetwork()"
+    <input type="text" id="company-search-input" placeholder="Search companies..." value="${escHtml(companySearch)}"
+      oninput="companySearch=this.value;companyOpenId=null;clearTimeout(window._coDebounce);window._coDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('company-search-input');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);"
       style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
     <select onchange="companySort=this.value;renderNetwork()"
       style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.72rem;color:var(--text-dim);padding:5px 0;outline:none;cursor:pointer;letter-spacing:0.03em;">
