@@ -8228,6 +8228,17 @@ function _lmStep2(search) {
       }).join('')}
     </div>` : '';
 
+  // If the modal is already rendered, only update the results — don't re-render
+  // the input or it loses focus on every keystroke (mobile bug).
+  const existingSearch = document.getElementById('lm-search');
+  if (existingSearch) {
+    const rowsEl = document.getElementById('lm-contact-rows');
+    if (rowsEl) rowsEl.innerHTML = contactRows;
+    const pipeEl = document.getElementById('lm-pipeline-rows');
+    if (pipeEl) pipeEl.innerHTML = pipelineRows;
+    return;
+  }
+
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `
     <div style="text-align:left;">
@@ -8235,9 +8246,9 @@ function _lmStep2(search) {
       <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:12px;">Who did you meet?</div>
       <input id="lm-search" type="text" placeholder="Search contacts…" value="${escHtml(search)}"
         oninput="_lmStep2(this.value)"
-        style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;margin-bottom:8px;">
+        style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;margin-bottom:8px;touch-action:manipulation;">
       <div id="lm-contact-rows">${contactRows}</div>
-      ${pipelineRows}
+      <div id="lm-pipeline-rows">${pipelineRows}</div>
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
         <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:8px;">Or add a new contact:</div>
         <div style="display:flex;gap:6px;">
