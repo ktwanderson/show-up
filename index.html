@@ -1549,6 +1549,60 @@ function completeOnboarding() {
   save();
   hideOnboardingScreen();
   render();
+  setTimeout(showOnboardingGuide, 400);
+}
+
+function showOnboardingGuide() {
+  const steps = [
+    {
+      title: 'Start each day on Today',
+      body: 'Set your energy level, pick 1–3 focus tasks, and see your calendar. Checking in here is how your streak grows.',
+      icon: '◉'
+    },
+    {
+      title: 'Quests tracks your work',
+      body: 'Add tasks with category codes — Apply, Follow-up, Network, Research. Completing tasks earns XP and keeps you moving.',
+      icon: '◆'
+    },
+    {
+      title: 'Network is your pipeline',
+      body: 'Track contacts and companies. Move jobs through pipeline stages as things progress — offer, interview, rejected.',
+      icon: '⬡'
+    },
+    {
+      title: 'Progress shows the big picture',
+      body: 'XP, streaks, habits, and achievements live here. The job search is a long game — this is proof you\'re showing up.',
+      icon: '∥'
+    }
+  ];
+  let step = 0;
+
+  function renderStep() {
+    const s = steps[step];
+    const isLast = step === steps.length - 1;
+    const dots = steps.map((_, i) =>
+      `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${i === step ? 'var(--amber)' : 'var(--border)'};margin:0 3px;transition:background 0.2s"></span>`
+    ).join('');
+    document.getElementById('modal-inner').innerHTML = `
+      <div style="text-align:center;padding:8px 0">
+        <div style="font-size:1.5rem;margin-bottom:12px">${s.icon}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:10px">Step ${step + 1} of ${steps.length}</div>
+        <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:12px">${s.title}</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.7;margin-bottom:24px">${s.body}</div>
+        <div style="margin-bottom:20px">${dots}</div>
+        <button class="modal-btn" onclick="onboardGuideNext()">${isLast ? 'Get started' : 'Next →'}</button>
+        <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Skip tour</button>
+      </div>`;
+  }
+
+  window.onboardGuideNext = function() {
+    step++;
+    if (step >= steps.length) { closeModal(); return; }
+    renderStep();
+  };
+
+  document.getElementById('overlay').classList.add('show');
+  renderStep();
 }
 
 function syncFromCloud() {
@@ -2364,7 +2418,7 @@ function sessionsToNextLevel(currentSessions) {
 
 // ── STATE ────────────────────────────────────────────────────
 const DEFAULT_STATE = {
-  userName: 'Kendra',
+  userName: '',
   // tasks
   tasks: [],
   nextId: 1,
@@ -2740,6 +2794,10 @@ function checkDayReset() {
     S.carryOverIds          = [];
     S.todayCalEvents    = [];
     save();
+    // Auto-sync calendar for the new day if previously connected
+    if (localStorage.getItem('showup_gcal_connected') === '1') {
+      setTimeout(fetchGCalEvents, 1000);
+    }
   }
 }
 
@@ -6467,9 +6525,14 @@ function updatePipelineStage(id, stage) {
       }
     }
   }
+  const prevStage = e.stage;
   e.stage = stage;
   save();
   renderNetwork();
+  if (stage === 'rejected') {
+    _rejPreFill = { company: e.company || '', role: e.role || '', stage: prevStage };
+    setTimeout(logRejection, 300);
+  }
 }
 
 function editStageDate(id, stageKey, newDate) {
@@ -7116,6 +7179,7 @@ function saveEditCompany(id) {
 }
 
 let _rejQuote = null;
+let _rejPreFill = null;
 let _editingInteraction = null; // { contactId, index }
 
 function logRejection() {
@@ -7160,6 +7224,16 @@ function showRejectionStep2() {
       <button class="modal-btn" style="margin-top:20px" onclick="confirmRejection()">Log it</button>
       <button onclick="closeModal()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:6px">Skip for now</button>
     </div>`;
+  if (_rejPreFill) {
+    const f = _rejPreFill;
+    _rejPreFill = null;
+    const compEl = document.getElementById('rej-company');
+    const roleEl = document.getElementById('rej-role');
+    const stageEl = document.getElementById('rej-stage');
+    if (compEl && f.company) compEl.value = f.company;
+    if (roleEl && f.role) roleEl.value = f.role;
+    if (stageEl && f.stage) stageEl.value = f.stage;
+  }
 }
 
 function confirmRejection() {
