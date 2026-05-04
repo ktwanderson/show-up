@@ -1222,6 +1222,10 @@
       </div>
     </div>
 
+    <div style="margin-bottom:24px;padding:14px 16px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+      <div style="font-size:0.72rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Your data is yours</div>
+      <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.6;">Everything you enter stays on your device. Show Up does not sell your data or share it with third parties. You can export or delete your data at any time from the Account tab.</div>
+    </div>
     <button onclick="completeOnboarding()" style="width:100%;padding:14px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Let's go →</button>
   </div>
 </div>
@@ -1808,13 +1812,16 @@ const PIPELINE_STAGES = [
   { key: 'phone',      label: 'Phone Screen', color: '#7a5c8a' },
   { key: 'interview1', label: 'Interview 1',  color: '#a07c08' },
   { key: 'interview2', label: 'Interview 2',  color: '#a07c08' },
+  { key: 'interview3', label: 'Interview 3',  color: '#a07c08' },
+  { key: 'interview4', label: 'Interview 4',  color: '#a07c08' },
+  { key: 'interview5', label: 'Interview 5',  color: '#a07c08' },
   { key: 'final',      label: 'Final Round',  color: '#2d6347' },
   { key: 'offer',      label: 'Offer',        color: '#2d6347' },
   { key: 'rejected',   label: 'Rejected',     color: '#c0392b' },
   { key: 'withdrawn',  label: 'Withdrawn',    color: '#8c8880' },
 ];
 
-const INTERVIEW_STAGE_KEYS = new Set(['phone','interview1','interview2','final']);
+const INTERVIEW_STAGE_KEYS = new Set(['phone','interview1','interview2','interview3','interview4','interview5','final']);
 
 const COMPANY_STATUSES = [
   { key: 'researching', label: 'Researching', color: '#8c8880' },
@@ -3145,9 +3152,49 @@ function renderToday() {
             : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Pull 1–${S.todayEnergy === 'light' ? 2 : 3} things from your backlog below.</div>`
           }
         </div>
-        <button onclick="switchTab('quests')" style="margin-top:12px;width:100%;padding:9px;background:var(--surface2);border:none;border-radius:2px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Plan from backlog →</button>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Quick add</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="today-quick-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.68rem;color:var(--text-dim);padding:4px 0;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;flex-shrink:0;">
+              ${Object.entries(CATS).map(([k,v]) => `<option value="${k}" ${k==='personal'?'selected':''}>${v.label}</option>`).join('')}
+            </select>
+            <input id="today-quick-input" type="text" placeholder="Capture a task for today…"
+              style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;"
+              onkeydown="if(event.key==='Enter')quickAddToday()" />
+            <button onclick="quickAddToday()" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-mid);font-size:0.75rem;padding:4px 10px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+</button>
+          </div>
+        </div>
+        <button onclick="switchTab('quests')" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:none;border-radius:2px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Plan from backlog →</button>
       </div>
     `}
+
+    ${(() => {
+      const backlogItems = S.tasks
+        .filter(t => !t.done && !t.parentId && !S.todayFocusIds.includes(t.id))
+        .sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0) || (b.points||1)-(a.points||1))
+        .slice(0, 8);
+      if (!backlogItems.length || isRest) return '';
+      const _blOpen = S._backlogPanelOpen !== false;
+      return `<div style="margin-top:14px;">
+        <button onclick="S._backlogPanelOpen=!(S._backlogPanelOpen!==false);save();renderToday()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:0;cursor:pointer;margin-bottom:${_blOpen?'8px':'0'};">
+          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Backlog</span>
+          <span style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${_blOpen ? '▴' : '▾'}</span>
+        </button>
+        ${_blOpen ? `<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
+          ${backlogItems.map((t,i) => {
+            const cat = CATS[t.cat] || {};
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:${i<backlogItems.length-1?'1px solid var(--border)':'none'};background:var(--surface2);">
+              ${t.urgent ? `<span style="color:var(--teal);font-size:0.6rem;flex-shrink:0;" title="This week">◆</span>` : `<span style="width:8px;flex-shrink:0;display:inline-block;"></span>`}
+              <span style="display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:2px;background:${(t.points||1)>=3?'var(--amber-lt)':'var(--bg)'};color:${(t.points||1)>=3?'var(--amber)':'var(--text-dim)'};font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;flex-shrink:0;">${t.points||1}</span>
+              <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
+              <span style="width:8px;height:8px;border-radius:50%;background:${cat.color||'var(--border)'};flex-shrink:0;opacity:0.7;"></span>
+              <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
+            </div>`;
+          }).join('')}
+        </div>
+        <button onclick="switchTab('quests')" style="margin-top:6px;background:none;border:none;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:2px 0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Full backlog →</button>` : ''}
+      </div>`;
+    })()}
 
     ${(S.trackedHabits||['workout','journal','outside']).includes('workout') ? `
     <div class="rhythm-row ${S.workedOutToday ? 'rhythm-done' : ''}" onclick="logWorkout()" style="margin-top:20px">
@@ -3316,14 +3363,7 @@ function makeFocusItemHTML(task) {
   const actionTask = (hasChildren && nextAction) ? nextAction : task;
   const allDone = hasChildren && doneChildCount === totalChildCount;
 
-  let textHTML = escHtml(actionTask.text);
-  if (actionTask.contactId) {
-    const c = S.contacts.find(x => x.id === actionTask.contactId);
-    if (c) {
-      const name = escHtml(contactFullName(c));
-      textHTML = textHTML.replace(name, `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${actionTask.contactId};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;">${name}</span>`);
-    }
-  }
+  let textHTML = linkifyTaskText(actionTask.text);
 
   const pts = actionTask.points || 1;
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
@@ -3352,6 +3392,7 @@ function makeFocusItemHTML(task) {
       </div>
       ${!isDone ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
       ${catDot(task.cat, '18px')}
+      ${!isDone ? `<button onclick="event.stopPropagation();openEditTaskModal(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.4;transition:opacity 0.15s;flex-shrink:0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
       <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
     </div>`;
 }
@@ -3412,10 +3453,27 @@ function quickAddFocus() {
   if (!inp) return;
   const text = inp.value.trim();
   if (!text) return;
-  const task = { id: S.nextId++, text, cat: 'todo', done: false, createdAt: Date.now(), points: 1 };
+  const task = { id: S.nextId++, text, cat: 'personal', done: false, createdAt: Date.now(), points: 1 };
   S.tasks.unshift(task);
   S.totalAdded++;
   S.todayFocusIds.push(task.id);
+  save();
+  inp.value = '';
+  renderToday();
+}
+
+function quickAddToday() {
+  const inp = document.getElementById('today-quick-input');
+  const catSel = document.getElementById('today-quick-cat');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  const cat = catSel ? catSel.value : 'personal';
+  const task = { id: S.nextId++, text, cat, done: false, createdAt: Date.now(), points: 1 };
+  S.tasks.unshift(task);
+  S.totalAdded++;
+  S.todayFocusIds.push(task.id);
+  trackEvent('task_add', { cat, source: 'today_quick' });
   save();
   inp.value = '';
   renderToday();
@@ -5123,7 +5181,7 @@ function makeQuestTaskHTML(task, showCat) {
       <div id="task-row-${task.id}" style="border-bottom:1px solid var(--border);padding:0;">
         <div class="task ${task.done?'done':isInProgress?'in-progress':''}" style="border-bottom:none;padding-bottom:6px;">
           <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
-          <div class="task-text" style="font-weight:500;">${escHtml(task.text)}${contactTag}</div>
+          <div class="task-text" style="font-weight:500;">${linkifyTaskText(task.text)}${contactTag}</div>
           <div class="task-meta">
             ${showCat ? catDot(task.cat, '18px') : ''}
             ${urgentBtn}
@@ -5166,7 +5224,7 @@ function makeQuestTaskHTML(task, showCat) {
         <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer">${task.done?'✓':''}</div>
         ${!task.done ? `<span onclick="cycleTaskPoints(${task.id}, event)" title="Effort: tap to change" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
         ${!task.done ? `<button class="progress-btn${task.inProgress?' active':''}" onclick="markTaskInProgress(${task.id},event)" title="${task.inProgress?'Mark not started':'Mark in progress'}">◑</button>` : ''}
-        <div class="task-text">${escHtml(task.text)}${contactTag}</div>
+        <div class="task-text">${linkifyTaskText(task.text)}${contactTag}</div>
         <div class="task-meta">
           ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
           ${showCat ? catDot(task.cat, '18px') : ''}
@@ -5193,10 +5251,13 @@ function makeQuestTaskHTML(task, showCat) {
     </div>`;
 }
 
-function makeSubtaskHTML(task) {
+function makeSubtaskHTML(task, showReorder) {
   const pts = task.points || 1;
   const ptsBg = pts >= 3 ? 'var(--amber-lt)' : 'var(--surface2)';
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
+  const isPinned = S.todayFocusIds.includes(task.id);
+  const siblings = task.parentId ? S.tasks.filter(t => t.parentId === task.parentId) : [];
+  const idx = siblings.findIndex(t => t.id === task.id);
   return `
     <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer;width:18px;height:18px;min-width:18px;font-size:0.68rem;">${task.done?'✓':''}</div>
@@ -5204,10 +5265,37 @@ function makeSubtaskHTML(task) {
       <div class="task-text" style="font-size:0.82rem;">${escHtml(task.text)}</div>
       <div class="task-meta">
         ${!task.done ? `<div class="xp-badge">+${(CATS[task.cat]||{}).xp||15}</div>` : ''}
-        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
+        ${showReorder && !task.done && siblings.length > 1 ? `
+          <button onclick="event.stopPropagation();moveSubtask(${task.id},-1)" title="Move up" style="background:none;border:none;cursor:pointer;padding:0 1px;line-height:1;opacity:${idx===0?'0.15':'0.4'};font-size:0.65rem;color:var(--text-dim);pointer-events:${idx===0?'none':'auto'};" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='${idx===0?'0.15':'0.4'}'">▲</button>
+          <button onclick="event.stopPropagation();moveSubtask(${task.id},1)" title="Move down" style="background:none;border:none;cursor:pointer;padding:0 1px;line-height:1;opacity:${idx===siblings.length-1?'0.15':'0.4'};font-size:0.65rem;color:var(--text-dim);pointer-events:${idx===siblings.length-1?'none':'auto'};" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='${idx===siblings.length-1?'0.15':'0.4'}'">▼</button>` : ''}
+        ${!task.done && !isPinned ? `<button onclick="event.stopPropagation();pinSubtaskToToday(${task.id})" title="Add to Today" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;opacity:0.4;transition:opacity 0.15s;white-space:nowrap;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">→ Today</button>` : ''}
+        ${isPinned ? `<span style="font-size:0.58rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;opacity:0.8;">Today ✓</span>` : ''}
+        ${!task.done ? `<button class="edit-task-btn" onclick="openEditTaskModal(${task.id})" title="Edit" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
       </div>
       <button class="del-btn" onclick="deleteQuestTask(${task.id})">✕</button>
     </div>`;
+}
+
+function moveSubtask(id, dir) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || !task.parentId) return;
+  const siblings = S.tasks.filter(t => t.parentId === task.parentId);
+  const globalIdxOfTask = S.tasks.indexOf(task);
+  const sibIdx = siblings.findIndex(t => t.id === id);
+  const swapSib = siblings[sibIdx + dir];
+  if (!swapSib) return;
+  const globalIdxOfSwap = S.tasks.indexOf(swapSib);
+  S.tasks[globalIdxOfTask] = swapSib;
+  S.tasks[globalIdxOfSwap] = task;
+  save();
+  renderQuests();
+}
+
+function pinSubtaskToToday(id) {
+  if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
+  save();
+  renderQuests();
+  showToast('Added to today\'s focus ✓');
 }
 
 function startAddingSubtask(parentId, event) {
@@ -5261,6 +5349,71 @@ function openEditTask(id) {
     </div>`;
   const inp = document.getElementById('edit-task-text-' + id);
   if (inp) { inp.focus(); inp.select(); }
+}
+
+function openEditTaskModal(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const catOptions = Object.entries(CATS).map(([k, v]) =>
+    `<option value="${k}" ${task.cat === k ? 'selected' : ''}>${v.label}</option>`
+  ).join('');
+  const ptsOptions = [1,2,3,4,5].map(p =>
+    `<option value="${p}" ${(task.points||1)===p?'selected':''}>${p}</option>`
+  ).join('');
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Edit task</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <input id="etm-text" type="text" value="${escHtml(task.text)}"
+          style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;"
+          onkeydown="if(event.key==='Enter')saveEditTaskModal(${id})">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Category</div>
+            <select id="etm-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">${catOptions}</select>
+          </div>
+          <div>
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Effort</div>
+            <select id="etm-pts" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;cursor:pointer;width:50px;">${ptsOptions}</select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="cloneTask(${id});closeModal()" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone ↗</button>
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(() => { const inp = document.getElementById('etm-text'); if (inp) { inp.focus(); inp.select(); } }, 80);
+}
+
+function saveEditTaskModal(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const text = (document.getElementById('etm-text')||{}).value?.trim();
+  const cat  = (document.getElementById('etm-cat')||{}).value;
+  const pts  = parseInt((document.getElementById('etm-pts')||{}).value || '1');
+  if (!text) return;
+  task.text = text;
+  task.cat  = cat;
+  task.points = pts;
+  save();
+  closeModal();
+  if (currentTab === 'today')  renderToday();
+  if (currentTab === 'tasks')  renderQuests();
+}
+
+function cloneTask(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const clone = { ...task, id: S.nextId++, done: false, createdAt: Date.now(), doneAt: undefined, doneDate: undefined, inProgress: false };
+  S.tasks.unshift(clone);
+  S.totalAdded++;
+  save();
+  showToast('Task cloned ✓');
+  if (currentTab === 'today')  renderToday();
+  if (currentTab === 'tasks')  renderQuests();
 }
 
 function saveEditTask(id) {
@@ -5415,7 +5568,7 @@ function renderPipeline() {
     return;
   }
 
-  const stageOrder = ['prospect','applied','phone','interview1','interview2','final','offer'];
+  const stageOrder = ['prospect','applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer'];
   stageOrder.forEach(stageKey => {
     const entries = active.filter(e => e.stage === stageKey);
     if (entries.length === 0) return;
@@ -5444,7 +5597,7 @@ function renderPipelineEntry(e) {
     `<option value="${s.key}" ${e.stage===s.key?'selected':''}>${s.label}</option>`
   ).join('');
 
-  const isInterviewStage = ['phone','interview1','interview2','final'].includes(e.stage);
+  const isInterviewStage = ['phone','interview1','interview2','interview3','interview4','interview5','final'].includes(e.stage);
   const hasPrep = e.prepPeople || e.prepQuestions || e.prepStories || e.prepAsk ||
     (e.prepHistory||[]).some(r => r.prep && (r.prep.people||r.prep.questions||r.prep.stories||r.prep.ask));
   const hasDebrief = e.debriefWentWell || e.debriefImprove || e.debriefFollowUp ||
@@ -8267,6 +8420,7 @@ function openLogMeetingForContact(contactId) {
     time: todayLocal(),
     type: 'other',
     contactId,
+    _autoContactId: null,
     newContact: null,
     pipelineId: null,
     logDate: todayLocal(),
@@ -8275,6 +8429,7 @@ function openLogMeetingForContact(contactId) {
     followUpDate: '',
     followUpNote: '',
     tasks: [],
+    customTasks: [],
     step: 1,
   };
   _lmRender();
@@ -8283,10 +8438,24 @@ function openLogMeetingForContact(contactId) {
 function openLogMeeting(title, time) {
   const isInterview  = /interview|phone screen|screening|hiring|recruiter|final round/i.test(title);
   const isNetworking = /coffee|lunch|connect|catch.?up|informational|networking|intro call/i.test(title);
+
+  // Auto-detect contact name in meeting title
+  let autoContactId = null;
+  const tLower = title.toLowerCase();
+  (S.contacts || []).forEach(c => {
+    if (autoContactId) return;
+    const first = (c.first || '').trim();
+    const last  = (c.last  || '').trim();
+    const full  = contactFullName(c);
+    if (full.length > 3 && tLower.includes(full.toLowerCase())) { autoContactId = c.id; return; }
+    if (first.length > 2 && last.length > 1 && tLower.includes(first.toLowerCase()) && tLower.includes(last.toLowerCase())) { autoContactId = c.id; return; }
+  });
+
   _lm = {
     title, time,
     type: isInterview ? 'interview' : isNetworking ? 'networking' : 'other',
-    contactId: null,
+    contactId: autoContactId,
+    _autoContactId: autoContactId,
     newContact: null,
     pipelineId: null,
     logDate: todayLocal(),
@@ -8295,6 +8464,7 @@ function openLogMeeting(title, time) {
     followUpDate: '',
     followUpNote: '',
     tasks: [],
+    customTasks: [],
     step: 1,
   };
   _lmRender();
@@ -8391,10 +8561,19 @@ function _lmStep2(search) {
   }
 
   const inner = document.getElementById('modal-inner');
+  const autoC = _lm._autoContactId ? S.contacts.find(c => c.id === _lm._autoContactId) : null;
+  const autoChip = autoC ? `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(160,124,8,0.08);border:1px solid rgba(160,124,8,0.25);border-radius:3px;margin-bottom:10px;">
+      <span style="font-size:0.7rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Suggested:</span>
+      <span style="font-size:0.82rem;color:var(--text);flex:1;">${escHtml(contactFullName(autoC))}${autoC.company?` · <span style="color:var(--text-dim);font-size:0.76rem;">${escHtml(autoC.company)}</span>`:''}</span>
+      <button onclick="_lm.contactId=${autoC.id};_lm._autoContactId=null;_lmStep2('')" style="background:var(--amber);border:none;border-radius:2px;color:#fff;font-size:0.68rem;padding:3px 8px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;">${_lm.contactId===autoC.id?'✓ Selected':'Confirm'}</button>
+      <button onclick="_lm._autoContactId=null;if(_lm.contactId===autoC.id)_lm.contactId=null;_lmStep2('')" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;padding:2px 4px;line-height:1;">✕</button>
+    </div>` : '';
   inner.innerHTML = `
     <div style="text-align:left;">
       ${_lmHeader(2)}
       <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:12px;">Who did you meet?</div>
+      ${autoChip}
       <input id="lm-search" type="text" placeholder="Search contacts…" value="${escHtml(search)}"
         oninput="_lmStep2(this.value)"
         style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;margin-bottom:8px;touch-action:manipulation;">
@@ -8536,12 +8715,23 @@ function _lmStep4() {
             <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;">${CATS[s.cat]?.label||s.cat}</div>
           </div>
         </label>`).join('')}
-      <div style="margin-top:8px;">
-        <div style="display:flex;gap:6px;margin-top:6px;">
-          <input id="cfu-custom" placeholder="Custom follow-up task…" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Add custom follow-ups</div>
+        <div id="cfu-custom-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">
+          ${(_lm.customTasks||[]).map((ct,i)=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--surface2);border-radius:2px;">
+              <span style="flex:1;font-size:0.8rem;color:var(--text);">${escHtml(ct.text)}</span>
+              <span style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${CATS[ct.cat]?.label||ct.cat}</span>
+              <button onclick="_lm.customTasks.splice(${i},1);_lmStep4()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:0 2px;line-height:1;">✕</button>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="cfu-custom" placeholder="Add a custom task…" style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();_lmAddCustomTask();}">
           <select id="cfu-custom-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.68rem;color:var(--text-dim);outline:none;cursor:pointer;-webkit-appearance:none;letter-spacing:0.04em;">
             ${Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
           </select>
+          <button onclick="_lmAddCustomTask()" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-mid);font-size:0.72rem;padding:4px 8px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Add</button>
         </div>
       </div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
@@ -8557,6 +8747,15 @@ function _lmStep4() {
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
+}
+
+function _lmAddCustomTask() {
+  const text = (document.getElementById('cfu-custom')||{}).value?.trim();
+  const cat  = (document.getElementById('cfu-custom-cat')||{}).value || 'followup';
+  if (!text) return;
+  if (!_lm.customTasks) _lm.customTasks = [];
+  _lm.customTasks.push({ text, cat });
+  _lmStep4();
 }
 
 function _lmFinish() {
@@ -8599,9 +8798,11 @@ function _lmFinish() {
   const selected = _calFollowUpSuggestions.filter((s, i) => {
     const el = document.getElementById(`cfu-${i}`); return el && el.checked;
   });
+  // Flush any text still in the input before saving
   const customText = (document.getElementById('cfu-custom')||{}).value?.trim()||'';
   const customCat  = (document.getElementById('cfu-custom-cat')||{}).value||'followup';
   if (customText) selected.push({ text: customText, cat: customCat });
+  (_lm.customTasks || []).forEach(ct => selected.push(ct));
 
   selected.forEach(s => {
     const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
@@ -8919,6 +9120,21 @@ function getContactStatus(contact) {
 }
 
 function contactFullName(c) { return `${c.first} ${c.last}`.trim(); }
+
+// Replace contact names found in task text with clickable links.
+// Only links full names (first+last both set) to avoid false positives on common words.
+function linkifyTaskText(text, skipContactId) {
+  let html = escHtml(text);
+  (S.contacts || []).forEach(c => {
+    if (!c.first || !c.last) return;
+    const full = escHtml(contactFullName(c));
+    if (!html.includes(full)) return;
+    html = html.split(full).join(
+      `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();},50)" style="text-decoration:underline;cursor:pointer;color:inherit;">${full}</span>`
+    );
+  });
+  return html;
+}
 
 function parseSheetDate(str) {
   if (!str || !str.trim()) return null;
@@ -10102,6 +10318,42 @@ function exportData() {
   showToast('Data exported ✓');
 }
 
+function deleteAllData() {
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:8px;">Delete all data?</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;">This permanently removes all your tasks, contacts, pipeline entries, XP, and settings from this device. There is no undo. Export first if you want a backup.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="closeModal();_confirmDeleteAllData()" style="flex:2;padding:10px;background:#c0392b;color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Yes, delete everything</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _confirmDeleteAllData() {
+  localStorage.removeItem('jhc3');
+  localStorage.removeItem('showup_claude_api_key');
+  localStorage.removeItem('showup_gcal_client_id');
+  localStorage.removeItem('showup_gcal_connected');
+  localStorage.removeItem('showup_gmail_inbox_connected');
+  showToast('All data deleted. Reloading…');
+  setTimeout(() => location.reload(), 1200);
+}
+
+function exportAndDeleteData() {
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:8px;">Export then delete?</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;">We'll download a backup of your data first, then wipe everything from this device. The downloaded file is yours to keep.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="closeModal();exportData();setTimeout(_confirmDeleteAllData,800)" style="flex:2;padding:10px;background:#c0392b;color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Export &amp; delete</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
 let _pendingImportData = null;
 
 function doImport(data) {
@@ -10253,7 +10505,8 @@ function renderAccount() {
 
   wrap.innerHTML = whatsNewSection + nameSection + modeSection + `
     <div style="margin-bottom:28px">
-      <div class="card-label" style="margin-bottom:16px">Data</div>
+      <div class="card-label" style="margin-bottom:6px">Data &amp; Privacy</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">Your data lives on your device and is never sold or shared. You own it — export, import, or delete it any time.</div>
       <div style="display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
@@ -10268,6 +10521,20 @@ function renderAccount() {
             <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Replaces all current data with a backup file.</div>
           </div>
           <button onclick="importData()" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border-hl);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Import</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-size:0.84rem;color:var(--text);font-weight:500">Export &amp; leave</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Download your data, then wipe everything from this device.</div>
+          </div>
+          <button onclick="exportAndDeleteData()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Export &amp; delete</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-size:0.84rem;color:var(--text);font-weight:500">Delete all data</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Permanently wipes all Show Up data from this device.</div>
+          </div>
+          <button onclick="deleteAllData()" style="flex-shrink:0;background:none;border:1px solid #c0392b;color:#c0392b;font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete all</button>
         </div>
       </div>
     </div>
@@ -10386,6 +10653,28 @@ function renderAccount() {
         <button onclick="toggleApiKeyVisibility()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Show</button>
         <button onclick="saveClaudeApiKey();showToast('API key saved ✓')" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Save</button>
       </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:6px">Siri &amp; iOS Shortcuts</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.6;">Add tasks to Show Up with your voice using the iOS Shortcuts app. Say "Hey Siri, add to Show Up" and Siri runs your shortcut automatically.</div>
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Setup guide ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">One-time setup in iOS Shortcuts app</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">1.</span> Open the <strong>Shortcuts</strong> app → tap <strong>+</strong> to create a new shortcut</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">2.</span> Add action: <strong>Ask for Input</strong> — set prompt to "What's the task?"</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">3.</span> Add action: <strong>Open URL</strong> — paste this URL:</div>
+              <div style="background:var(--bg);border-radius:2px;padding:8px 10px;font-family:monospace;font-size:0.68rem;color:var(--text);word-break:break-all;border:1px solid var(--border);">${encodeURIComponent(location.origin + location.pathname)}?add=<span style="color:var(--amber);">[Provided Input]</span>&amp;cat=personal&amp;today=1</div>
+              <div style="font-size:0.66rem;color:var(--text-dim);">Replace <code style="color:var(--amber);">[Provided Input]</code> with the Shortcut variable from step 2. Set <code>cat=</code> to: apply, followup, network, research, admin, personal, or schedule. Add <code>&amp;today=1</code> to pin it to today's focus.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">4.</span> Name it <strong>"Add to Show Up"</strong> and enable <strong>Add to Siri</strong></div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">5.</span> Record your phrase, e.g. <em>"Add to Show Up"</em></div>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:0.66rem;color:var(--text-dim);">After setup, say "Hey Siri, Add to Show Up" → dictate your task → it appears here instantly.</div>
+          </div>
+        </div>
+      </details>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Feedback</div>
@@ -10787,6 +11076,25 @@ function checkCalEventsImport() {
   }
 }
 
+// ── SIRI / iOS SHORTCUTS URL HANDLER ─────────────────────────
+// Supports: ?add=Task+text&cat=personal&pts=1&today=1
+// Use with iOS Shortcuts → "Open URL" action to add tasks hands-free.
+function handleURLTaskAdd() {
+  const params = new URLSearchParams(window.location.search);
+  const text = params.get('add');
+  if (!text || !text.trim()) return;
+  const cat   = params.get('cat') || 'personal';
+  const pts   = Math.min(5, Math.max(1, parseInt(params.get('pts') || '1')));
+  const toDay = params.get('today') === '1';
+  const validCat = CATS[cat] ? cat : 'personal';
+  const task = { id: S.nextId++, text: decodeURIComponent(text).trim(), cat: validCat, done: false, createdAt: Date.now(), points: pts };
+  S.tasks.unshift(task);
+  S.totalAdded++;
+  if (toDay && !S.todayFocusIds.includes(task.id)) S.todayFocusIds.push(task.id);
+  save();
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
 // ── ANALYTICS ────────────────────────────────────────────────
 // Lightweight internal analytics for future multi-user scaling.
 // Only writes to Firebase when the user is authenticated.
@@ -10813,6 +11121,7 @@ checkURLImport();
 checkCalEventsImport();
 checkWorkoutImport();
 checkDayReset();
+handleURLTaskAdd();
 // Show app immediately with local data (fast start)
 render();
 updateTabVisibility();
