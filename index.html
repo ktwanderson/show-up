@@ -732,6 +732,11 @@
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .week-grid { grid-template-columns: repeat(7, 1fr); }
       .timer-display { font-size: 3.5rem; }
+      /* Tasks tab: wrap meta buttons to second row so task text has full width */
+      .task { flex-wrap: wrap; align-items: flex-start; }
+      .task-text { flex: 1 1 0; min-width: 0; }
+      .task-meta { order: 10; flex: 0 0 100%; padding-left: 58px; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+      .del-btn { order: 5; align-self: flex-start; margin-top: 1px; opacity: 0.35 !important; }
     }
 
     /* ── iPad / tablet ───────────────────────────────── */
@@ -1709,6 +1714,15 @@ function todayLocal() {
   const d = getEffectiveDate();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+function fmtScheduledDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  const today = getEffectiveDate();
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 // Parses a stored YYYY-MM-DD date for display, avoiding the UTC-midnight-to-local-day-shift bug.
 // Using T12:00:00 (noon) ensures toLocaleDateString always returns the correct calendar day.
 function parseLocalDate(dateStr) {
@@ -2160,6 +2174,14 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.16',
+    date: '2026-05-05',
+    items: [
+      'Tasks — schedule any task for a future date; it auto-appears in Today\'s Focus on that day',
+      'Tasks — Eisenhower Matrix view: flag tasks as Important (▲) + Urgent (◆) to see Do First / Schedule / Delegate / Drop quadrants',
+    ],
+  },
   {
     version: '0.15',
     date: '2026-05-01',
@@ -2802,6 +2824,13 @@ function checkDayReset() {
     S.todayDate         = today;
     S.todayEnergy       = null;
     S.todayFocusIds     = [...(S.carryOverIds || [])];
+    // Auto-pin tasks scheduled for today
+    const todayStr = todayLocal();
+    (S.tasks || []).forEach(t => {
+      if (!t.done && t.scheduledDate === todayStr && !S.todayFocusIds.includes(t.id)) {
+        S.todayFocusIds.push(t.id);
+      }
+    });
     S.focusBlocksToday  = 0;
     S.gotOutsideToday   = false;
     S.workedOutToday    = false;
@@ -3392,6 +3421,7 @@ function makeFocusItemHTML(task) {
       </div>
       ${!isDone ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:2px;background:${ptsBg};color:${ptsColor};font-size:0.65rem;font-weight:700;font-family:'Montserrat',sans-serif;padding:0 4px;flex-shrink:0;letter-spacing:0;">${pts}</span>` : ''}
       ${catDot(task.cat, '18px')}
+      ${!isDone ? `<button onclick="event.stopPropagation();openScheduleTask(${task.id})" title="Schedule for a future date" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;flex-shrink:0;font-size:0.68rem;touch-action:manipulation;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.3'">📅</button>` : ''}
       ${!isDone ? `<button onclick="event.stopPropagation();openEditTaskModal(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.4;transition:opacity 0.15s;flex-shrink:0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
       <button class="del-btn" onclick="removeFocusItem(${task.id})">✕</button>
     </div>`;
@@ -3732,9 +3762,64 @@ function openFocusPicker() {
 
 function pinToFocus(id) {
   if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
+  const task = S.tasks.find(t => t.id === id);
+  if (task) delete task.scheduledDate;
   save();
   closeModal();
   if (currentTab === 'today') renderToday();
+  if (currentTab === 'quests') renderQuests();
+}
+
+function openScheduleTask(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const today = todayLocal();
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Schedule task</div>
+      <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:14px;line-height:1.4;">${escHtml(task.text)}</div>
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Schedule for</div>
+      <input type="date" id="sched-date" value="${task.scheduledDate || ''}" min="${today}"
+        style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:16px;">
+      <div style="font-size:0.68rem;color:var(--text-dim);line-height:1.5;margin-bottom:16px;">This task will automatically appear in Today's Focus on the scheduled date.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="scheduleTask(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set date</button>
+        ${task.scheduledDate ? `<button onclick="clearScheduledDate(${id})" style="flex:1;padding:10px;border:1px solid var(--border);background:none;color:var(--text-dim);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Clear</button>` : ''}
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function scheduleTask(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const date = (document.getElementById('sched-date') || {}).value;
+  if (!date) { showToast('Please select a date'); return; }
+  task.scheduledDate = date;
+  const today = todayLocal();
+  if (date === today) {
+    if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
+  } else {
+    S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id);
+  }
+  save();
+  closeModal();
+  showToast(`Scheduled for ${fmtScheduledDate(date)} ✓`);
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'tasks') renderQuests();
+  if (currentTab === 'quests') renderQuests();
+}
+
+function clearScheduledDate(id) {
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  delete task.scheduledDate;
+  save();
+  closeModal();
+  showToast('Schedule cleared');
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'tasks') renderQuests();
   if (currentTab === 'quests') renderQuests();
 }
 
@@ -4164,6 +4249,7 @@ async function callClaude(prompt, options = {}) {
 
 let _aiCoachState = {};    // tracks current quiz state
 let _calFollowUpSuggestions = []; // calendar follow-up wizard state
+let _coachIntroText = '';  // persists intro answer through the coach wizard steps
 let _inSandbox = false;           // true when previewing demo state
 let _spoofDate = null;            // Date object overriding today in sandbox mode
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
@@ -4383,10 +4469,11 @@ function displayIntroQuestion(skillId) {
 function submitIntroAnswer(skillId) {
   const introText = (document.getElementById('ai-intro-answer') || {}).value?.trim() || '';
   if (!introText) { showToast('Write a few words first'); return; }
-  displayConfidenceQuestion(skillId, introText);
+  _coachIntroText = introText;
+  displayConfidenceQuestion(skillId);
 }
 
-function displayConfidenceQuestion(skillId, introText) {
+function displayConfidenceQuestion(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill) return;
   const levels = [
@@ -4407,7 +4494,7 @@ function displayConfidenceQuestion(skillId, introText) {
       <div style="font-size:0.95rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px;">How much have you worked with <em>${escHtml(skill.name)}</em>?</div>
       <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:16px;">This calibrates the difficulty of your questions.</div>
       ${levels.map(l => `
-        <button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${l.key}')"
+        <button onclick="generateDiagnosticQuestions(${skillId}, _coachIntroText, '${l.key}')"
           style="${btnStyle(l.key)}"
           onmouseover="this.style.borderColor='var(--amber)';this.style.background='rgba(232,184,0,0.04)'"
           onmouseout="this.style.borderColor='var(--border)';this.style.background='transparent'">
@@ -5031,12 +5118,13 @@ function renderQuests() {
   // Only count top-level tasks in tab badges (subtasks are nested under their parent)
   const active = S.tasks.filter(t => !t.done && !t.parentId);
   const urgentCount = active.filter(t => t.urgent).length;
-  const catTabsHTML = ['thisweek', 'all', ...Object.keys(CATS)].map(c => {
+  const catTabsHTML = ['thisweek', 'all', 'matrix', ...Object.keys(CATS)].map(c => {
     let count, label;
     if (c === 'thisweek') { count = urgentCount; label = 'This Week'; }
     else if (c === 'all') { count = active.length; label = 'All'; }
+    else if (c === 'matrix') { count = ''; label = 'Matrix'; }
     else { count = active.filter(t => t.cat === c).length; label = CATS[c].label; }
-    return `<button class="cat-tab ${currentQuestCat===c?'active':''}" onclick="switchQuestCat('${c}')">${label} <span class="ct-badge">${count}</span></button>`;
+    return `<button class="cat-tab ${currentQuestCat===c?'active':''}" onclick="switchQuestCat('${c}')">${label}${count !== '' ? ` <span class="ct-badge">${count}</span>` : ''}</button>`;
   }).join('');
 
   const rejHtml = currentQuestCat === 'apply' ? `
@@ -5054,19 +5142,19 @@ function renderQuests() {
   // Only show top-level tasks (no parentId) — subtasks render under their parent
   const activeTasks = currentQuestCat === 'thisweek'
     ? S.tasks.filter(t => !t.done && !t.parentId && t.urgent).sort((a,b) => (b.points||1)-(a.points||1))
-    : currentQuestCat === 'all'
+    : (currentQuestCat === 'all' || currentQuestCat === 'matrix')
     ? S.tasks.filter(t => !t.done && !t.parentId)
     : S.tasks.filter(t => !t.done && !t.parentId && t.cat === currentQuestCat);
   const doneTasks = currentQuestCat === 'thisweek'
     ? S.tasks.filter(t => t.done && !t.parentId && t.urgent)
-    : currentQuestCat === 'all'
+    : (currentQuestCat === 'all' || currentQuestCat === 'matrix')
     ? S.tasks.filter(t => t.done && !t.parentId)
     : S.tasks.filter(t => t.done && !t.parentId && t.cat === currentQuestCat);
 
-  const catForNew = (currentQuestCat === 'all' || currentQuestCat === 'thisweek') ? 'todo' : currentQuestCat;
-  const ph = currentQuestCat === 'thisweek' ? 'Add a task for this week…' : currentQuestCat === 'all' ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
+  const catForNew = (currentQuestCat === 'all' || currentQuestCat === 'thisweek' || currentQuestCat === 'matrix') ? 'todo' : currentQuestCat;
+  const ph = currentQuestCat === 'thisweek' ? 'Add a task for this week…' : (currentQuestCat === 'all' || currentQuestCat === 'matrix') ? 'Add a task...' : (CATS[currentQuestCat]?.ph || 'Add a task...');
 
-  const catSelectHTML = (currentQuestCat === 'all' || currentQuestCat === 'thisweek') ? `
+  const catSelectHTML = (currentQuestCat === 'all' || currentQuestCat === 'thisweek' || currentQuestCat === 'matrix') ? `
     <select class="add-select" id="quick-cat">
       ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
     </select>` : '';
@@ -5084,12 +5172,14 @@ function renderQuests() {
     : currentQuestCat === 'all'
     ? 'No tasks yet. Add something to work on.'
     : `No ${CATS[currentQuestCat]?.label || currentQuestCat} tasks yet.`;
-  const showCatInList = currentQuestCat === 'all' || currentQuestCat === 'thisweek';
-  const tasksHTML = activeTasks.length === 0
+  const showCatInList = currentQuestCat === 'all' || currentQuestCat === 'thisweek' || currentQuestCat === 'matrix';
+  const tasksHTML = currentQuestCat === 'matrix'
+    ? makeMatrixHTML(activeTasks)
+    : activeTasks.length === 0
     ? `<div class="empty"><div class="empty-icon">◦</div>${emptyMsg}</div>`
     : activeTasks.map(t => makeQuestTaskHTML(t, showCatInList)).join('');
 
-  const doneHTML = doneTasks.length > 0 ? `
+  const doneHTML = currentQuestCat !== 'matrix' && doneTasks.length > 0 ? `
     <div style="margin-top:6px">
       <button class="done-toggle" id="done-tog" onclick="toggleDoneList()">▶ Show ${doneTasks.length} completed</button>
       <div id="done-list" style="display:none;margin-top:6px">
@@ -5150,6 +5240,16 @@ function makeQuestTaskHTML(task, showCat) {
 
   const urgentBtn = !task.done ? `<button onclick="toggleUrgent(${task.id},event)" title="${task.urgent ? 'Remove from this week' : 'Flag for this week'}" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.72rem;font-family:'Montserrat',sans-serif;color:${task.urgent ? 'var(--teal)' : 'var(--text-dim)'};opacity:${task.urgent ? '1' : '0.22'};transition:all 0.15s;touch-action:manipulation;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='${task.urgent ? '1' : '0.22'}'">${'◆'}</button>` : '';
 
+  const importantBtn = !task.done ? `<button onclick="toggleImportant(${task.id},event)" title="${task.important ? 'Unflag as important' : 'Flag as important'}" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.72rem;font-family:'Montserrat',sans-serif;color:${task.important ? 'var(--amber)' : 'var(--text-dim)'};opacity:${task.important ? '1' : '0.22'};transition:all 0.15s;touch-action:manipulation;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='${task.important ? '1' : '0.22'}'">${'▲'}</button>` : '';
+
+  const isScheduled = !task.done && task.scheduledDate && !isPinned;
+  const scheduleTag = isScheduled
+    ? `<button onclick="openScheduleTask(${task.id})" title="Scheduled — click to change" style="background:none;border:none;cursor:pointer;padding:0 3px;line-height:1;flex-shrink:0;font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.02em;color:var(--teal);touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">→ ${fmtScheduledDate(task.scheduledDate)}</button>`
+    : '';
+  const scheduleBtn = !task.done && !isPinned && !task.scheduledDate
+    ? `<button onclick="openScheduleTask(${task.id})" title="Schedule for a future date" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.22;transition:opacity 0.15s;font-size:0.65rem;color:var(--text-dim);flex-shrink:0;touch-action:manipulation;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.22'">📅</button>`
+    : '';
+
   const contactTag = task.contactId && !task.done ? (() => {
     const c = S.contacts.find(x => x.id === task.contactId);
     return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">→ ${escHtml(contactFullName(c))}</span>` : '';
@@ -5185,8 +5285,11 @@ function makeQuestTaskHTML(task, showCat) {
           <div class="task-meta">
             ${showCat ? catDot(task.cat, '18px') : ''}
             ${urgentBtn}
-            ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
+            ${importantBtn}
+            ${!task.done && !isPinned && !task.scheduledDate ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
             ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+            ${scheduleTag}
+            ${scheduleBtn}
             ${goalLinkBtn}
             ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Add step" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+step</button>` : ''}
             ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
@@ -5229,8 +5332,11 @@ function makeQuestTaskHTML(task, showCat) {
           ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
           ${showCat ? catDot(task.cat, '18px') : ''}
           ${urgentBtn}
-          ${!task.done && !isPinned ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
+          ${importantBtn}
+          ${!task.done && !isPinned && !task.scheduledDate ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
           ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
+          ${scheduleTag}
+          ${scheduleBtn}
           ${goalLinkBtn}
           ${!task.done ? `<button onclick="startAddingSubtask(${task.id},event)" title="Break into steps" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.3;transition:opacity 0.15s;font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.3'">+steps</button>` : ''}
           ${!task.done ? `<button class="edit-task-btn" onclick="openEditTask(${task.id})" title="Edit task" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;opacity:0.5;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><path d="M11.5 1.5l3 3L5 14H2v-3z"/></svg></button>` : ''}
@@ -5379,7 +5485,7 @@ function openEditTaskModal(id) {
         </div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button onclick="cloneTask(${id});closeModal()" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone ↗</button>
+        <button onclick="cloneTask(${id});closeModal()" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone →</button>
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
         <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
       </div>
@@ -7819,6 +7925,50 @@ function toggleUrgent(id, event) {
   save();
   renderQuests();
   if (currentTab === 'today') renderToday();
+}
+
+function toggleImportant(id, event) {
+  event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  task.important = !task.important;
+  save();
+  renderQuests();
+}
+
+function makeMatrixHTML(allActive) {
+  const doFirst   = allActive.filter(t =>  t.urgent &&  t.important);
+  const schedule  = allActive.filter(t => !t.urgent &&  t.important);
+  const delegate  = allActive.filter(t =>  t.urgent && !t.important);
+  const drop      = allActive.filter(t => !t.urgent && !t.important);
+
+  function quadrant(title, hint, tasks, color) {
+    const rows = tasks.length === 0
+      ? `<div style="font-size:0.72rem;color:var(--text-dim);opacity:0.4;padding:6px 0;font-style:italic;">—</div>`
+      : tasks.map(t => `
+        <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <div class="check-circle" onclick="completeQuestTask(${t.id},event)" style="cursor:pointer;flex-shrink:0;width:18px;height:18px;min-width:18px;margin-top:1px;"></div>
+          <div style="flex:1;font-size:0.78rem;color:var(--text);line-height:1.4;cursor:default;">${escHtml(t.text)}</div>
+          ${catDot(t.cat, '14px')}
+        </div>`).join('');
+    return `
+      <div style="border:1px solid var(--border);border-radius:3px;padding:10px;min-height:100px;">
+        <div style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:${color};font-weight:700;margin-bottom:1px;">${title}</div>
+        <div style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:8px;">${hint}</div>
+        ${rows}
+      </div>`;
+  }
+
+  return `
+    <div style="margin-top:4px;">
+      <div style="font-size:0.64rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-bottom:10px;line-height:1.5;">Use <strong style="color:var(--amber);">◆</strong> to flag urgent · <strong style="color:var(--teal);">▲</strong> to flag important</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${quadrant('Do First',  'urgent + important',     doFirst,  'var(--amber)')}
+        ${quadrant('Schedule',  'important, not urgent',  schedule, 'var(--teal)')}
+        ${quadrant('Delegate',  'urgent, not important',  delegate, 'var(--text-mid)')}
+        ${quadrant('Drop',      'neither',                drop,     'var(--border)')}
+      </div>
+    </div>`;
 }
 
 function updateTriageSummary() {
