@@ -1,0 +1,19 @@
+name: Deploy to Netlify (staging)
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: .
+          production-deploy: false
+          deploy-message: ${{ github.event.head_commit.message }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
