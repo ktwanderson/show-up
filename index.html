@@ -3446,7 +3446,7 @@ function renderToday() {
     })() : ''}
 
     ${isRest ? `
-      <div class="field-note" style="background:rgba(14,116,144,0.05);margin-bottom:14px">
+      <div class="field-note" style="background:var(--surface2);margin-bottom:14px">
         <div class="field-note-icon">☁️</div>
         <div class="field-note-text">Rest is part of the work, not the opposite of it. Your nervous system needs downtime to stay in this for the long haul. You showed up today just by being honest about what you need.</div>
       </div>
@@ -8294,10 +8294,10 @@ function renderProgress() {
     const cats = [
       { key:'apply',    label:'Apply',      color:'var(--amber)',  val: db.apply||0 },
       { key:'followup', label:'Follow-up',  color:'var(--teal)',   val: db.followup||0 },
-      { key:'network',  label:'Network',    color:'#6b9fb5',       val: db.network||0 },
+      { key:'network',  label:'Network',    color:'#4a6b8a',       val: db.network||0 },
       { key:'research', label:'Research',   color:'var(--text-mid)',val:db.research||0 },
       { key:'admin',    label:'Admin',      color:'var(--border)',  val: db.admin||0 },
-      { key:'personal', label:'Personal',   color:'#8b7db5',       val: db.personal||0 },
+      { key:'personal', label:'Personal',   color:'#9a4a5a',       val: db.personal||0 },
     ].filter(c => c.val > 0);
     if (cats.length === 0) return '';
     const total = cats.reduce((s,c) => s+c.val, 0);
@@ -9305,7 +9305,7 @@ function _lmStep2(search) {
   const inner = document.getElementById('modal-inner');
   const autoC = _lm._autoContactId ? S.contacts.find(c => c.id === _lm._autoContactId) : null;
   const autoChip = autoC ? `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(160,124,8,0.08);border:1px solid rgba(160,124,8,0.25);border-radius:3px;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--teal-lt);border:1px solid var(--amber-ring);border-radius:3px;margin-bottom:10px;">
       <span style="font-size:0.7rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Suggested:</span>
       <span style="font-size:0.82rem;color:var(--text);flex:1;">${escHtml(contactFullName(autoC))}${autoC.company?` · <span style="color:var(--text-dim);font-size:0.76rem;">${escHtml(autoC.company)}</span>`:''}</span>
       <button onclick="_lm.contactId=${autoC.id};_lm._autoContactId=null;_lmStep2('')" style="background:var(--amber);border:none;border-radius:2px;color:#fff;font-size:0.68rem;padding:3px 8px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;">${_lm.contactId===autoC.id?'✓ Selected':'Confirm'}</button>
@@ -11276,7 +11276,7 @@ function renderAccount() {
             <div style="font-size:0.84rem;color:var(--text);font-weight:500">Delete all data</div>
             <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Permanently wipes all Show Up data from this device.</div>
           </div>
-          <button onclick="deleteAllData()" style="flex-shrink:0;background:none;border:1px solid #c0392b;color:#c0392b;font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete all</button>
+          <button onclick="deleteAllData()" style="flex-shrink:0;background:none;border:1px solid var(--red);color:var(--red);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Delete all</button>
         </div>
       </div>
     </div>
