@@ -1729,6 +1729,289 @@ function parseLocalDate(dateStr) {
   return new Date(dateStr + 'T12:00:00');
 }
 
+// ── NATURAL LANGUAGE DATE/TIME PARSER ────────────────────────
+function toISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function parseNLDate(raw) {
+  const text = raw;
+  const now = getEffectiveDate();
+  let date = null, time = null;
+  let stripped = text;
+
+  // Time: "at 3pm", "at 2:30 PM", "at noon", "at midnight", "@ 9am"
+  const timeRx = /\b(?:at|@)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b|\b(noon|midnight)\b/gi;
+  stripped = stripped.replace(timeRx, (m, h, min, ampm, special) => {
+    if (special) {
+      time = special === 'noon' ? '12:00' : '00:00';
+    } else {
+      let hour = parseInt(h, 10);
+      const minute = parseInt(min || '0', 10);
+      if (ampm) {
+        if (ampm.toLowerCase() === 'pm' && hour !== 12) hour += 12;
+        if (ampm.toLowerCase() === 'am' && hour === 12) hour = 0;
+      }
+      time = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+    }
+    return '';
+  }).trim();
+
+  const DOW = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+  // "next Monday" / "this Friday" / bare day name
+  const nextDayRx = /\b(?:next|this)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi;
+  stripped = stripped.replace(nextDayRx, (m, day) => {
+    const target = DOW.indexOf(day.toLowerCase());
+    const cur = now.getDay();
+    let diff = target - cur;
+    if (diff <= 0) diff += 7;
+    const d = new Date(now); d.setDate(now.getDate() + diff);
+    date = toISODate(d);
+    return '';
+  }).trim();
+
+  // Bare day name (Monday = next occurrence of that day, today included if it matches)
+  if (!date) {
+    const bareDayRx = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi;
+    stripped = stripped.replace(bareDayRx, (m, day) => {
+      const target = DOW.indexOf(day.toLowerCase());
+      const cur = now.getDay();
+      let diff = target - cur;
+      if (diff < 0) diff += 7;
+      const d = new Date(now); d.setDate(now.getDate() + diff);
+      date = toISODate(d);
+      return '';
+    }).trim();
+  }
+
+  // "in N days" / "in N weeks"
+  if (!date) {
+    const inDaysRx = /\bin\s+(\d+)\s+days?\b/gi;
+    stripped = stripped.replace(inDaysRx, (m, n) => {
+      const d = new Date(now); d.setDate(now.getDate() + parseInt(n, 10));
+      date = toISODate(d); return '';
+    }).trim();
+    const inWeeksRx = /\bin\s+(\d+)\s+weeks?\b/gi;
+    stripped = stripped.replace(inWeeksRx, (m, n) => {
+      const d = new Date(now); d.setDate(now.getDate() + parseInt(n, 10) * 7);
+      date = toISODate(d); return '';
+    }).trim();
+  }
+
+  // "tomorrow"
+  if (!date && /\btomorrow\b/gi.test(stripped)) {
+    stripped = stripped.replace(/\btomorrow\b/gi, '').trim();
+    const d = new Date(now); d.setDate(now.getDate() + 1);
+    date = toISODate(d);
+  }
+
+  // "today"
+  if (!date && /\btoday\b/gi.test(stripped)) {
+    stripped = stripped.replace(/\btoday\b/gi, '').trim();
+    date = toISODate(now);
+  }
+
+  // Clean up leading/trailing punctuation and extra spaces
+  const cleanText = stripped.replace(/^[-–,;.]+|[-–,;.]+$/g, '').replace(/\s{2,}/g, ' ').trim() || raw.trim();
+
+  return { cleanText, scheduledDate: date, reminderTime: time };
+}
+
+function formatNLPreview(parsed) {
+  if (!parsed.scheduledDate && !parsed.reminderTime) return '';
+  let parts = [];
+  if (parsed.scheduledDate) parts.push(fmtScheduledDate(parsed.scheduledDate));
+  if (parsed.reminderTime) {
+    const [h, m] = parsed.reminderTime.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hr = h % 12 || 12;
+    parts.push(`${hr}:${String(m).padStart(2,'0')} ${ampm}`);
+  }
+  return parts.join(' · ');
+}
+
+function onNLInput(inputId, previewId) {
+  const inp = document.getElementById(inputId);
+  const prev = document.getElementById(previewId);
+  if (!inp || !prev) return;
+  const parsed = parseNLDate(inp.value);
+  const preview = formatNLPreview(parsed);
+  prev.textContent = preview;
+  prev.style.display = preview ? 'block' : 'none';
+}
+
+// ── PRIORITY FLAGS (!, !!, !!!) ───────────────────────────────
+function cyclePriority(id, event) {
+  if (event) event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task || task.done) return;
+  task.priority = ((task.priority || 0) + 1) % 4;
+  save();
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'tasks' || currentTab === 'quests') renderQuests();
+}
+
+function priorityBadge(task) {
+  if (!task || task.done || !task.priority) return '';
+  const labels = ['', '!', '!!', '!!!'];
+  const colors = ['', 'var(--text-dim)', 'var(--teal)', 'var(--red)'];
+  const p = task.priority;
+  return `<button onclick="cyclePriority(${task.id},event)" title="Priority: click to change" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;font-size:0.72rem;font-weight:700;font-family:'Montserrat',sans-serif;color:${colors[p]};flex-shrink:0;transition:color 0.15s;">${labels[p]}</button>`;
+}
+
+// ── TASK TEMPLATES ────────────────────────────────────────────
+const BUILTIN_TEMPLATES = [
+  { name: 'Phone screen prep', text: 'Phone screen prep', cat: 'apply', points: 2, subtasks: [
+    'Research company & recent news',
+    'Review job description highlights',
+    'Prep 2-min "tell me about yourself"',
+    'Write 3 questions to ask the recruiter',
+  ]},
+  { name: 'Offer evaluation', text: 'Evaluate offer', cat: 'apply', points: 3, subtasks: [
+    'Confirm total comp breakdown (base, bonus, equity)',
+    'Research market rate via Levels.fyi / Glassdoor',
+    'List must-haves vs. nice-to-haves',
+    'Identify negotiation levers',
+    'Draft counter or acceptance',
+  ]},
+  { name: 'Network coffee chat', text: 'Coffee chat', cat: 'network', points: 2, subtasks: [
+    'Research their background & recent work',
+    'Write 3 genuine questions',
+    'Send calendar invite + confirm location',
+    'Log meeting notes afterward',
+    'Send thank-you within 24h',
+  ]},
+  { name: 'Application', text: 'Submit application', cat: 'apply', points: 2, subtasks: [
+    'Tailor resume to JD keywords',
+    'Write or adapt cover letter',
+    'Submit application',
+    'Log in pipeline',
+  ]},
+];
+
+function openTemplatesPicker() {
+  const custom = (S.taskTemplates || []);
+  const all = [...BUILTIN_TEMPLATES, ...custom];
+  showModal(`
+    <div style="text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Templates</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:16px;">Create a task with steps pre-filled.</div>
+      ${all.map((t, i) => `
+        <div onclick="applyTemplate(${i});closeModal()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;gap:8px;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <div>
+            <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(t.name)}</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">${(t.subtasks||[]).length} steps · ${CATS[t.cat]?.label || t.cat}</div>
+          </div>
+          <span style="font-size:0.7rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;">USE →</span>
+        </div>`).join('')}
+      ${all.length === 0 ? '<div style="font-size:0.78rem;color:var(--text-dim);padding:12px 0;">No templates yet. Save a task with steps as a template from the task edit menu.</div>' : ''}
+    </div>`);
+}
+
+function applyTemplate(idx) {
+  const custom = (S.taskTemplates || []);
+  const all = [...BUILTIN_TEMPLATES, ...custom];
+  const tmpl = all[idx];
+  if (!tmpl) return;
+  const parentId = S.nextId++;
+  const parent = { id: parentId, text: tmpl.text, cat: tmpl.cat || 'personal', done: false, createdAt: Date.now(), points: tmpl.points || 2 };
+  S.tasks.unshift(parent);
+  (tmpl.subtasks || []).forEach(s => {
+    S.tasks.push({ id: S.nextId++, text: s, cat: tmpl.cat || 'personal', done: false, createdAt: Date.now(), points: 1, parentId });
+  });
+  S.totalAdded++;
+  _expandedProjects.add(parentId);
+  save();
+  switchTab('tasks');
+  setTimeout(() => { renderQuests(); showToast(`"${tmpl.name}" added ✓`); }, 80);
+}
+
+function saveAsTemplate(taskId) {
+  const task = S.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const subtasks = S.tasks.filter(t => t.parentId === taskId).map(t => t.text);
+  if (!S.taskTemplates) S.taskTemplates = [];
+  const name = task.text.slice(0, 40);
+  S.taskTemplates.push({ name, text: task.text, cat: task.cat, points: task.points || 2, subtasks });
+  save();
+  showToast('Saved as template ✓');
+}
+
+// ── REMINDER ENGINE ───────────────────────────────────────────
+let _reminderCheckInterval = null;
+const _firedReminders = new Set();
+
+function startReminderEngine() {
+  if (_reminderCheckInterval) return;
+  _reminderCheckInterval = setInterval(checkDueReminders, 60000);
+  checkDueReminders(); // check immediately on load
+}
+
+function checkDueReminders() {
+  const now = new Date();
+  const todayStr = toISODate(now);
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const nowTime = `${h}:${m}`;
+
+  (S.tasks || []).forEach(task => {
+    if (task.done || !task.reminderTime) return;
+    const taskDate = task.scheduledDate || todayStr;
+    if (taskDate !== todayStr) return;
+    if (task.reminderTime === nowTime && !_firedReminders.has(task.id)) {
+      _firedReminders.add(task.id);
+      fireReminder(task);
+    }
+  });
+}
+
+function fireReminder(task) {
+  const title = 'Show Up reminder';
+  const body = task.text;
+  // In-app banner first
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = `⏰ ${escHtml(task.text.slice(0, 60))}`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 6000);
+  }
+  // Browser notification if permitted
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    try { new Notification(title, { body, icon: '/icon.svg', tag: `task-${task.id}` }); } catch(e) {}
+  }
+}
+
+function requestReminderPermission() {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// ── CONTEXT-AWARE NUDGES ──────────────────────────────────────
+function getCalendarContactNudges() {
+  const events = S.todayCalEvents || [];
+  if (!events.length) return [];
+  const contacts = S.contacts || [];
+  const nudges = [];
+  const seen = new Set();
+  events.forEach(ev => {
+    const title = (ev.title || '').toLowerCase();
+    contacts.forEach(c => {
+      if (seen.has(c.id)) return;
+      const full = `${c.first || ''} ${c.last || ''}`.toLowerCase().trim();
+      const first = (c.first || '').toLowerCase();
+      const last = (c.last || '').toLowerCase();
+      if (full && title.includes(full)) { seen.add(c.id); nudges.push({ contact: c, event: ev }); }
+      else if (first.length > 2 && title.includes(first) && last.length > 2 && title.includes(last)) {
+        seen.add(c.id); nudges.push({ contact: c, event: ev });
+      }
+    });
+  });
+  return nudges;
+}
+
 // ── CONSTANTS ────────────────────────────────────────────────
 
 const NOTES = [
@@ -2500,6 +2783,7 @@ const DEFAULT_STATE = {
   weeklyPlans: [],
   nextWeeklyId: 1,
   weekPromptDismissed: null,
+  taskTemplates: [],
   companies: [],
   nextCompanyId: 1,
   workoutLog: [],
@@ -3039,6 +3323,7 @@ function renderToday() {
     : (_hasPlan && !shouldShowWeekReview() ? renderWeekPlanViewHTML() : '');
   const weekReviewHtml = shouldShowWeekReview() ? renderWeekReviewHTML() : '';
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
+  const calContactNudges = getCalendarContactNudges();
   const todayIso = new Date().toISOString().slice(0,10);
   const followUpNudgesHtml = followUpNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
     <div class="card-label" style="margin-bottom:12px;">Reach out</div>
@@ -3187,11 +3472,13 @@ function renderToday() {
             <select id="today-quick-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.68rem;color:var(--text-dim);padding:4px 0;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;flex-shrink:0;">
               ${Object.entries(CATS).map(([k,v]) => `<option value="${k}" ${k==='personal'?'selected':''}>${v.label}</option>`).join('')}
             </select>
-            <input id="today-quick-input" type="text" placeholder="Capture a task for today…"
+            <input id="today-quick-input" type="text" placeholder="Add task… or "follow up Monday at 9am""
               style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;"
+              oninput="onNLInput('today-quick-input','today-nl-preview')"
               onkeydown="if(event.key==='Enter')quickAddToday()" />
             <button onclick="quickAddToday()" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-mid);font-size:0.75rem;padding:4px 10px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+</button>
           </div>
+          <div id="today-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-top:4px;padding:2px 4px;background:var(--teal-lt);border-radius:2px;"></div>
         </div>
         <button onclick="switchTab('quests')" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:none;border-radius:2px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Plan from backlog →</button>
       </div>
@@ -3335,6 +3622,18 @@ function renderToday() {
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
+    </div>` : ''}
+
+    ${calContactNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
+      <div class="card-label" style="margin-bottom:4px;">In your calendar today</div>
+      <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:10px;">These contacts are mentioned in today's events.</div>
+      ${calContactNudges.map(n => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${n.contact.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${n.contact.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="flex:1;min-width:0;cursor:pointer;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+          <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(n.contact))}</div>
+          <div style="font-size:0.7rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.event.time || '')} · ${escHtml(n.event.title || '')}</div>
+        </div>
+        <button onclick="switchTab('network');setTimeout(()=>{networkOpenId=${n.contact.id};renderNetwork();},50)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:3px 10px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">View →</button>
+      </div>`).join('')}
     </div>` : ''}
 
     ${followUpNudgesHtml}
@@ -3496,17 +3795,25 @@ function quickAddToday() {
   const inp = document.getElementById('today-quick-input');
   const catSel = document.getElementById('today-quick-cat');
   if (!inp) return;
-  const text = inp.value.trim();
-  if (!text) return;
+  const raw = inp.value.trim();
+  if (!raw) return;
   const cat = catSel ? catSel.value : 'personal';
-  const task = { id: S.nextId++, text, cat, done: false, createdAt: Date.now(), points: 1 };
+  const parsed = parseNLDate(raw);
+  const task = { id: S.nextId++, text: parsed.cleanText || raw, cat, done: false, createdAt: Date.now(), points: 1 };
+  if (parsed.scheduledDate) task.scheduledDate = parsed.scheduledDate;
+  if (parsed.reminderTime) task.reminderTime = parsed.reminderTime;
   S.tasks.unshift(task);
   S.totalAdded++;
-  S.todayFocusIds.push(task.id);
+  // Pin to today if no future date
+  const td = todayLocal();
+  if (!parsed.scheduledDate || parsed.scheduledDate === td) S.todayFocusIds.push(task.id);
   trackEvent('task_add', { cat, source: 'today_quick' });
   save();
   inp.value = '';
+  const prev = document.getElementById('today-nl-preview');
+  if (prev) { prev.style.display = 'none'; prev.textContent = ''; }
   renderToday();
+  if (parsed.scheduledDate && parsed.scheduledDate !== td) showToast(`Scheduled for ${fmtScheduledDate(parsed.scheduledDate)} ✓`);
 }
 
 function removeFocusItem(id) {
@@ -3778,17 +4085,21 @@ function openScheduleTask(id) {
     <div style="text-align:left;">
       <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Schedule task</div>
       <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:14px;line-height:1.4;">${escHtml(task.text)}</div>
-      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Schedule for</div>
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Date</div>
       <input type="date" id="sched-date" value="${task.scheduledDate || ''}" min="${today}"
-        style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:16px;">
-      <div style="font-size:0.68rem;color:var(--text-dim);line-height:1.5;margin-bottom:16px;">This task will automatically appear in Today's Focus on the scheduled date.</div>
+        style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:14px;">
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Reminder time <span style="text-transform:none;letter-spacing:0;font-weight:400;font-family:'DM Sans',sans-serif;font-size:0.68rem;">— optional</span></div>
+      <input type="time" id="sched-time" value="${task.reminderTime || ''}"
+        style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:8px;">
+      <div style="font-size:0.68rem;color:var(--text-dim);line-height:1.5;margin-bottom:16px;">Task appears in Today's Focus on the date. With a time set, you'll get a browser notification when it's due.</div>
       <div style="display:flex;gap:8px;">
-        <button onclick="scheduleTask(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set date</button>
+        <button onclick="scheduleTask(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set</button>
         ${task.scheduledDate ? `<button onclick="clearScheduledDate(${id})" style="flex:1;padding:10px;border:1px solid var(--border);background:none;color:var(--text-dim);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Clear</button>` : ''}
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
+  requestReminderPermission();
 }
 
 function scheduleTask(id) {
@@ -3796,7 +4107,9 @@ function scheduleTask(id) {
   if (!task) return;
   const date = (document.getElementById('sched-date') || {}).value;
   if (!date) { showToast('Please select a date'); return; }
+  const time = (document.getElementById('sched-time') || {}).value || '';
   task.scheduledDate = date;
+  task.reminderTime = time || null;
   const today = todayLocal();
   if (date === today) {
     if (!S.todayFocusIds.includes(id)) S.todayFocusIds.push(id);
@@ -3805,7 +4118,8 @@ function scheduleTask(id) {
   }
   save();
   closeModal();
-  showToast(`Scheduled for ${fmtScheduledDate(date)} ✓`);
+  const timeStr = time ? ` at ${time}` : '';
+  showToast(`Scheduled for ${fmtScheduledDate(date)}${timeStr} ✓`);
   if (currentTab === 'today') renderToday();
   if (currentTab === 'tasks') renderQuests();
   if (currentTab === 'quests') renderQuests();
@@ -5194,10 +5508,12 @@ function renderQuests() {
     <div class="add-form">
       ${catSelectHTML}
       ${pointsSelectHTML}
-      <input class="add-input" id="quest-input" placeholder="${ph}" onkeydown="if(event.key==='Enter')addQuestTask()">
+      <input class="add-input" id="quest-input" placeholder="${ph}" oninput="onNLInput('quest-input','quest-nl-preview')" onkeydown="if(event.key==='Enter')addQuestTask()">
       <button class="add-btn" onclick="addQuestTask()" title="Add to Show Up">+</button>
+      <button class="add-btn" onclick="openTemplatesPicker()" title="From template" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap" title="Create from template">tmpl</button>
       <button class="add-btn" onclick="(function(){const v=document.getElementById('quest-input').value.trim();if(!v)return;addQuestTask();pushToReminders(v);})()" title="Add to Show Up + Reminders" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0 8px;white-space:nowrap">+R</button>
     </div>
+    <div id="quest-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin:-6px 0 8px;padding:2px 6px;background:var(--teal-lt);border-radius:2px;"></div>
     ${renderCapacityBar()}
     <div id="quest-list">${tasksHTML}</div>
     ${doneHTML}
@@ -5259,6 +5575,8 @@ function makeQuestTaskHTML(task, showCat) {
     ? `<span title="Repeats ${task.recurrence}" style="font-size:0.58rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.75;">↻</span>`
     : '';
 
+  const priBadge = priorityBadge(task);
+
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
     <button onclick="toggleGoalPicker(${task.id},event)" title="Link to week goal"
       style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:opacity 0.15s;color:${isLinkedToGoal?'var(--amber)':'var(--text-dim)'};opacity:${isLinkedToGoal?'1':'0.3'};"
@@ -5290,6 +5608,7 @@ function makeQuestTaskHTML(task, showCat) {
             ${showCat ? catDot(task.cat, '18px') : ''}
             ${urgentBtn}
             ${importantBtn}
+            ${priBadge}
             ${recurBadge}
             ${!task.done && !isPinned && !task.scheduledDate ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
             ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
@@ -5338,6 +5657,7 @@ function makeQuestTaskHTML(task, showCat) {
           ${showCat ? catDot(task.cat, '18px') : ''}
           ${urgentBtn}
           ${importantBtn}
+          ${priBadge}
           ${recurBadge}
           ${!task.done && !isPinned && !task.scheduledDate ? `<button class="pin-btn" onclick="pinToFocus(${task.id})">→ Today</button>` : ''}
           ${!task.done && isPinned ? `<span class="pin-tag">Today ✓</span>` : ''}
@@ -5489,18 +5809,32 @@ function openEditTaskModal(id) {
             <select id="etm-pts" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;cursor:pointer;width:50px;">${ptsOptions}</select>
           </div>
         </div>
-        <div>
-          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Repeat</div>
-          <select id="etm-recurrence" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
-            <option value="" ${!task.recurrence?'selected':''}>No repeat</option>
-            <option value="daily" ${task.recurrence==='daily'?'selected':''}>Daily</option>
-            <option value="weekly" ${task.recurrence==='weekly'?'selected':''}>Weekly</option>
-            <option value="monthly" ${task.recurrence==='monthly'?'selected':''}>Monthly</option>
-          </select>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Repeat</div>
+            <select id="etm-recurrence" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+              <option value="" ${!task.recurrence?'selected':''}>No repeat</option>
+              <option value="daily" ${task.recurrence==='daily'?'selected':''}>Daily</option>
+              <option value="weekly" ${task.recurrence==='weekly'?'selected':''}>Weekly</option>
+              <option value="monthly" ${task.recurrence==='monthly'?'selected':''}>Monthly</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Priority</div>
+            <select id="etm-priority" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+              <option value="0" ${!(task.priority)?'selected':''}>None</option>
+              <option value="1" ${task.priority===1?'selected':''}>! Low</option>
+              <option value="2" ${task.priority===2?'selected':''}>!! Medium</option>
+              <option value="3" ${task.priority===3?'selected':''}>!!! High</option>
+            </select>
+          </div>
         </div>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="cloneTask(${id});closeModal()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.75rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone →</button>
+        <button onclick="saveAsTemplate(${id});closeModal()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.75rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Save template</button>
+      </div>
       <div style="display:flex;gap:8px;">
-        <button onclick="cloneTask(${id});closeModal()" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone →</button>
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
         <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
       </div>
@@ -5516,11 +5850,13 @@ function saveEditTaskModal(id) {
   const cat        = (document.getElementById('etm-cat')||{}).value;
   const pts        = parseInt((document.getElementById('etm-pts')||{}).value || '1');
   const recurrence = (document.getElementById('etm-recurrence')||{}).value || '';
+  const priority   = parseInt((document.getElementById('etm-priority')||{}).value || '0');
   if (!text) return;
   task.text = text;
   task.cat  = cat;
   task.points = pts;
   task.recurrence = recurrence || null;
+  task.priority = priority || null;
   save();
   closeModal();
   if (currentTab === 'today')  renderToday();
@@ -5561,8 +5897,8 @@ function switchQuestCat(cat) {
 function addQuestTask() {
   const inp = document.getElementById('quest-input');
   if (!inp) return;
-  const text = inp.value.trim();
-  if (!text) return;
+  const raw = inp.value.trim();
+  if (!raw) return;
   const cat = (currentQuestCat === 'all' || currentQuestCat === 'thisweek')
     ? (document.getElementById('quick-cat')?.value || 'admin')
     : currentQuestCat;
@@ -5570,11 +5906,17 @@ function addQuestTask() {
   const pts = parseInt(pointsSel?.value || '1');
   const newId = S.nextId++;
   const urgent = currentQuestCat === 'thisweek' ? true : false;
-  S.tasks.unshift({ id: newId, text, cat, done: false, createdAt: Date.now(), points: pts, urgent });
+  const parsed = parseNLDate(raw);
+  const task = { id: newId, text: parsed.cleanText || raw, cat, done: false, createdAt: Date.now(), points: pts, urgent };
+  if (parsed.scheduledDate) task.scheduledDate = parsed.scheduledDate;
+  if (parsed.reminderTime) task.reminderTime = parsed.reminderTime;
+  S.tasks.unshift(task);
   S.totalAdded++;
   trackEvent('task_add', { cat, pts });
   save();
   inp.value = '';
+  const prev = document.getElementById('quest-nl-preview');
+  if (prev) { prev.style.display = 'none'; prev.textContent = ''; }
   renderQuests();
   // For high-effort tasks (4-5 pts), auto-open the steps form as a nudge
   if (pts >= 4) {
@@ -11462,6 +11804,7 @@ handleURLTaskAdd();
 render();
 updateTabVisibility();
 fetchWeather();
+startReminderEngine();
 // Then init Firebase — will update with cloud data if newer
 initFirebase();
 </script>
