@@ -6204,7 +6204,10 @@ function renderPipelineEntry(e) {
           <button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="flex-shrink:0;background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>
           ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();openPrepReview(${e.id})" style="flex-shrink:0;background:var(--amber);border:1px solid var(--amber);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Review</button>` : ''}
           <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
-          <button id="gen-full-prep-btn-${e.id}" onclick="event.stopPropagation();generateFullPrep(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--amber);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--amber);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:600;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Generate prep</button>
+          <span id="gen-full-prep-btn-${e.id}" style="display:inline-flex;border:1px solid var(--amber);border-radius:2px;overflow:hidden;flex-shrink:0;">
+            <button onclick="event.stopPropagation();generateFullPrep(${e.id},'replace')" style="background:none;border:none;padding:5px 10px;font-size:0.68rem;color:var(--amber);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:600;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Generate prep</button>
+            ${(e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();generateFullPrep(${e.id},'append')" title="Add to existing prep instead of replacing" style="background:none;border:none;border-left:1px solid var(--amber);padding:5px 8px;font-size:0.68rem;color:var(--amber);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">+ Add</button>` : ''}
+          </span>
           <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Questions only</button>
           <button onclick="event.stopPropagation();openQBankFromPipeline(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Q Bank</button>
           <button id="digest-btn-${e.id}-prep" onclick="event.stopPropagation();digestPipelineSection(${e.id},'prep')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
@@ -6415,12 +6418,15 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
   <button onclick="openAddToQuestionBank()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Save to Q Bank</button>`;
 }
 
-async function generateFullPrep(id) {
+async function generateFullPrep(id, mode) {
+  mode = mode || 'replace';
   const e = S.pipeline.find(x => x.id === id);
   if (!e) return;
 
-  const btn = document.getElementById(`gen-full-prep-btn-${id}`);
+  const btnWrap = document.getElementById(`gen-full-prep-btn-${id}`);
+  const btn = btnWrap ? btnWrap.querySelector('button') : null;
   if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
+  if (btnWrap) { const addBtn = btnWrap.querySelectorAll('button')[1]; if (addBtn) addBtn.disabled = true; }
 
   const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage);
   const jdText = (e.jdText || '').trim();
@@ -6493,7 +6499,7 @@ async function generateFullPrep(id) {
 Context:
 ${contextParts}
 ${jdText ? `\nJob description:\n${jdText.slice(0, 4000)}` : ''}
-${existingPrep ? `\n${existingPrep}\n\nExpand and improve on the existing prep above — don't discard it.` : ''}
+${existingPrep ? `\n${existingPrep}\n\n${mode === 'append' ? 'Expand and improve on the existing prep above — don\'t discard it.' : 'The above is previous prep for context only — generate a fresh, complete prep kit (do not copy it verbatim).'}` : ''}
 ${contactContext ? '\nUse the interviewer profiles above to tailor "questions to ask them" — reference their background and apparent priorities.' : ''}
 ${calendarContext ? '\nUse any agenda or context from the calendar invite to tailor the prep.' : ''}
 
@@ -6510,6 +6516,7 @@ Return only the JSON object. No markdown, no preamble.`;
   const result = await callClaude(prompt, { maxTokens: 2800 });
 
   if (btn) { btn.textContent = '✦ Generate prep'; btn.disabled = false; }
+  if (btnWrap) { const addBtn = btnWrap.querySelectorAll('button')[1]; if (addBtn) addBtn.disabled = false; }
 
   if (result.error) {
     showToast(result.message || 'Generation failed — check API key in Account settings');
@@ -6522,14 +6529,20 @@ Return only the JSON object. No markdown, no preamble.`;
     return;
   }
 
-  const sep = '\n\n— AI generated —\n';
-  if (json.questions) e.prepQuestions = e.prepQuestions?.trim() ? e.prepQuestions.trim() + sep + json.questions : json.questions;
-  if (json.stories)   e.prepStories   = e.prepStories?.trim()   ? e.prepStories.trim()   + sep + json.stories   : json.stories;
-  if (json.ask)       e.prepAsk       = e.prepAsk?.trim()       ? e.prepAsk.trim()       + sep + json.ask       : json.ask;
+  if (mode === 'append') {
+    const sep = '\n\n— AI generated —\n';
+    if (json.questions) e.prepQuestions = e.prepQuestions?.trim() ? e.prepQuestions.trim() + sep + json.questions : json.questions;
+    if (json.stories)   e.prepStories   = e.prepStories?.trim()   ? e.prepStories.trim()   + sep + json.stories   : json.stories;
+    if (json.ask)       e.prepAsk       = e.prepAsk?.trim()       ? e.prepAsk.trim()       + sep + json.ask       : json.ask;
+  } else {
+    if (json.questions) e.prepQuestions = json.questions;
+    if (json.stories)   e.prepStories   = json.stories;
+    if (json.ask)       e.prepAsk       = json.ask;
+  }
 
   save();
   renderNetwork();
-  showToast('Prep generated ✓');
+  showToast(mode === 'append' ? 'Prep added ✓' : 'Prep generated ✓');
 }
 
 // ── DIGEST: Notes / Prep / Debrief ───────────────────────────
