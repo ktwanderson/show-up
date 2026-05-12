@@ -6424,14 +6424,63 @@ async function generateFullPrep(id) {
 
   const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage);
   const jdText = (e.jdText || '').trim();
+  const prepPeopleText = (e.prepPeople || '').trim();
+
+  // ── Look up interviewer contact records ──────────────────────
+  const matchedContacts = (S.contacts || []).filter(c => {
+    if (!prepPeopleText) return false;
+    const lower = prepPeopleText.toLowerCase();
+    const full  = `${c.first || ''} ${c.last || ''}`.toLowerCase().trim();
+    const first = (c.first || '').toLowerCase();
+    const last  = (c.last  || '').toLowerCase();
+    return (full.length > 2 && lower.includes(full)) ||
+           (first.length > 2 && lower.includes(first) && last.length > 1 && lower.includes(last));
+  });
+
+  const contactContext = matchedContacts.length > 0
+    ? matchedContacts.map(c => {
+        const lines = [`${c.first || ''} ${c.last || ''}`.trim()];
+        if (c.role)    lines.push(`Title: ${c.role}`);
+        if (c.company && c.company.toLowerCase() !== (e.company || '').toLowerCase())
+          lines.push(`Company: ${c.company}`);
+        if (c.notes)   lines.push(`Notes on this person: ${c.notes}`);
+        const lastInteraction = (c.interactions || []).slice(-1)[0];
+        if (lastInteraction?.note) lines.push(`Last interaction note: ${lastInteraction.note}`);
+        return lines.join('\n');
+      }).join('\n\n')
+    : null;
+
+  // ── Match calendar events for this interview ─────────────────
+  const companyLower = (e.company || '').toLowerCase();
+  const roleLower    = (e.role    || '').toLowerCase();
+  const interviewKws = ['interview','screen','hiring','recruiter','onsite','on-site','loop'];
+  const matchedEvents = (S.todayCalEvents || []).filter(ev => {
+    const t = (ev.title || '').toLowerCase();
+    return (companyLower && t.includes(companyLower)) ||
+           (roleLower.length > 3 && t.includes(roleLower)) ||
+           interviewKws.some(kw => t.includes(kw));
+  });
+
+  const calendarContext = matchedEvents.length > 0
+    ? matchedEvents.map(ev => {
+        const lines = [`Calendar: "${ev.title}" at ${ev.time}`];
+        if (ev.attendees && ev.attendees.length)
+          lines.push(`Attendees from invite: ${ev.attendees.join(', ')}`);
+        if (ev.description)
+          lines.push(`Invite description:\n${ev.description}`);
+        return lines.join('\n');
+      }).join('\n\n')
+    : null;
 
   const contextParts = [
     e.role    ? `Role: ${e.role}`       : '',
     e.company ? `Company: ${e.company}` : '',
     stageInfo ? `Interview stage: ${stageInfo.label}` : '',
-    e.prepPeople ? `Who you're meeting: ${e.prepPeople}` : '',
-    e.notes   ? `Notes: ${e.notes}`     : '',
-  ].filter(Boolean).join('\n');
+    prepPeopleText ? `Who you're meeting (as entered): ${prepPeopleText}` : '',
+    contactContext  ? `Interviewer profiles from your network:\n${contactContext}` : '',
+    calendarContext ? `From the calendar invite:\n${calendarContext}` : '',
+    e.notes   ? `Your notes: ${e.notes}` : '',
+  ].filter(Boolean).join('\n\n');
 
   const existingPrep = [
     e.prepQuestions ? `Existing questions/prep:\n${e.prepQuestions}` : '',
@@ -6445,6 +6494,8 @@ Context:
 ${contextParts}
 ${jdText ? `\nJob description:\n${jdText.slice(0, 4000)}` : ''}
 ${existingPrep ? `\n${existingPrep}\n\nExpand and improve on the existing prep above — don't discard it.` : ''}
+${contactContext ? '\nUse the interviewer profiles above to tailor "questions to ask them" — reference their background and apparent priorities.' : ''}
+${calendarContext ? '\nUse any agenda or context from the calendar invite to tailor the prep.' : ''}
 
 Generate a complete interview prep kit. Return ONLY a valid JSON object with exactly these three keys:
 
@@ -11694,7 +11745,17 @@ async function fetchGCalEvents() {
         const d = new Date(e.start.dateTime);
         time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       }
-      return { time, title: e.summary || '(No title)', link: e.htmlLink || null };
+      const attendees = (e.attendees || [])
+        .filter(a => !a.self)
+        .map(a => (a.displayName || a.email || '').trim())
+        .filter(Boolean);
+      return {
+        time,
+        title: e.summary || '(No title)',
+        link: e.htmlLink || null,
+        description: (e.description || '').replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 1200),
+        attendees,
+      };
     });
     save();
     trackEvent('gcal_sync', { event_count: S.todayCalEvents.length });
