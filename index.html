@@ -6037,7 +6037,10 @@ function renderPipeline() {
 
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;">${active.length} active · ${closed.length} closed</span>
+    <span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;">
+      <span onclick="document.getElementById('pipeline-active-section')?.scrollIntoView({behavior:'smooth',block:'start'})" style="cursor:pointer;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color=''">${active.length} active</span>
+      ${closed.length > 0 ? ` · <span onclick="document.getElementById('pipeline-closed-section')?.scrollIntoView({behavior:'smooth',block:'start'})" style="cursor:pointer;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color=''">${closed.length} closed</span>` : ` · ${closed.length} closed`}
+    </span>
     <div style="display:flex;gap:14px;align-items:center;">
       <button onclick="openJDAnalyzer()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Analyze JD</button>
       <button onclick="openAddPipelineEntry()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
@@ -6055,19 +6058,22 @@ function renderPipeline() {
     return;
   }
 
+  let firstActiveSection = true;
   const stageOrder = ['prospect','applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer'];
   stageOrder.forEach(stageKey => {
     const entries = active.filter(e => e.stage === stageKey);
     if (entries.length === 0) return;
     const stageInfo = PIPELINE_STAGES.find(s => s.key === stageKey);
-    html += `<div style="margin-bottom:12px;">
+    const anchorId = firstActiveSection ? 'id="pipeline-active-section"' : '';
+    firstActiveSection = false;
+    html += `<div ${anchorId} style="margin-bottom:12px;">
       <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
       ${entries.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   });
 
   if (closed.length > 0) {
-    html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+    html += `<div id="pipeline-closed-section" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
       <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
       ${closed.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
@@ -6185,6 +6191,7 @@ function renderPipelineEntry(e) {
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft email</button>
         <button onclick="event.stopPropagation();openSalaryResearch(${e.id})" style="background:${e.stage==='offer'?'var(--amber)':'none'};border:1px solid ${e.stage==='offer'?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 10px;font-size:0.68rem;color:${e.stage==='offer'?'#fff':'var(--text-mid)'};cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✦ Salary intel</button>
         ${isInterviewStage ? `<button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>` : ''}
+        ${isInterviewStage ? `<button onclick="event.stopPropagation();openLogMeeting('${(e.company||'Interview').replace(/'/g,"\\'")}${e.role?' — '+e.role.replace(/'/g,"\\'"):''}','')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Log follow-up</button>` : ''}
         ${isInterviewStage ? (() => {
           const existingPrepTask = e.prepTaskId ? S.tasks.find(t => t.id === e.prepTaskId && !t.done) : null;
           const isPinned = existingPrepTask && S.todayFocusIds.includes(existingPrepTask.id);
@@ -6211,6 +6218,7 @@ function renderPipelineEntry(e) {
           <button onclick="event.stopPropagation();generateInterviewQuestions(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Questions only</button>
           <button onclick="event.stopPropagation();openQBankFromPipeline(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Q Bank</button>
           <button id="digest-btn-${e.id}-prep" onclick="event.stopPropagation();digestPipelineSection(${e.id},'prep')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
+          ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();clearPrepFields(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--red);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red)'" onmouseout="this.style.borderColor='var(--border)'">✕ Clear prep</button>` : ''}
         </div>
       </div>
       ${(() => {
@@ -6416,6 +6424,16 @@ Format as plain text — no JSON, no markdown headers, just clean numbered lists
 
   wrap.innerHTML = `<textarea id="pe-prepQuestions-${id}" onblur="savePipelineField(${id},'prepQuestions')" style="background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:120px;">${escHtml(newVal)}</textarea>
   <button onclick="openAddToQuestionBank()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Save to Q Bank</button>`;
+}
+
+function clearPrepFields(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  if (!confirm('Clear all prep notes for this entry? This cannot be undone.')) return;
+  e.prepPeople = ''; e.prepQuestions = ''; e.prepStories = ''; e.prepAsk = '';
+  save();
+  renderNetwork();
+  showToast('Prep cleared');
 }
 
 async function generateFullPrep(id, mode) {
@@ -7081,7 +7099,7 @@ function renderQuestionBank() {
   if (!container) return;
   const bank = (S.questionBank || []);
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
-  const filterTabs = ['all','Behavioral','Technical','Ad Tech','To Practice'];
+  const filterTabs = ['all','Behavioral','Technical','Ad Tech','Strategy','To Practice'];
   const tabsHTML = filterTabs.map(t => {
     const isActive = _qbFilter === t;
     return `<button onclick="_qbFilter=${JSON.stringify(t)};renderNetwork()" style="background:none;border:none;border-bottom:2px solid ${isActive?'var(--amber)':'transparent'};padding:6px 2px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isActive?'var(--text)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${t}</button>`;
@@ -7136,7 +7154,7 @@ function openAddToQuestionBank(prefillQuestion, prefillRole, prefillCompany) {
   const fL = `font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:14px;display:block;`;
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
   const tA = iI + `resize:vertical;min-height:70px;`;
-  const allTags = ['Behavioral','Technical','Ad Tech','Culture Fit','To Practice'];
+  const allTags = ['Behavioral','Technical','Ad Tech','Strategy','Culture Fit','To Practice'];
   const tagsHTML = allTags.map(t => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--text-mid);margin:0 10px 6px 0;cursor:pointer;"><input type="checkbox" id="qb-tag-${t.replace(/\s/g,'_')}" value="${t}" style="accent-color:var(--teal);">${t}</label>`).join('');
   inner.innerHTML = `
     <div style="padding:4px 0;text-align:left;">
@@ -7165,7 +7183,7 @@ function saveToQuestionBank() {
   const answer  = (document.getElementById('qb-answer') ||{}).value?.trim() || '';
   const role    = (document.getElementById('qb-role')   ||{}).value?.trim() || '';
   const company = (document.getElementById('qb-company')||{}).value?.trim() || '';
-  const allTags = ['Behavioral','Technical','Ad Tech','Culture Fit','To Practice'];
+  const allTags = ['Behavioral','Technical','Ad Tech','Strategy','Culture Fit','To Practice'];
   const tags = allTags.filter(t => {
     const el = document.getElementById('qb-tag-' + t.replace(/\s/g,'_'));
     return el && el.checked;
