@@ -1703,7 +1703,7 @@ function normalizeStateArrays(s) {
     const da = DEFAULT_STATE.lifeAreas;
     Object.keys(da).forEach(k => {
       if (!s.lifeAreas[k] || typeof s.lifeAreas[k] !== 'object') s.lifeAreas[k] = { ...da[k] };
-      else { if (!s.lifeAreas[k].label) s.lifeAreas[k].label = da[k].label; if (!s.lifeAreas[k].icon) s.lifeAreas[k].icon = da[k].icon; if (!s.lifeAreas[k].color) s.lifeAreas[k].color = da[k].color; if (s.lifeAreas[k].intention === undefined) s.lifeAreas[k].intention = ''; }
+      else { s.lifeAreas[k].label = da[k].label; s.lifeAreas[k].icon = da[k].icon; s.lifeAreas[k].color = da[k].color; if (s.lifeAreas[k].intention === undefined) s.lifeAreas[k].intention = ''; }
     });
   }
   return migrateState(s);
@@ -2274,7 +2274,7 @@ const SANDBOX_DEMO_STATE = {
   nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
   nextContactId:1, nextPipelineId:1, nextCompanyId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
-  lifeAreas:{health:{label:'Health',icon:'◎',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◇',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'△',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◉',color:'#d98cb3',intention:''},home:{label:'Home',icon:'◆',color:'#81c784',intention:''}},
+  lifeAreas:{health:{label:'Health',icon:'◑',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◒',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'▷',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◌',color:'#d98cb3',intention:''},home:{label:'Home',icon:'□',color:'#81c784',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2467,7 +2467,7 @@ const SANDBOX_DEMO_STATE_FULL = {
   weeklyPlans:[], nextWeeklyId:1,
   questionBank:[], nextQuestionBankId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
-  lifeAreas:{health:{label:'Health',icon:'◎',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◇',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'△',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◉',color:'#d98cb3',intention:''},home:{label:'Home',icon:'◆',color:'#81c784',intention:''}},
+  lifeAreas:{health:{label:'Health',icon:'◑',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◒',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'▷',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◌',color:'#d98cb3',intention:''},home:{label:'Home',icon:'□',color:'#81c784',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2496,6 +2496,19 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.17',
+    date: '2026-05-18',
+    items: [
+      'Habits — per-habit streaks with amber badge; add custom habits from 8 presets or build your own',
+      'Habits — completing a recurring task auto-logs matching built-in habits',
+      'Network — smart reconnect nudges in Today tab based on pipeline stage and interaction history',
+      'Life areas — tag tasks with Health, Finance, Learning, Relationships, or Home; Today grid highlights neglected areas',
+      'Today — "Suggested for today" card surfaces recurring tasks due today, neglected-area tasks, and idle high-priority items',
+      'XP rebalance — Personal tasks now worth 35 XP, Admin tasks 25 XP',
+      'Bug fix — recurring task ↻ badge now appears immediately after setting Repeat in edit modal',
+    ],
+  },
   {
     version: '0.16',
     date: '2026-05-05',
@@ -2839,11 +2852,11 @@ const DEFAULT_STATE = {
   trackedHabits: ['workout', 'journal', 'outside'],
   customHabits: [],
   lifeAreas: {
-    health:        { label: 'Health',        icon: '◎', color: '#5ec8a0', intention: '' },
-    finance:       { label: 'Finance',       icon: '◇', color: '#e8b84b', intention: '' },
-    learning:      { label: 'Learning',      icon: '△', color: '#6baed6', intention: '' },
-    relationships: { label: 'Relationships', icon: '◉', color: '#d98cb3', intention: '' },
-    home:          { label: 'Home',          icon: '◆', color: '#81c784', intention: '' },
+    health:        { label: 'Health',        icon: '◑', color: '#5ec8a0', intention: '' },
+    finance:       { label: 'Finance',       icon: '◒', color: '#e8b84b', intention: '' },
+    learning:      { label: 'Learning',      icon: '▷', color: '#6baed6', intention: '' },
+    relationships: { label: 'Relationships', icon: '◌', color: '#d98cb3', intention: '' },
+    home:          { label: 'Home',          icon: '□', color: '#81c784', intention: '' },
   },
   onboardingComplete: false,
   lastSeenVersion: '',
