@@ -1666,7 +1666,7 @@ function normalizeStateArrays(s) {
     'tasks','pipeline','companies','contacts','wins','weeklyPlans',
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
-    'rolledOverTasks','trackedHabits','questionBank','focusLog'
+    'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -1678,6 +1678,13 @@ function normalizeStateArrays(s) {
       if (c.interactions && !Array.isArray(c.interactions))
         c.interactions = Object.values(c.interactions);
       if (!c.interactions) c.interactions = [];
+    });
+  }
+  // Normalize log arrays inside each custom habit
+  if (Array.isArray(s.customHabits)) {
+    s.customHabits.forEach(h => {
+      if (h.log && !Array.isArray(h.log)) h.log = Object.values(h.log);
+      if (!h.log) h.log = [];
     });
   }
   return migrateState(s);
@@ -2103,6 +2110,17 @@ const CATS = {
   schedule:  { label: 'Scheduling', abbr: 'S', color: '#4a7a6d', xp: 20, ph: 'Appointments, interviews, calls to book or confirm' },
 };
 
+const HABIT_PRESETS = [
+  { name: 'Meditate',          icon: '◎', goal: 1, goalPeriod: 'day'   },
+  { name: 'Read',              icon: '◇', goal: 1, goalPeriod: 'day'   },
+  { name: 'Drink water',       icon: '○', goal: 1, goalPeriod: 'day'   },
+  { name: 'Stretch',           icon: '△', goal: 1, goalPeriod: 'day'   },
+  { name: 'Cold shower',       icon: '◈', goal: 1, goalPeriod: 'day'   },
+  { name: 'No screens at bed', icon: '⊕', goal: 1, goalPeriod: 'day'   },
+  { name: 'Cook at home',      icon: '◆', goal: 3, goalPeriod: 'week'  },
+  { name: 'Call family',       icon: '◉', goal: 1, goalPeriod: 'week'  },
+];
+
 const PIPELINE_STAGES = [
   { key: 'prospect',   label: 'Tracking',     color: '#8c8880' },
   { key: 'applied',    label: 'Applied',      color: '#4a6b8a' },
@@ -2236,7 +2254,7 @@ const SANDBOX_DEMO_STATE = {
   ],
   nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
   nextContactId:1, nextPipelineId:1, nextCompanyId:1,
-  trackedHabits:['workout','journal','outside'],
+  trackedHabits:['workout','journal','outside'], customHabits:[],
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2428,7 +2446,7 @@ const SANDBOX_DEMO_STATE_FULL = {
   focusBlocksToday: 3,
   weeklyPlans:[], nextWeeklyId:1,
   questionBank:[], nextQuestionBankId:1,
-  trackedHabits:['workout','journal','outside'],
+  trackedHabits:['workout','journal','outside'], customHabits:[],
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2798,6 +2816,7 @@ const DEFAULT_STATE = {
   outsideGoal: 5,
   outsideGoalPeriod: 'week',
   trackedHabits: ['workout', 'journal', 'outside'],
+  customHabits: [],
   onboardingComplete: false,
   lastSeenVersion: '',
   stateVersion: 0,
@@ -3119,6 +3138,7 @@ function checkDayReset() {
     S.gotOutsideToday   = false;
     S.workedOutToday    = false;
     S.journaledToday    = false;
+    (S.customHabits || []).forEach(h => { h.doneToday = false; });
     S.todaySealed           = false;
     S.postSealCompletions   = 0;
     S.carryOverIds          = [];
@@ -3300,6 +3320,7 @@ function renderToday() {
   }
 
   const overdueContacts = getOverdueContacts ? getOverdueContacts().slice(0, 3) : [];
+  const smartNudges = getSmartNudges ? getSmartNudges() : [];
   const ec = ENERGY[S.todayEnergy];
   const isRest = S.todayEnergy === 'rest';
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
@@ -3512,8 +3533,10 @@ function renderToday() {
       </div>`;
     })()}
 
-    ${(S.trackedHabits||['workout','journal','outside']).includes('workout') ? `
-    <div class="rhythm-row ${S.workedOutToday ? 'rhythm-done' : ''}" onclick="logWorkout()" style="margin-top:20px">
+    ${(S.trackedHabits||['workout','journal','outside']).includes('workout') ? (() => {
+      const streak = getHabitStreak(S.workoutLog, S.workoutGoal||3, S.workoutGoalPeriod||'week');
+      const streakLabel = streak >= 2 ? `<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-weight:600;">${streak}wk</span>` : '';
+      return `<div class="rhythm-row ${S.workedOutToday ? 'rhythm-done' : ''}" onclick="logWorkout()" style="margin-top:20px">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="opacity:0.55"><path d="M3 8h2l2-4 2 8 2-4h2"/></svg></div>
         <div>
@@ -3521,14 +3544,13 @@ function renderToday() {
           <div class="rhythm-sub">${(S.workoutGoalPeriod||'week')==='week' ? getWorkoutsThisWeek() : getWorkoutsThisMonth()} of ${S.workoutGoal||3} this ${S.workoutGoalPeriod||'week'}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="check-circle ${S.workedOutToday ? 'checked' : ''}">${S.workedOutToday ? '✓' : ''}</div>
-      </div>
-    </div>
-    ` : ''}
+      <div style="display:flex;align-items:center;gap:8px">${streakLabel}<div class="check-circle ${S.workedOutToday ? 'checked' : ''}">${S.workedOutToday ? '✓' : ''}</div></div>
+    </div>`;})() : ''}
 
-    ${(S.trackedHabits||['workout','journal','outside']).includes('outside') ? `
-    <div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()" ${!(S.trackedHabits||['workout']).includes('workout') ? 'style="margin-top:20px"' : ''}>
+    ${(S.trackedHabits||['workout','journal','outside']).includes('outside') ? (() => {
+      const streak = getHabitStreak(S.outsideLog, S.outsideGoal||5, S.outsideGoalPeriod||'week');
+      const streakLabel = streak >= 2 ? `<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-weight:600;">${streak}wk</span>` : '';
+      return `<div class="rhythm-row ${S.gotOutsideToday ? 'rhythm-done' : ''}" onclick="toggleOutside()">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><circle cx="8" cy="2.5" r="1.3"/><path d="M8 3.8L6.8 8.5l-1.8 4"/><path d="M8 3.8L9.2 8.5l1.8 4"/><path d="M6.5 8.5h3"/></svg></div>
         <div>
@@ -3536,17 +3558,13 @@ function renderToday() {
           <div class="rhythm-sub">${getOutsideThisPeriod()} of ${S.outsideGoal||5} this ${S.outsideGoalPeriod||'week'} · even a short walk counts</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        ${S.gotOutsideToday ? `<span style="font-size:0.72rem;color:var(--green);font-weight:600;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">+20</span>` : ``}
-        <div class="check-circle ${S.gotOutsideToday ? 'checked' : ''}">${S.gotOutsideToday ? '✓' : ''}</div>
-      </div>
-    </div>
-    ` : ''}
+      <div style="display:flex;align-items:center;gap:8px">${streakLabel}${S.gotOutsideToday ? `<span style="font-size:0.72rem;color:var(--green);font-weight:600;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">+20</span>` : ''}<div class="check-circle ${S.gotOutsideToday ? 'checked' : ''}">${S.gotOutsideToday ? '✓' : ''}</div></div>
+    </div>`;})() : ''}
 
-    ${(S.trackedHabits||['workout','journal','outside']).includes('journal') ? `
-    <div class="rhythm-row ${S.journaledToday ? 'rhythm-done' : ''}
-      ${ !(S.trackedHabits||['workout','outside']).includes('workout') && !(S.trackedHabits||['workout','outside']).includes('outside') ? 'style="margin-top:20px"' : '' }"
-      onclick="toggleJournal()">
+    ${(S.trackedHabits||['workout','journal','outside']).includes('journal') ? (() => {
+      const streak = getHabitStreak(S.journalLog, S.journalGoal||3, S.journalGoalPeriod||'week');
+      const streakLabel = streak >= 2 ? `<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-weight:600;">${streak}wk</span>` : '';
+      return `<div class="rhythm-row ${S.journaledToday ? 'rhythm-done' : ''}" onclick="toggleJournal()">
       <div class="rhythm-left">
         <div class="rhythm-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg></div>
         <div>
@@ -3554,11 +3572,30 @@ function renderToday() {
           <div class="rhythm-sub">${(S.journalGoalPeriod||'week')==='week' ? getJournalsThisWeek() : getJournalsThisMonth()} of ${S.journalGoal||3} this ${S.journalGoalPeriod||'week'}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="check-circle ${S.journaledToday ? 'checked' : ''}">${S.journaledToday ? '✓' : ''}</div>
-      </div>
-    </div>
-    ` : ''}
+      <div style="display:flex;align-items:center;gap:8px">${streakLabel}<div class="check-circle ${S.journaledToday ? 'checked' : ''}">${S.journaledToday ? '✓' : ''}</div></div>
+    </div>`;})() : ''}
+
+    ${(S.customHabits||[]).map(h => {
+      const streak = getHabitStreak(h.log, h.goal, h.goalPeriod);
+      const count = getHabitCountThisPeriod(h.log, h.goal, h.goalPeriod);
+      const streakLabel = streak >= 2 ? `<span style="font-size:0.62rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-weight:600;">${streak}${h.goalPeriod==='day'?'d':h.goalPeriod==='month'?'mo':'wk'}</span>` : '';
+      const subText = h.goalPeriod === 'day'
+        ? (h.doneToday ? 'done today' : 'not yet today')
+        : `${count} of ${h.goal} this ${h.goalPeriod}`;
+      return `<div class="rhythm-row ${h.doneToday ? 'rhythm-done' : ''}" onclick="toggleCustomHabit('${h.id}')">
+        <div class="rhythm-left">
+          <div class="rhythm-icon" style="font-size:1rem;opacity:0.7;display:flex;align-items:center;justify-content:center;">${h.icon}</div>
+          <div>
+            <div class="rhythm-label">${escHtml(h.name)}</div>
+            <div class="rhythm-sub">${subText}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">${streakLabel}<div class="check-circle ${h.doneToday ? 'checked' : ''}">${h.doneToday ? '✓' : ''}</div></div>
+      </div>`;
+    }).join('')}
+
+    ${(S.customHabits||[]).length === 0 && (S.trackedHabits||[]).length < 3 ? '' : ''}
+    <button onclick="openAddHabitModal()" style="display:block;width:100%;margin-top:8px;background:none;border:1px dashed var(--border);border-radius:2px;padding:8px;font-size:0.72rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-align:center;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">+ Add habit</button>
 
     ${!isRest ? `
     <div class="rhythm-row" onclick="switchTab('focus')" style="cursor:pointer">
@@ -3622,6 +3659,32 @@ function renderToday() {
         </div>`;
       }).join('')}
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
+    </div>` : ''}
+
+    ${smartNudges.length > 0 ? `
+    <div class="nudge-card">
+      <div class="card-label" style="margin-bottom:10px">Worth reconnecting</div>
+      ${smartNudges.map(n => {
+        const c = n.contact;
+        const daysText = n.days === 0 ? 'no contact logged' : `${n.days}d ago`;
+        const reasonText = n.reason || `Last contact ${daysText}`;
+        const noteSnippet = n.lastNote ? escHtml(n.lastNote.slice(0, 60)) + (n.lastNote.length > 60 ? '\u2026' : '') : '';
+        const dotColor = n.tier === 1 ? 'var(--amber)' : 'var(--teal)';
+        return `<div class="nudge-row">
+          <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+            <div style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:5px;"></div>
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+                <span class="nudge-name">${escHtml(contactFullName(c))}${c.company ? ` <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company)}</span>` : ''}</span>
+                <span style="font-size:0.68rem;color:${dotColor};font-family:'Montserrat',sans-serif;white-space:nowrap;">${escHtml(reasonText)}</span>
+              </div>
+              ${noteSnippet ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">last: ${noteSnippet}</div>` : ''}
+            </div>
+          </div>
+          <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
+          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done \u2713</button>
+        </div>`;
+      }).join('')}
     </div>` : ''}
 
     ${calContactNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
@@ -5860,7 +5923,7 @@ function saveEditTaskModal(id) {
   save();
   closeModal();
   if (currentTab === 'today')  renderToday();
-  if (currentTab === 'tasks')  renderQuests();
+  if (currentTab === 'quests') renderQuests();
 }
 
 function cloneTask(id) {
@@ -5872,7 +5935,7 @@ function cloneTask(id) {
   save();
   showToast('Task cloned ✓');
   if (currentTab === 'today')  renderToday();
-  if (currentTab === 'tasks')  renderQuests();
+  if (currentTab === 'quests') renderQuests();
 }
 
 function saveEditTask(id) {
@@ -5960,6 +6023,7 @@ function completeQuestTask(id, event) {
     S.tasks.unshift(nextTask);
     S.totalAdded++;
   }
+  autoLogHabitsFromTask(task);
   save();
   floatXP(event, `+${xp}`);
   renderQuests();
@@ -8658,7 +8722,7 @@ function saveSprintTriage() {
   save();
   closeModal();
   currentQuestCat = 'thisweek';
-  if (currentTab === 'tasks') renderQuests();
+  if (currentTab === 'quests') renderQuests();
   showToast('Sprint confirmed ◆');
 }
 
@@ -9583,7 +9647,7 @@ function _lmFinish() {
   showToast(parts.length ? parts.join(' · ') + ' ✓' : 'Saved ✓');
 
   if (currentTab === 'today')   renderToday();
-  if (currentTab === 'tasks')   renderQuests();
+  if (currentTab === 'quests')  renderQuests();
   if (currentTab === 'network') renderNetwork();
   _lm = {};
 }
@@ -9686,8 +9750,8 @@ function addCalFollowUpTasks() {
   save();
   closeModal();
   showToast(`${selected.length} follow-up task${selected.length !== 1 ? 's' : ''} added ✓`);
-  if (currentTab === 'today') renderToday();
-  if (currentTab === 'tasks') renderQuests();
+  if (currentTab === 'today')  renderToday();
+  if (currentTab === 'quests') renderQuests();
 }
 
 // ── CALENDAR & EXPORT ────────────────────────────────────────
@@ -9809,6 +9873,192 @@ function getOutsideThisPeriod() {
   monday.setDate(now.getDate() - daysFromMon);
   monday.setHours(0, 0, 0, 0);
   return log.filter(d => new Date(d + 'T00:00:00') >= monday).length;
+}
+
+// ── CUSTOM HABITS ─────────────────────────────────────────────
+
+// Streak = consecutive periods (days/weeks/months) where goal was met.
+// For weekly/monthly: only completed periods count; current period counts if goal already hit.
+function getHabitStreak(log, goal, period) {
+  if (!log || !log.length) return 0;
+  const now = new Date();
+  let streak = 0;
+
+  if (period === 'day') {
+    const todayStr = todayLocal();
+    const hasToday = log.includes(todayStr);
+    const d = new Date(todayStr + 'T12:00:00');
+    if (!hasToday) d.setDate(d.getDate() - 1); // start from yesterday if not yet done today
+    while (true) {
+      const ds = d.toISOString().slice(0, 10);
+      if (!log.includes(ds)) break;
+      streak++;
+      d.setDate(d.getDate() - 1);
+      if (streak > 3650) break;
+    }
+    return streak;
+  }
+
+  if (period === 'week') {
+    const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const ws = new Date(now);
+    ws.setDate(now.getDate() - daysFromMon);
+    ws.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 104; i++) {
+      const we = new Date(ws); we.setDate(ws.getDate() + 6); we.setHours(23, 59, 59, 999);
+      const count = log.filter(d => { const dt = new Date(d + 'T00:00:00'); return dt >= ws && dt <= we; }).length;
+      if (count < goal) break;
+      streak++;
+      ws.setDate(ws.getDate() - 7);
+    }
+    return streak;
+  }
+
+  if (period === 'month') {
+    let y = now.getFullYear(), m = now.getMonth();
+    for (let i = 0; i < 24; i++) {
+      const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (log.filter(d => d.startsWith(prefix)).length < goal) break;
+      streak++;
+      m--; if (m < 0) { m = 11; y--; }
+    }
+    return streak;
+  }
+
+  return 0;
+}
+
+function getHabitCountThisPeriod(log, goal, period) {
+  if (!log || !log.length) return 0;
+  const now = new Date();
+  if (period === 'day') return log.includes(todayLocal()) ? 1 : 0;
+  if (period === 'month') {
+    const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    return log.filter(d => d.startsWith(prefix)).length;
+  }
+  // week
+  const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const monday = new Date(now); monday.setDate(now.getDate() - daysFromMon); monday.setHours(0,0,0,0);
+  return log.filter(d => new Date(d + 'T00:00:00') >= monday).length;
+}
+
+function toggleCustomHabit(id) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  const today = todayLocal();
+  if (h.doneToday) {
+    h.doneToday = false;
+    h.log = (h.log || []).filter(d => d !== today);
+    save(); renderToday();
+    return;
+  }
+  h.doneToday = true;
+  if (!h.log) h.log = [];
+  if (!h.log.includes(today)) h.log.push(today);
+  gainXP(20);
+  const count = getHabitCountThisPeriod(h.log, h.goal, h.goalPeriod);
+  if (count === h.goal) gainXP(25);
+  save(); renderToday(); updateHeader();
+  showToast(count === h.goal ? `${h.name} goal hit! +25 XP` : `${h.name} logged ✓`);
+}
+
+function openAddHabitModal() {
+  const presetOptions = HABIT_PRESETS.map((p, i) =>
+    `<div onclick="prefillHabitForm(${i})" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:0.72rem;color:var(--text-mid);font-family:'DM Sans',sans-serif;margin:2px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">${p.icon} ${p.name}</div>`
+  ).join('');
+  showModal(`<div style="text-align:left;">
+    <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Add habit</div>
+    <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:12px;line-height:1.4;">Quick-add from presets or create your own.</div>
+    <div style="margin-bottom:14px;line-height:2;">${presetOptions}</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Name</div>
+      <input id="new-habit-name" type="text" placeholder="e.g. Meditate" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;">
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div style="flex:1;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Goal</div>
+        <input id="new-habit-goal" type="number" value="1" min="1" max="31" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Per</div>
+        <select id="new-habit-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;cursor:pointer;">
+          <option value="day">day</option>
+          <option value="week">week</option>
+          <option value="month">month</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+      <button onclick="addCustomHabit()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Add habit</button>
+    </div>
+  </div>`);
+  setTimeout(() => document.getElementById('new-habit-name')?.focus(), 80);
+}
+
+function prefillHabitForm(presetIdx) {
+  const p = HABIT_PRESETS[presetIdx];
+  if (!p) return;
+  const nameEl = document.getElementById('new-habit-name');
+  const goalEl = document.getElementById('new-habit-goal');
+  const periodEl = document.getElementById('new-habit-period');
+  if (nameEl) nameEl.value = p.name;
+  if (goalEl) goalEl.value = p.goal;
+  if (periodEl) periodEl.value = p.goalPeriod;
+}
+
+function addCustomHabit() {
+  const name = (document.getElementById('new-habit-name')?.value || '').trim();
+  if (!name) { showToast('Enter a habit name'); return; }
+  const goal = parseInt(document.getElementById('new-habit-goal')?.value || '1');
+  const goalPeriod = document.getElementById('new-habit-period')?.value || 'day';
+  const preset = HABIT_PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const icon = preset ? preset.icon : '◇';
+  if (!S.customHabits) S.customHabits = [];
+  S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, goal, goalPeriod, log: [], doneToday: false });
+  save();
+  closeModal();
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'account') renderAccount();
+  showToast(`"${name}" habit added ✓`);
+}
+
+function deleteCustomHabit(id) {
+  S.customHabits = (S.customHabits || []).filter(h => h.id !== id);
+  save();
+  if (currentTab === 'today') renderToday();
+  renderAccount();
+}
+
+// Keywords that auto-match built-in habits when a recurring task is completed
+const HABIT_TASK_KEYWORDS = {
+  workout: ['workout','exercise','gym','lift','lifting','run','jog','swim','bike','cycling','yoga','pilates','hiit','crossfit','strength'],
+  journal: ['journal','journaling','diary','write','morning pages'],
+  outside: ['outside','walk','fresh air','nature','hike','hiking'],
+};
+
+function autoLogHabitsFromTask(task) {
+  if (!task.recurrence) return;
+  const text = (task.text || '').toLowerCase();
+  // Built-in habits
+  if ((S.trackedHabits||[]).includes('workout') && !S.workedOutToday &&
+      HABIT_TASK_KEYWORDS.workout.some(k => text.includes(k))) {
+    logWorkout();
+  }
+  if ((S.trackedHabits||[]).includes('journal') && !S.journaledToday &&
+      HABIT_TASK_KEYWORDS.journal.some(k => text.includes(k))) {
+    toggleJournal();
+  }
+  if ((S.trackedHabits||[]).includes('outside') && !S.gotOutsideToday &&
+      HABIT_TASK_KEYWORDS.outside.some(k => text.includes(k))) {
+    toggleOutside();
+  }
+  // Custom habits
+  (S.customHabits || []).forEach(h => {
+    if (!h.doneToday && text.includes(h.name.toLowerCase())) {
+      toggleCustomHabit(h.id);
+    }
+  });
 }
 
 function toggleJournal() {
@@ -10485,6 +10735,72 @@ function toggleAspirationalsVisible() {
 
 function getOverdueContacts() {
   return S.contacts.filter(c => getContactStatus(c) === 'overdue');
+}
+
+// Proactive nudges for contacts with no explicit cadence set, ranked by signal strength.
+// Tier 1: contact at a company where user has an active pipeline entry (interview/phone/final)
+// Tier 2: contact with 2+ logged interactions — gone quiet beyond 1.5× their historical average
+// Tier 3: contact with at least 1 interaction — silent for 45+ days
+function getSmartNudges() {
+  const contacts = S.contacts || [];
+  const pipeline = S.pipeline || [];
+  const overdueIds = new Set(getOverdueContacts().map(c => c.id));
+  const interviewStages = new Set(['phone','interview1','interview2','interview3','interview4','interview5','final']);
+
+  const nudges = [];
+  contacts.forEach(c => {
+    if (overdueIds.has(c.id)) return; // already in the overdue card
+    const interactions = c.interactions || [];
+    const days = getDaysSince(c.lastContact);
+
+    // Find active pipeline entry at the same company
+    const pipelineEntry = c.company
+      ? pipeline.find(e => !['rejected','withdrawn'].includes(e.stage) &&
+          e.company && e.company.toLowerCase() === c.company.toLowerCase())
+      : null;
+    const isInterviewStage = pipelineEntry && interviewStages.has(pipelineEntry.stage);
+    const isApplied = pipelineEntry && pipelineEntry.stage === 'applied';
+
+    const lastInteraction = [...interactions].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    const lastNote = lastInteraction?.notes || lastInteraction?.note || null;
+
+    let tier = null, threshold = null, reason = null;
+
+    if (isInterviewStage && (days === null || days >= 14)) {
+      tier = 1; threshold = 14;
+      const stageLabel = { phone:'phone screen', final:'final round' }[pipelineEntry.stage] || pipelineEntry.stage.replace('interview','interview ');
+      reason = `In ${stageLabel} at ${c.company}`;
+    } else if (isApplied && (days === null || days >= 21)) {
+      tier = 1; threshold = 21;
+      reason = `Applied to ${c.company}`;
+    } else if (!c.cadence && interactions.length >= 2) {
+      // Infer cadence from historical interaction frequency
+      const sorted = [...interactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const gaps = [];
+      for (let i = 1; i < sorted.length; i++) {
+        const g = getDaysSince(sorted[i - 1].date) - getDaysSince(sorted[i].date);
+        if (g > 0) gaps.push(g);
+      }
+      const avgGap = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 30;
+      const inferred = Math.max(Math.round(avgGap * 1.5), 21);
+      if (days !== null && days >= inferred) {
+        tier = 2; threshold = inferred;
+        reason = `Usually connect every ~${Math.round(avgGap)}d`;
+      }
+    } else if (!c.cadence && interactions.length >= 1 && days !== null && days >= 45) {
+      tier = 3; threshold = 45;
+      reason = null; // shown as plain days count
+    }
+
+    if (tier === null) return;
+    if (interactions.length === 0 && !pipelineEntry) return;
+
+    nudges.push({ contact: c, tier, days: days || 0, threshold, reason, lastNote, pipelineEntry });
+  });
+
+  // Sort: tier first, then most overdue relative to threshold
+  nudges.sort((a, b) => a.tier - b.tier || (b.days - b.threshold) - (a.days - a.threshold));
+  return nudges.slice(0, 3);
 }
 
 function renderNetwork() {
@@ -11328,6 +11644,18 @@ function renderAccount() {
         </div>`;
       }).join('')}
       <button onclick="saveHabitGoals()" style="margin-top:4px;flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save changes</button>
+      ${(S.customHabits||[]).length > 0 ? `
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;font-weight:500;letter-spacing:0.04em;font-family:'Montserrat',sans-serif;">CUSTOM HABITS</div>
+        ${(S.customHabits||[]).map(h => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:1rem;">${h.icon}</span>
+          <span style="flex:1;font-size:0.84rem;color:var(--text);">${escHtml(h.name)}</span>
+          <span style="font-size:0.7rem;color:var(--text-dim);">${h.goal}× / ${h.goalPeriod}</span>
+          <button onclick="deleteCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:2px 6px;border-radius:2px;" title="Remove habit">✕</button>
+        </div>`).join('')}
+      </div>` : ''}
+      <button onclick="openAddHabitModal()" style="margin-top:12px;flex-shrink:0;background:none;border:1px dashed var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">+ Add custom habit</button>
     </div>
     <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Sprint</div>
