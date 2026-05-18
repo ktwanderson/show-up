@@ -2124,8 +2124,8 @@ const CATS = {
   followup: { label: 'Follow Up',  abbr: 'F', color: '#a07c08', xp: 30, ph: 'Who + re: what (e.g. Sarah @ Acme re: interview)' },
   network:  { label: 'Network',    abbr: 'N', color: '#4a6b8a', xp: 35, ph: 'Name + context (how you know them, why to reach out)' },
   research: { label: 'Research',   abbr: 'R', color: '#7a5c8a', xp: 20, ph: 'Company, role, or topic to look into' },
-  admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 15, ph: 'Appointments, bills, forms, errands, logistics' },
-  personal:  { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 20, ph: 'Health, family, home, anything life needs from you' },
+  admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 25, ph: 'Appointments, bills, forms, errands, logistics' },
+  personal:  { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 35, ph: 'Health, family, home, anything life needs from you' },
   schedule:  { label: 'Scheduling', abbr: 'S', color: '#4a7a6d', xp: 20, ph: 'Appointments, interviews, calls to book or confirm' },
 };
 
@@ -3532,6 +3532,26 @@ function renderToday() {
         <button onclick="switchTab('quests')" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:none;border-radius:2px;font-size:0.75rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Plan from backlog →</button>
       </div>
     `}
+
+    ${(() => {
+      if (isRest) return '';
+      const suggestions = getSmartSuggestions ? getSmartSuggestions() : [];
+      if (suggestions.length === 0) return '';
+      return `<div style="margin-top:14px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Suggested for today</div>
+        <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
+          ${suggestions.map((s,i) => {
+            const t = s.task;
+            const cat = CATS[t.cat] || {};
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:${i<suggestions.length-1?'1px solid var(--border)':'none'};background:var(--surface2);">
+              <span style="font-size:0.58rem;color:${s.color};font-family:'Montserrat',sans-serif;flex-shrink:0;white-space:nowrap;letter-spacing:0.02em;">${escHtml(s.reason)}</span>
+              <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
+              <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    })()}
 
     ${(() => {
       const backlogItems = S.tasks
@@ -10897,6 +10917,60 @@ function getSmartNudges() {
   // Sort: tier first, then most overdue relative to threshold
   nudges.sort((a, b) => a.tier - b.tier || (b.days - b.threshold) - (a.days - a.threshold));
   return nudges.slice(0, 3);
+}
+
+// Returns up to 5 task suggestions for Today based on three ranked rules:
+// 1. Recurring tasks scheduled for today (not in focus)
+// 2. Tasks in neglected life areas (0 done in 7d, have pending tagged)
+// 3. High-priority/urgent tasks idle for 7+ days
+function getSmartSuggestions() {
+  const today = todayLocal();
+  const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })();
+  const focusSet = new Set(S.todayFocusIds || []);
+  const seen = new Set();
+  const suggestions = [];
+
+  const eligible = (t) => !t.done && !t.parentId && !focusSet.has(t.id) && !seen.has(t.id);
+
+  // Rule 1: recurring tasks scheduled for today
+  S.tasks.forEach(t => {
+    if (!eligible(t)) return;
+    if (t.recurrence && t.scheduledDate === today) {
+      seen.add(t.id);
+      suggestions.push({ task: t, reason: '↻ due today', color: 'var(--teal)' });
+    }
+  });
+
+  // Rule 2: tasks in neglected life areas
+  const neglectedAreaKeys = Object.keys(S.lifeAreas || {}).filter(k => {
+    const tagged = S.tasks.filter(t => t.lifeArea === k);
+    const recentDone = tagged.filter(t => t.done && t.doneDate >= sevenDaysAgo).length;
+    return tagged.some(t => !t.done) && recentDone === 0;
+  });
+  if (neglectedAreaKeys.length > 0) {
+    S.tasks.forEach(t => {
+      if (!eligible(t) || suggestions.length >= 4) return;
+      if (t.lifeArea && neglectedAreaKeys.includes(t.lifeArea)) {
+        const a = S.lifeAreas[t.lifeArea];
+        seen.add(t.id);
+        suggestions.push({ task: t, reason: `${a.icon} ${a.label} — neglected`, color: a.color });
+      }
+    });
+  }
+
+  // Rule 3: urgent/important tasks idle 7+ days
+  S.tasks.forEach(t => {
+    if (!eligible(t) || suggestions.length >= 5) return;
+    if ((t.urgent || t.important || (t.priority || 0) >= 2)) {
+      const createdDaysAgo = t.createdAt ? Math.floor((Date.now() - t.createdAt) / 86400000) : 0;
+      if (createdDaysAgo >= 7) {
+        seen.add(t.id);
+        suggestions.push({ task: t, reason: t.urgent ? 'this-week flag' : t.important ? 'flagged important' : 'high priority', color: 'var(--amber)' });
+      }
+    }
+  });
+
+  return suggestions.slice(0, 5);
 }
 
 function renderNetwork() {
