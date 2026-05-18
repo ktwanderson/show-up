@@ -1531,6 +1531,15 @@ function saveHabitGoals() {
   showToast('Habits updated \u2713');
 }
 
+function saveLifeAreaIntentions() {
+  Object.keys(S.lifeAreas || {}).forEach(k => {
+    const el = document.getElementById('area-intention-' + k);
+    if (el) S.lifeAreas[k].intention = el.value.trim();
+  });
+  save();
+  showToast('Intentions saved \u2713');
+}
+
 function completeOnboarding() {
   const nameVal = (document.getElementById('onboarding-name')?.value || '').trim();
   if (nameVal) S.userName = nameVal;
@@ -1685,6 +1694,16 @@ function normalizeStateArrays(s) {
     s.customHabits.forEach(h => {
       if (h.log && !Array.isArray(h.log)) h.log = Object.values(h.log);
       if (!h.log) h.log = [];
+    });
+  }
+  // Ensure lifeAreas object is present and fully populated (existing users get defaults)
+  if (!s.lifeAreas || typeof s.lifeAreas !== 'object' || Array.isArray(s.lifeAreas)) {
+    s.lifeAreas = JSON.parse(JSON.stringify(DEFAULT_STATE.lifeAreas));
+  } else {
+    const da = DEFAULT_STATE.lifeAreas;
+    Object.keys(da).forEach(k => {
+      if (!s.lifeAreas[k] || typeof s.lifeAreas[k] !== 'object') s.lifeAreas[k] = { ...da[k] };
+      else { if (!s.lifeAreas[k].label) s.lifeAreas[k].label = da[k].label; if (!s.lifeAreas[k].icon) s.lifeAreas[k].icon = da[k].icon; if (!s.lifeAreas[k].color) s.lifeAreas[k].color = da[k].color; if (s.lifeAreas[k].intention === undefined) s.lifeAreas[k].intention = ''; }
     });
   }
   return migrateState(s);
@@ -2255,6 +2274,7 @@ const SANDBOX_DEMO_STATE = {
   nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
   nextContactId:1, nextPipelineId:1, nextCompanyId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
+  lifeAreas:{health:{label:'Health',icon:'◎',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◇',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'△',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◉',color:'#d98cb3',intention:''},home:{label:'Home',icon:'◆',color:'#81c784',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2447,6 +2467,7 @@ const SANDBOX_DEMO_STATE_FULL = {
   weeklyPlans:[], nextWeeklyId:1,
   questionBank:[], nextQuestionBankId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
+  lifeAreas:{health:{label:'Health',icon:'◎',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◇',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'△',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◉',color:'#d98cb3',intention:''},home:{label:'Home',icon:'◆',color:'#81c784',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2817,6 +2838,13 @@ const DEFAULT_STATE = {
   outsideGoalPeriod: 'week',
   trackedHabits: ['workout', 'journal', 'outside'],
   customHabits: [],
+  lifeAreas: {
+    health:        { label: 'Health',        icon: '◎', color: '#5ec8a0', intention: '' },
+    finance:       { label: 'Finance',       icon: '◇', color: '#e8b84b', intention: '' },
+    learning:      { label: 'Learning',      icon: '△', color: '#6baed6', intention: '' },
+    relationships: { label: 'Relationships', icon: '◉', color: '#d98cb3', intention: '' },
+    home:          { label: 'Home',          icon: '◆', color: '#81c784', intention: '' },
+  },
   onboardingComplete: false,
   lastSeenVersion: '',
   stateVersion: 0,
@@ -3686,6 +3714,39 @@ function renderToday() {
         </div>`;
       }).join('')}
     </div>` : ''}
+
+    ${(() => {
+      const areas = S.lifeAreas || {};
+      const areaKeys = Object.keys(areas);
+      if (areaKeys.length === 0) return '';
+      const today = todayLocal();
+      const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })();
+      const areaStats = areaKeys.map(k => {
+        const a = areas[k];
+        const tagged = S.tasks.filter(t => t.lifeArea === k);
+        const recentDone = tagged.filter(t => t.done && t.doneDate >= sevenDaysAgo).length;
+        const pending = tagged.filter(t => !t.done).length;
+        const neglected = tagged.length > 0 && recentDone === 0;
+        return { k, a, recentDone, pending, neglected };
+      });
+      const hasAnyTagged = areaStats.some(s => s.recentDone > 0 || s.pending > 0);
+      const neglectedCount = areaStats.filter(s => s.neglected).length;
+      if (!hasAnyTagged && neglectedCount === 0) return '';
+      return `<div class="nudge-card" style="padding:14px 0 10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-label" style="margin-bottom:0;">Focus areas</div>
+          ${neglectedCount > 0 ? `<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${neglectedCount} neglected</span>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+          ${areaStats.map(({k,a,recentDone,pending,neglected}) => `
+          <div onclick="switchTab('quests')" title="${a.label}${a.intention?' — '+a.intention:''}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:4px;border:1px solid ${neglected?a.color:'var(--border)'};background:${neglected?a.color+'18':'var(--surface2)'};cursor:pointer;transition:all 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+            <span style="font-size:1.1rem;color:${a.color};">${a.icon}</span>
+            <span style="font-size:0.56rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:var(--text-dim);text-align:center;line-height:1.2;">${a.label.slice(0,6)}</span>
+            <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;color:${neglected?a.color:recentDone>0?'var(--green)':'var(--text-dim)'};">${recentDone>0?recentDone+'✓':pending>0?pending+' open':'—'}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    })()}
 
     ${calContactNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
       <div class="card-label" style="margin-bottom:4px;">In your calendar today</div>
@@ -5640,6 +5701,13 @@ function makeQuestTaskHTML(task, showCat) {
 
   const priBadge = priorityBadge(task);
 
+  const areaTag = (() => {
+    if (!task.lifeArea || task.done) return '';
+    const a = (S.lifeAreas||{})[task.lifeArea];
+    if (!a) return '';
+    return `<span title="${a.label}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.58rem;color:${a.color};font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.85;">${a.icon}</span>`;
+  })();
+
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
     <button onclick="toggleGoalPicker(${task.id},event)" title="Link to week goal"
       style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:opacity 0.15s;color:${isLinkedToGoal?'var(--amber)':'var(--text-dim)'};opacity:${isLinkedToGoal?'1':'0.3'};"
@@ -5669,6 +5737,7 @@ function makeQuestTaskHTML(task, showCat) {
           <div class="task-text" style="font-weight:500;">${linkifyTaskText(task.text)}${contactTag}</div>
           <div class="task-meta">
             ${showCat ? catDot(task.cat, '18px') : ''}
+            ${areaTag}
             ${urgentBtn}
             ${importantBtn}
             ${priBadge}
@@ -5718,6 +5787,7 @@ function makeQuestTaskHTML(task, showCat) {
         <div class="task-meta">
           ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
           ${showCat ? catDot(task.cat, '18px') : ''}
+          ${areaTag}
           ${urgentBtn}
           ${importantBtn}
           ${priBadge}
@@ -5892,6 +5962,14 @@ function openEditTaskModal(id) {
             </select>
           </div>
         </div>
+        <div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Life area</div>
+          <input type="hidden" id="etm-area" value="${task.lifeArea||''}">
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            <button id="etm-area-btn-none" onclick="etmSelectArea('')" style="padding:3px 8px;border-radius:2px;border:1px solid var(--border);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${!task.lifeArea?'var(--amber)':'var(--surface2)'};color:${!task.lifeArea?'#fff':'var(--text-dim)'};">None</button>
+            ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `<button id="etm-area-btn-${k}" onclick="etmSelectArea('${k}')" style="padding:3px 8px;border-radius:2px;border:1px solid ${task.lifeArea===k?a.color:'var(--border)'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${task.lifeArea===k?a.color:'var(--surface2)'};color:${task.lifeArea===k?'#fff':'var(--text-dim)'};">${a.icon} ${a.label}</button>`).join('')}
+          </div>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <button onclick="cloneTask(${id});closeModal()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.75rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone →</button>
@@ -5914,16 +5992,34 @@ function saveEditTaskModal(id) {
   const pts        = parseInt((document.getElementById('etm-pts')||{}).value || '1');
   const recurrence = (document.getElementById('etm-recurrence')||{}).value || '';
   const priority   = parseInt((document.getElementById('etm-priority')||{}).value || '0');
+  const lifeArea = (document.getElementById('etm-area')||{}).value || null;
   if (!text) return;
   task.text = text;
   task.cat  = cat;
   task.points = pts;
   task.recurrence = recurrence || null;
   task.priority = priority || null;
+  task.lifeArea = lifeArea || null;
   save();
   closeModal();
   if (currentTab === 'today')  renderToday();
   if (currentTab === 'quests') renderQuests();
+}
+
+function etmSelectArea(key) {
+  const inp = document.getElementById('etm-area');
+  if (inp) inp.value = key;
+  // Reset all area buttons
+  const noneBtn = document.getElementById('etm-area-btn-none');
+  if (noneBtn) { noneBtn.style.background = key===''?'var(--amber)':'var(--surface2)'; noneBtn.style.color = key===''?'#fff':'var(--text-dim)'; noneBtn.style.borderColor = key===''?'var(--amber)':'var(--border)'; }
+  Object.entries(S.lifeAreas||{}).forEach(([k,a]) => {
+    const btn = document.getElementById('etm-area-btn-'+k);
+    if (!btn) return;
+    const active = k === key;
+    btn.style.background = active ? a.color : 'var(--surface2)';
+    btn.style.color = active ? '#fff' : 'var(--text-dim)';
+    btn.style.borderColor = active ? a.color : 'var(--border)';
+  });
 }
 
 function cloneTask(id) {
@@ -11656,6 +11752,19 @@ function renderAccount() {
         </div>`).join('')}
       </div>` : ''}
       <button onclick="openAddHabitModal()" style="margin-top:12px;flex-shrink:0;background:none;border:1px dashed var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">+ Add custom habit</button>
+    </div>
+    <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
+      <div class="card-label" style="margin-bottom:6px">Life areas</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">Set a short intention for each area — it'll show as a tooltip on your Today card. Tag tasks with an area from the task edit modal.</div>
+      ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1rem;color:${a.color};flex-shrink:0;">${a.icon}</span>
+        <span style="font-size:0.82rem;font-weight:500;color:var(--text);min-width:90px;flex-shrink:0;">${a.label}</span>
+        <input type="text" id="area-intention-${k}" value="${escHtml(a.intention||'')}" placeholder="e.g. Run 3× a week" maxlength="60"
+          style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text);padding:4px 0;outline:none;"
+          onkeydown="if(event.key==='Enter')saveLifeAreaIntentions()">
+      </div>`).join('')}
+      <button onclick="saveLifeAreaIntentions()" style="margin-top:4px;flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Save intentions</button>
     </div>
     <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Sprint</div>
