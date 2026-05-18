@@ -86,9 +86,19 @@
       --red:        #b03428;
       --error:      #b03428;
       --orange:     #9a7c1c;
-      --text:       #1a1a1a;
-      --text-dim:   #8a857a;
-      --text-mid:   #504c46;
+      --text:         #1a1a1a;
+      --text-dim:     #8a857a;
+      --text-mid:     #504c46;
+      --text-inverse: #ffffff;
+      --destructive:  #b03428;
+      --success:      #3a5649;
+
+      /* ── Life area accent colors ────────────────────────── */
+      --area-health:        #4d7a6a;
+      --area-finance:       #7a6e25;
+      --area-learning:      #5a6a80;
+      --area-relationships: #80506a;
+      --area-home:          #5a7040;
 
       /* ── Type scale ─────────────────────────────────────
          fs-label  : tiny UPPERCASE metadata labels
@@ -1140,14 +1150,14 @@
 <body>
 
 <div id="sandbox-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:var(--amber);padding:7px 16px;align-items:center;justify-content:center;gap:12px;font-family:'Montserrat',sans-serif;flex-wrap:wrap;">
-  <span style="font-size:0.7rem;color:#fff;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">◆ Preview mode</span>
+  <span style="font-size:0.7rem;color:var(--text-inverse);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">◆ Preview mode</span>
   <span id="sandbox-mode-label" style="font-size:0.72rem;color:rgba(255,255,255,0.85);letter-spacing:0.02em;">Coach-only preview</span>
   <span style="font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.02em;">— your real data is untouched</span>
   <label style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:rgba(255,255,255,0.85);letter-spacing:0.03em;">
     Spoof day:
-    <input type="date" id="spoof-date-input" onchange="setSpoofDate(this.value)" style="background:rgba(0,0,0,0.18);border:none;border-radius:2px;color:#fff;font-size:0.68rem;padding:3px 6px;font-family:'Montserrat',sans-serif;cursor:pointer;">
+    <input type="date" id="spoof-date-input" onchange="setSpoofDate(this.value)" style="background:rgba(0,0,0,0.18);border:none;border-radius:2px;color:var(--text-inverse);font-size:0.68rem;padding:3px 6px;font-family:'Montserrat',sans-serif;cursor:pointer;">
   </label>
-  <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
+  <button onclick="exitSandbox()" style="margin-left:8px;background:rgba(0,0,0,0.18);border:none;color:var(--text-inverse);font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.18)'">Exit ✕</button>
 </div>
 
 <div id="signin-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
@@ -1231,7 +1241,7 @@
       <div style="font-size:0.72rem;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Your data is yours</div>
       <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.6;">Everything you enter stays on your device. Show Up does not sell your data or share it with third parties. You can export or delete your data at any time from the Account tab.</div>
     </div>
-    <button onclick="completeOnboarding()" style="width:100%;padding:14px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Let's go →</button>
+    <button onclick="completeOnboarding()" style="width:100%;padding:14px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Let's go →</button>
   </div>
 </div>
 
@@ -1457,7 +1467,7 @@ function showMigrationOffer(localData) {
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">We found existing Show Up data on this device. Upload it to your account so it syncs everywhere?</div>
         <div style="display:flex;gap:8px;">
           <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Start fresh</button>
-          <button onclick="closeModal();doMigrateToFirebase()" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Upload my data</button>
+          <button onclick="closeModal();doMigrateToFirebase()" style="flex:1;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Upload my data</button>
         </div>
       </div>
     `);
@@ -1529,6 +1539,14 @@ function saveHabitGoals() {
 
   save();
   showToast('Habits updated \u2713');
+}
+
+function setTheme(key) {
+  if (!THEMES[key]) return;
+  S.theme = key;
+  applyTheme(key);
+  save();
+  renderAccount();
 }
 
 function saveLifeAreaIntentions() {
@@ -1703,7 +1721,7 @@ function normalizeStateArrays(s) {
     const da = DEFAULT_STATE.lifeAreas;
     Object.keys(da).forEach(k => {
       if (!s.lifeAreas[k] || typeof s.lifeAreas[k] !== 'object') s.lifeAreas[k] = { ...da[k] };
-      else { s.lifeAreas[k].label = da[k].label; s.lifeAreas[k].icon = da[k].icon; s.lifeAreas[k].color = da[k].color; if (s.lifeAreas[k].intention === undefined) s.lifeAreas[k].intention = ''; }
+      else { s.lifeAreas[k].label = da[k].label; s.lifeAreas[k].icon = da[k].icon; delete s.lifeAreas[k].color; if (s.lifeAreas[k].intention === undefined) s.lifeAreas[k].intention = ''; }
     });
   }
   return migrateState(s);
@@ -2119,6 +2137,81 @@ const REJECTION_QUOTES = [
   { text: "Keep going. Everything you need will come to you at the right time.", author: null },
 ];
 
+const THEMES = {
+  earth: {
+    label: 'Earth', emoji: '◑',
+    '--bg':                   '#ede9e1',
+    '--surface':              '#f5f2eb',
+    '--surface2':             '#e4e0d7',
+    '--border':               '#d4cfc3',
+    '--border-hl':            '#aaa59a',
+    '--amber':                '#3a5649',
+    '--amber-fill':           '#4a6858',
+    '--amber-lt':             'rgba(58,86,73,0.08)',
+    '--amber-ring':           'rgba(58,86,73,0.20)',
+    '--teal':                 '#9a7c1c',
+    '--teal-lt':              'rgba(154,124,28,0.08)',
+    '--green':                '#3a5649',
+    '--green-lt':             'rgba(58,86,73,0.07)',
+    '--red':                  '#b03428',
+    '--error':                '#b03428',
+    '--orange':               '#9a7c1c',
+    '--text':                 '#1a1a1a',
+    '--text-dim':             '#8a857a',
+    '--text-mid':             '#504c46',
+    '--text-inverse':         '#ffffff',
+    '--destructive':          '#b03428',
+    '--success':              '#3a5649',
+    '--area-health':          '#4d7a6a',
+    '--area-finance':         '#7a6e25',
+    '--area-learning':        '#5a6a80',
+    '--area-relationships':   '#80506a',
+    '--area-home':            '#5a7040',
+  },
+  summer: {
+    label: 'Summer', emoji: '○',
+    '--bg':                   '#f0f7f4',
+    '--surface':              '#f8faf8',
+    '--surface2':             '#e3ede8',
+    '--border':               '#c4d8d0',
+    '--border-hl':            '#90bcb2',
+    '--amber':                '#1e7e6a',
+    '--amber-fill':           '#258a76',
+    '--amber-lt':             'rgba(30,126,106,0.09)',
+    '--amber-ring':           'rgba(30,126,106,0.22)',
+    '--teal':                 '#b87828',
+    '--teal-lt':              'rgba(184,120,40,0.09)',
+    '--green':                '#1e7e6a',
+    '--green-lt':             'rgba(30,126,106,0.07)',
+    '--red':                  '#b83428',
+    '--error':                '#b83428',
+    '--orange':               '#b87828',
+    '--text':                 '#1a2420',
+    '--text-dim':             '#6a9088',
+    '--text-mid':             '#3a5c54',
+    '--text-inverse':         '#ffffff',
+    '--destructive':          '#b83428',
+    '--success':              '#1e7e6a',
+    '--area-health':          '#5ec8a0',
+    '--area-finance':         '#c4893c',
+    '--area-learning':        '#4a9ec8',
+    '--area-relationships':   '#c47898',
+    '--area-home':            '#6ab870',
+  },
+};
+
+function applyTheme(key) {
+  const theme = THEMES[key] || THEMES.earth;
+  const root = document.documentElement;
+  Object.entries(theme).forEach(([prop, val]) => {
+    if (prop.startsWith('--')) root.style.setProperty(prop, val);
+  });
+}
+
+function getAreaColor(areaKey) {
+  return getComputedStyle(document.documentElement).getPropertyValue('--area-' + areaKey).trim();
+}
+
 const CATS = {
   apply:    { label: 'Apply',      abbr: 'A', color: '#2d6347', xp: 50, ph: 'Company + role, e.g. OpenWeb · Dir. Account Management' },
   followup: { label: 'Follow Up',  abbr: 'F', color: '#a07c08', xp: 30, ph: 'Who + re: what (e.g. Sarah @ Acme re: interview)' },
@@ -2151,7 +2244,7 @@ const PIPELINE_STAGES = [
   { key: 'interview5', label: 'Interview 5',  color: '#a07c08' },
   { key: 'final',      label: 'Final Round',  color: '#2d6347' },
   { key: 'offer',      label: 'Offer',        color: '#2d6347' },
-  { key: 'rejected',   label: 'Rejected',     color: '#c0392b' },
+  { key: 'rejected',   label: 'Rejected',     color: 'var(--destructive)' },
   { key: 'withdrawn',  label: 'Withdrawn',    color: '#8c8880' },
 ];
 
@@ -2274,7 +2367,7 @@ const SANDBOX_DEMO_STATE = {
   nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
   nextContactId:1, nextPipelineId:1, nextCompanyId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
-  lifeAreas:{health:{label:'Health',icon:'◑',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◒',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'▷',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◌',color:'#d98cb3',intention:''},home:{label:'Home',icon:'□',color:'#81c784',intention:''}},
+  lifeAreas:{health:{label:'Health',icon:'◑',intention:''},finance:{label:'Finance',icon:'◒',intention:''},learning:{label:'Learning',icon:'▷',intention:''},relationships:{label:'Relationships',icon:'◌',intention:''},home:{label:'Home',icon:'□',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2467,7 +2560,7 @@ const SANDBOX_DEMO_STATE_FULL = {
   weeklyPlans:[], nextWeeklyId:1,
   questionBank:[], nextQuestionBankId:1,
   trackedHabits:['workout','journal','outside'], customHabits:[],
-  lifeAreas:{health:{label:'Health',icon:'◑',color:'#5ec8a0',intention:''},finance:{label:'Finance',icon:'◒',color:'#e8b84b',intention:''},learning:{label:'Learning',icon:'▷',color:'#6baed6',intention:''},relationships:{label:'Relationships',icon:'◌',color:'#d98cb3',intention:''},home:{label:'Home',icon:'□',color:'#81c784',intention:''}},
+  lifeAreas:{health:{label:'Health',icon:'◑',intention:''},finance:{label:'Finance',icon:'◒',intention:''},learning:{label:'Learning',icon:'▷',intention:''},relationships:{label:'Relationships',icon:'◌',intention:''},home:{label:'Home',icon:'□',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
@@ -2852,12 +2945,13 @@ const DEFAULT_STATE = {
   trackedHabits: ['workout', 'journal', 'outside'],
   customHabits: [],
   lifeAreas: {
-    health:        { label: 'Health',        icon: '◑', color: '#5ec8a0', intention: '' },
-    finance:       { label: 'Finance',       icon: '◒', color: '#e8b84b', intention: '' },
-    learning:      { label: 'Learning',      icon: '▷', color: '#6baed6', intention: '' },
-    relationships: { label: 'Relationships', icon: '◌', color: '#d98cb3', intention: '' },
-    home:          { label: 'Home',          icon: '□', color: '#81c784', intention: '' },
+    health:        { label: 'Health',        icon: '◑', intention: '' },
+    finance:       { label: 'Finance',       icon: '◒', intention: '' },
+    learning:      { label: 'Learning',      icon: '▷', intention: '' },
+    relationships: { label: 'Relationships', icon: '◌', intention: '' },
+    home:          { label: 'Home',          icon: '□', intention: '' },
   },
+  theme: 'earth',
   onboardingComplete: false,
   lastSeenVersion: '',
   stateVersion: 0,
@@ -3084,7 +3178,12 @@ function catDot(cat, size = '20px') {
 function loadState() {
   try {
     const raw = localStorage.getItem('jhc3');
-    if (raw) return normalizeStateArrays(Object.assign({}, DEFAULT_STATE, JSON.parse(raw)));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Apply theme immediately to avoid flash of wrong colors
+      if (parsed.theme && THEMES[parsed.theme]) applyTheme(parsed.theme);
+      return normalizeStateArrays(Object.assign({}, DEFAULT_STATE, parsed));
+    }
     // Migrate from v2
     const old = localStorage.getItem('jhc2');
     if (old) {
@@ -3288,6 +3387,7 @@ function streakLabel(n) {
 
 // ── RENDER ───────────────────────────────────────────────────
 function render() {
+  applyTheme(S.theme || 'earth');
   updateHeader();
   updateAccountBadge();
   if (currentTab === 'today')    renderToday();
@@ -3756,11 +3856,12 @@ function renderToday() {
       const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })();
       const areaStats = areaKeys.map(k => {
         const a = areas[k];
+        const color = getAreaColor(k);
         const tagged = S.tasks.filter(t => t.lifeArea === k);
         const recentDone = tagged.filter(t => t.done && t.doneDate >= sevenDaysAgo).length;
         const pending = tagged.filter(t => !t.done).length;
         const neglected = tagged.length > 0 && recentDone === 0;
-        return { k, a, recentDone, pending, neglected };
+        return { k, a, color, recentDone, pending, neglected };
       });
       const hasAnyTagged = areaStats.some(s => s.recentDone > 0 || s.pending > 0);
       const neglectedCount = areaStats.filter(s => s.neglected).length;
@@ -3771,11 +3872,11 @@ function renderToday() {
           ${neglectedCount > 0 ? `<span style="font-size:0.62rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${neglectedCount} neglected</span>` : ''}
         </div>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
-          ${areaStats.map(({k,a,recentDone,pending,neglected}) => `
-          <div onclick="switchTab('quests')" title="${a.label}${a.intention?' — '+a.intention:''}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:4px;border:1px solid ${neglected?a.color:'var(--border)'};background:${neglected?a.color+'18':'var(--surface2)'};cursor:pointer;transition:all 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
-            <span style="font-size:1.1rem;color:${a.color};">${a.icon}</span>
+          ${areaStats.map(({k,a,color,recentDone,pending,neglected}) => `
+          <div onclick="switchTab('quests')" title="${a.label}${a.intention?' — '+a.intention:''}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:4px;border:1px solid ${neglected?color:'var(--border)'};background:${neglected?color+'28':'var(--surface2)'};cursor:pointer;transition:all 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+            <span style="font-size:1.1rem;color:${color};">${a.icon}</span>
             <span style="font-size:0.56rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:var(--text-dim);text-align:center;line-height:1.2;">${a.label.slice(0,6)}</span>
-            <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;color:${neglected?a.color:recentDone>0?'var(--green)':'var(--text-dim)'};">${recentDone>0?recentDone+'✓':pending>0?pending+' open':'—'}</span>
+            <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;color:${neglected?color:recentDone>0?'var(--green)':'var(--text-dim)'};">${recentDone>0?recentDone+'✓':pending>0?pending+' open':'—'}</span>
           </div>`).join('')}
         </div>
       </div>`;
@@ -4250,7 +4351,7 @@ function openScheduleTask(id) {
         style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:8px;">
       <div style="font-size:0.68rem;color:var(--text-dim);line-height:1.5;margin-bottom:16px;">Task appears in Today's Focus on the date. With a time set, you'll get a browser notification when it's due.</div>
       <div style="display:flex;gap:8px;">
-        <button onclick="scheduleTask(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set</button>
+        <button onclick="scheduleTask(${id})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set</button>
         ${task.scheduledDate ? `<button onclick="clearScheduledDate(${id})" style="flex:1;padding:10px;border:1px solid var(--border);background:none;color:var(--text-dim);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Clear</button>` : ''}
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
@@ -4505,7 +4606,7 @@ function renderSkills() {
   const activeSkills = (S.skills || []).filter(sk => sk.active);
   const catLabelMap = { adtech: 'Ad Tech', data_code: 'Data & Code', product: 'Product & Process', platforms: 'Platforms' };
 
-  const levelColors = ['var(--text-dim)', 'var(--text-mid)', 'var(--amber)', '#2d8a5e'];
+  const levelColors = ['var(--text-dim)', 'var(--text-mid)', 'var(--amber)', 'var(--success)'];
 
   const skillCardHTML = (sk) => {
     const progress = sessionsToNextLevel(sk.sessionsTotal);
@@ -4562,7 +4663,7 @@ function logSkillSession(skillId) {
       <textarea id="skill-session-notes" placeholder="What did you study or practice? What clicked?" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;resize:none;outline:none;line-height:1.6;min-height:72px;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:8px;margin-top:20px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="saveSkillSession(${skillId})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save session</button>
+        <button onclick="saveSkillSession(${skillId})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save session</button>
       </div>
     </div>
   `);
@@ -4793,7 +4894,7 @@ async function openSkillAICoach(skillId) {
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">API Key Required</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use The Coach, add your Claude API key in Account settings.</div>
-        <button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account</button>
+        <button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account</button>
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
     `);
@@ -4838,7 +4939,7 @@ function displayContinuationFlow(skillId) {
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;line-height:1.6;">Ready to continue? The Coach will pick up from where you left off with harder questions based on your prior results.</div>
 
       <div style="display:flex;gap:8px;flex-direction:column;">
-        <button onclick="startContinuationSession(${skillId})" style="width:100%;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Continue learning →</button>
+        <button onclick="startContinuationSession(${skillId})" style="width:100%;padding:11px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Continue learning →</button>
         <button onclick="displayIntroQuestion(${skillId})" style="width:100%;padding:9px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Start fresh instead</button>
       </div>
     </div>
@@ -4894,7 +4995,7 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Something went wrong'}</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>.' : escHtml(result.message)}</div>
-        <button onclick="displayContinuationFlow(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
+        <button onclick="displayContinuationFlow(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
       </div>
     `);
@@ -4903,7 +5004,7 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
 
   const questions = Array.isArray(result.json) ? result.json : null;
   if (!questions || questions.length === 0) {
-    showModal(`<div style="text-align:left;"><div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="startContinuationSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`);
+    showModal(`<div style="text-align:left;"><div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="startContinuationSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`);
     return;
   }
 
@@ -5030,8 +5131,8 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Something went wrong'}</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
         ${isNoKey
-          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
-          : `<button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
+          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
+          : `<button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
         }
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
@@ -5045,7 +5146,7 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Claude's response wasn't in the expected format. Try again or use static content.</div>
-        <button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
+        <button onclick="generateDiagnosticQuestions(${skillId}, ${JSON.stringify(introText).replace(/</g,'\\u003c')}, '${level}')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Retry</button>
         <button onclick="closeModal();openSkillContent(${skillId})" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Use static content instead</button>
       </div>
     `);
@@ -5114,7 +5215,7 @@ function displayAnswerReview() {
     const isCorrect = userAns && correctAns && userAns === correctAns;
     if (isCorrect) correct++;
     const dot = isCorrect
-      ? `<span style="color:#2d8a5e;font-size:0.8rem;flex-shrink:0;">✓</span>`
+      ? `<span style="color:var(--success);font-size:0.8rem;flex-shrink:0;">✓</span>`
       : `<span style="color:var(--error);font-size:0.8rem;flex-shrink:0;">✗</span>`;
     return `
       <div style="padding:12px 0;border-bottom:1px solid var(--border);">
@@ -5127,14 +5228,14 @@ function displayAnswerReview() {
             <span style="color:var(--error);">You answered:</span> ${escHtml(userAns || 'no answer')}
           </div>
           <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;padding-left:20px;">
-            <span style="color:#2d8a5e;">Correct:</span> ${escHtml(correctAns)}
+            <span style="color:var(--success);">Correct:</span> ${escHtml(correctAns)}
           </div>` : ''}
         ${q.explanation ? `<div style="font-size:0.74rem;color:var(--text-mid);line-height:1.55;padding:8px 10px;background:var(--surface2);border-radius:2px;margin-left:20px;">${escHtml(q.explanation)}</div>` : ''}
       </div>`;
   }).join('');
 
   const pct = Math.round((correct / questions.length) * 100);
-  const scoreColor = pct >= 67 ? '#2d8a5e' : pct >= 34 ? 'var(--amber)' : 'var(--error)';
+  const scoreColor = pct >= 67 ? 'var(--success)' : pct >= 34 ? 'var(--amber)' : 'var(--error)';
 
   showModal(`
     <div style="text-align:left;max-height:70vh;overflow-y:auto;">
@@ -5146,7 +5247,7 @@ function displayAnswerReview() {
         <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:2px;transition:width 0.5s;"></div>
       </div>
       ${reviewHTML}
-      <button onclick="submitDiagnosticAnswers()" style="width:100%;margin-top:16px;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">See full analysis →</button>
+      <button onclick="submitDiagnosticAnswers()" style="width:100%;margin-top:16px;padding:11px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">See full analysis →</button>
     </div>
   `);
 }
@@ -5201,8 +5302,8 @@ Based on these answers, provide a personalized learning assessment. Return ONLY 
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">${isNoKey ? 'API Key Needed' : 'Analysis failed'}</div>
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">${isNoKey ? 'To use The Coach, add your Claude API key in <strong>Account → AI Settings</strong>. You can get a key at console.anthropic.com.' : escHtml(result.message)}</div>
         ${isNoKey
-          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
-          : `<button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
+          ? `<button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account Settings</button>`
+          : `<button onclick="submitDiagnosticAnswers()" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>`
         }
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
       </div>
@@ -5232,7 +5333,7 @@ function displayAnalysisResults() {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill || !analysis) return;
 
-  const levelColors = { 'Beginner': 'var(--text-dim)', 'Intermediate': 'var(--amber)', 'Advanced': '#2d8a5e' };
+  const levelColors = { 'Beginner': 'var(--text-dim)', 'Intermediate': 'var(--amber)', 'Advanced': 'var(--success)' };
   const lvColor = levelColors[analysis.levelAssessment] || 'var(--text-mid)';
 
   const focusHTML = (analysis.focusAreas || []).map(area => `
@@ -5267,7 +5368,7 @@ function displayAnalysisResults() {
 
       <div style="display:flex;gap:8px;margin-top:20px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Close</button>
-        <button onclick="logAICoachSession()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Log session +20 XP</button>
+        <button onclick="logAICoachSession()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Log session +20 XP</button>
       </div>
     </div>
   `);
@@ -5345,7 +5446,7 @@ function openSkillContent(skillId) {
       <div style="border-left:2px solid var(--amber);padding:4px 0 4px 14px;margin-bottom:20px;">
         <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.75;">${escHtml(content)}</div>
       </div>
-      <button onclick="closeModal();logSkillSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Log a session +20 XP</button>
+      <button onclick="closeModal();logSkillSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Log a session +20 XP</button>
       <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
     </div>
   `);
@@ -5415,7 +5516,7 @@ function timerDone() {
         <input id="focus-reflection" placeholder="One line is enough…" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:16px;" onkeydown="if(event.key==='Enter'){event.preventDefault();logTimerSession();}">
         <div style="display:flex;gap:8px;">
           <button onclick="logTimerSession();setTimerMode('short')" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;color:var(--text-mid);">Break</button>
-          <button onclick="logTimerSession();setTimerMode('work')" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Keep going</button>
+          <button onclick="logTimerSession();setTimerMode('work')" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Keep going</button>
         </div>
       </div>
     `);
@@ -5426,7 +5527,7 @@ function timerDone() {
       <div style="text-align:center;padding:8px 0;">
         <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;">Break's over</div>
         <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">Ready when you are.</div>
-        <button onclick="closeModal();setTimerMode('work')" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Start next session</button>
+        <button onclick="closeModal();setTimerMode('work')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Start next session</button>
       </div>
     `);
   }
@@ -5738,7 +5839,8 @@ function makeQuestTaskHTML(task, showCat) {
     if (!task.lifeArea || task.done) return '';
     const a = (S.lifeAreas||{})[task.lifeArea];
     if (!a) return '';
-    return `<span title="${a.label}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.58rem;color:${a.color};font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.85;">${a.icon}</span>`;
+    const aColor = getAreaColor(task.lifeArea);
+    return `<span title="${a.label}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.58rem;color:${aColor};font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.85;">${a.icon}</span>`;
   })();
 
   const goalLinkBtn = !task.done && weekGoals.length > 0 ? `
@@ -5942,7 +6044,7 @@ function openEditTask(id) {
         style="padding:5px 6px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.8rem;font-family:'Montserrat',sans-serif;">
         ${catOptions}
       </select>
-      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
+      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
       <button onclick="renderQuests()" style="padding:5px 10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Cancel</button>
     </div>`;
   const inp = document.getElementById('edit-task-text-' + id);
@@ -6000,7 +6102,7 @@ function openEditTaskModal(id) {
           <input type="hidden" id="etm-area" value="${task.lifeArea||''}">
           <div style="display:flex;flex-wrap:wrap;gap:5px;">
             <button id="etm-area-btn-none" onclick="etmSelectArea('')" style="padding:3px 8px;border-radius:2px;border:1px solid var(--border);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${!task.lifeArea?'var(--amber)':'var(--surface2)'};color:${!task.lifeArea?'#fff':'var(--text-dim)'};">None</button>
-            ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `<button id="etm-area-btn-${k}" onclick="etmSelectArea('${k}')" style="padding:3px 8px;border-radius:2px;border:1px solid ${task.lifeArea===k?a.color:'var(--border)'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${task.lifeArea===k?a.color:'var(--surface2)'};color:${task.lifeArea===k?'#fff':'var(--text-dim)'};">${a.icon} ${a.label}</button>`).join('')}
+            ${Object.entries(S.lifeAreas||{}).map(([k,a]) => { const ac=getAreaColor(k); return `<button id="etm-area-btn-${k}" onclick="etmSelectArea('${k}')" style="padding:3px 8px;border-radius:2px;border:1px solid ${task.lifeArea===k?ac:'var(--border)'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${task.lifeArea===k?ac:'var(--surface2)'};color:${task.lifeArea===k?'var(--text-inverse)':'var(--text-dim)'};">${a.icon} ${a.label}</button>`; }).join('')}
           </div>
         </div>
       </div>
@@ -6010,7 +6112,7 @@ function openEditTaskModal(id) {
       </div>
       <div style="display:flex;gap:8px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
+        <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -6045,13 +6147,14 @@ function etmSelectArea(key) {
   // Reset all area buttons
   const noneBtn = document.getElementById('etm-area-btn-none');
   if (noneBtn) { noneBtn.style.background = key===''?'var(--amber)':'var(--surface2)'; noneBtn.style.color = key===''?'#fff':'var(--text-dim)'; noneBtn.style.borderColor = key===''?'var(--amber)':'var(--border)'; }
-  Object.entries(S.lifeAreas||{}).forEach(([k,a]) => {
+  Object.keys(S.lifeAreas||{}).forEach(k => {
     const btn = document.getElementById('etm-area-btn-'+k);
     if (!btn) return;
     const active = k === key;
-    btn.style.background = active ? a.color : 'var(--surface2)';
-    btn.style.color = active ? '#fff' : 'var(--text-dim)';
-    btn.style.borderColor = active ? a.color : 'var(--border)';
+    const ac = getAreaColor(k);
+    btn.style.background = active ? ac : 'var(--surface2)';
+    btn.style.color = active ? 'var(--text-inverse)' : 'var(--text-dim)';
+    btn.style.borderColor = active ? ac : 'var(--border)';
   });
 }
 
@@ -6383,7 +6486,7 @@ function renderPipelineEntry(e) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft email</button>
         <button onclick="event.stopPropagation();openSalaryResearch(${e.id})" style="background:${e.stage==='offer'?'var(--amber)':'none'};border:1px solid ${e.stage==='offer'?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 10px;font-size:0.68rem;color:${e.stage==='offer'?'#fff':'var(--text-mid)'};cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✦ Salary intel</button>
-        ${isInterviewStage ? `<button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>` : ''}
+        ${isInterviewStage ? `<button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-inverse);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>` : ''}
         ${isInterviewStage ? `<button onclick="event.stopPropagation();openLogMeeting('${(e.company||'Interview').replace(/'/g,"\\'")}${e.role?' — '+e.role.replace(/'/g,"\\'"):''}','')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Log follow-up</button>` : ''}
         ${isInterviewStage ? (() => {
           const existingPrepTask = e.prepTaskId ? S.tasks.find(t => t.id === e.prepTaskId && !t.done) : null;
@@ -6401,8 +6504,8 @@ function renderPipelineEntry(e) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Prepare before the conversation. Fill in what you know.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="flex-shrink:0;background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>
-          ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();openPrepReview(${e.id})" style="flex-shrink:0;background:var(--amber);border:1px solid var(--amber);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Review</button>` : ''}
+          <button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="flex-shrink:0;background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:var(--text-inverse);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>
+          ${(e.prepPeople||e.prepQuestions||e.prepStories||e.prepAsk) ? `<button onclick="event.stopPropagation();openPrepReview(${e.id})" style="flex-shrink:0;background:var(--amber);border:1px solid var(--amber);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:var(--text-inverse);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Review</button>` : ''}
           <button onclick="event.stopPropagation();openPrepImport(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">↑ Import notes</button>
           <span id="gen-full-prep-btn-${e.id}" style="display:inline-flex;border:1px solid var(--amber);border-radius:2px;overflow:hidden;flex-shrink:0;">
             <button onclick="event.stopPropagation();generateFullPrep(${e.id},'replace')" style="background:none;border:none;padding:5px 10px;font-size:0.68rem;color:var(--amber);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:600;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Generate prep</button>
@@ -6889,7 +6992,7 @@ function openEmailDrafter(id, defaultType, prefill) {
       <input id="ed-goal" value="${escHtml(prefillGoal)}" placeholder="e.g. Get a call, express enthusiasm, ask for update…" style="${iI}">
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
+        <button onclick="generateEmailDraft(${id})" style="flex:2;padding:9px;background:var(--teal);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Write</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -6958,7 +7061,7 @@ Return ONLY the message text, nothing else.`;
       <label style="${fL}">Your draft</label>
       <textarea id="ed-result" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:220px;">${escHtml(draft)}</textarea>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
-        <button id="ed-gmail-btn" onclick="saveCurrentDraftToGmail()" style="flex:2;min-width:140px;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save to Gmail Draft</button>
+        <button id="ed-gmail-btn" onclick="saveCurrentDraftToGmail()" style="flex:2;min-width:140px;padding:9px;background:var(--teal);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save to Gmail Draft</button>
         <button onclick="navigator.clipboard.writeText(document.getElementById('ed-result').value).then(()=>showToast('Copied!'))" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Copy</button>
         <button onclick="openEmailDrafter(${id},null,_emailDraftRetry)" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Try again</button>
         <button onclick="closeModal()" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
@@ -6993,7 +7096,7 @@ function openSalaryResearch(id) {
       </select>
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="runSalaryResearch(${id})" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Research</button>
+        <button onclick="runSalaryResearch(${id})" style="flex:2;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Research</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7221,7 +7324,7 @@ function openResumeGap(keywords, mustHave) {
       <textarea id="rg-resume" placeholder="Paste your full resume text here…" oninput="S.resume=this.value;save()" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;margin-bottom:4px;">${escHtml(S.resume||'')}</textarea>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="runResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Check gaps</button>
+        <button onclick="runResumeGap(${JSON.stringify(keywords)},${JSON.stringify(mustHave)})" style="flex:2;padding:9px;background:var(--teal);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Check gaps</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7364,7 +7467,7 @@ function openAddToQuestionBank(prefillQuestion, prefillRole, prefillCompany) {
       </div>
       <div style="display:flex;gap:8px;margin-top:20px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="saveToQuestionBank()" style="flex:2;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save</button>
+        <button onclick="saveToQuestionBank()" style="flex:2;padding:9px;background:var(--teal);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7410,7 +7513,7 @@ function openBulkQBankImport() {
       <textarea id="qb-bulk-input" placeholder="Paste your interview prep notes here…&#10;&#10;Can be any format:&#10;- Q: Tell me about yourself / A: ...&#10;- Bullet lists of questions&#10;- Full conversation transcripts&#10;- Notes from a Chat session" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;"></textarea>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="runBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Extract questions</button>
+        <button onclick="runBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Extract questions</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7451,7 +7554,7 @@ ${raw.slice(0, 5000)}`;
       <div style="padding:4px 0;text-align:left;">
         <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Bulk Import</div>
         <div style="font-size:0.78rem;color:var(--error);line-height:1.5;margin-bottom:16px;">${result.message}</div>
-        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
+        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Try again</button>
         <button onclick="closeModal()" style="width:100%;padding:9px;border:none;background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Close</button>
       </div>`;
     return;
@@ -7463,7 +7566,7 @@ ${raw.slice(0, 5000)}`;
       <div style="padding:4px 0;text-align:left;">
         <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Montserrat',sans-serif;">✦ Bulk Import</div>
         <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:16px;">Couldn't extract any questions. Try formatting your notes with clearer Q: / A: pairs.</div>
-        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+        <button onclick="openBulkQBankImport()" style="width:100%;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
       </div>`;
     return;
   }
@@ -7490,7 +7593,7 @@ ${raw.slice(0, 5000)}`;
       ${moreCount ? `<div style="font-size:0.72rem;color:var(--text-dim);padding:8px 0;">+ ${moreCount} more</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="openBulkQBankImport()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Re-paste</button>
-        <button onclick="confirmBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Import all ${extracted.length}</button>
+        <button onclick="confirmBulkQBankImport()" style="flex:2;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Import all ${extracted.length}</button>
       </div>
     </div>`;
 }
@@ -7776,7 +7879,7 @@ function openPrepReview(id) {
       }
       <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:8px;">
         <button onclick="closeModal();_pipelineTab[${id}]='debrief';pipelineOpenId=${id};renderNetwork()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">→ Debrief after</button>
-        <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Done</button>
+        <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Done</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7793,7 +7896,7 @@ function openPrepImport(pipelineId) {
       <textarea id="prep-import-input" placeholder="Paste your prep notes, interview brief, or Google Doc content here…" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.78rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:180px;"></textarea>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="processPrepImport(${pipelineId})" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">✦ Parse & fill fields</button>
+        <button onclick="processPrepImport(${pipelineId})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">✦ Parse & fill fields</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -7838,14 +7941,14 @@ If a field has no relevant content, return an empty string for it. Do NOT make t
     inner.innerHTML = `<div style="text-align:left;">
       <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Parse failed</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;">${escHtml(result.message || 'Unknown error')}</div>
-      <button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+      <button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
     </div>`;
     return;
   }
 
   const parsed = result.json;
   if (!parsed) {
-    inner.innerHTML = `<div style="text-align:left;"><div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`;
+    inner.innerHTML = `<div style="text-align:left;"><div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="openPrepImport(${pipelineId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`;
     return;
   }
 
@@ -7880,7 +7983,7 @@ function openJDAnalyzer() {
       <input id="jda-context" placeholder="e.g. Senior PM at TradeDesk" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0 8px;outline:none;box-sizing:border-box;">
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="runJDAnalysis()" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Analyze</button>
+        <button onclick="runJDAnalysis()" style="flex:2;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Analyze</button>
       </div>
     </div>
   `;
@@ -8985,7 +9088,7 @@ function renderWeekPlannerHTML() {
         return `<div style="margin-bottom:5px;">
           <span style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${weekLabel} · </span>${goals.map(goal => {
             const repeat = otherGoals.includes(goal.trim().toLowerCase());
-            return `<span style="font-size:0.75rem;color:${repeat?'var(--amber)':'var(--text-dim)'};margin-right:8px;">${repeat?'<span style="font-size:0.55rem;background:var(--amber);color:#fff;padding:1px 3px;border-radius:2px;margin-right:3px;font-family:Montserrat,sans-serif;">repeat</span>':''}${escHtml(goal)}</span>`;
+            return `<span style="font-size:0.75rem;color:${repeat?'var(--amber)':'var(--text-dim)'};margin-right:8px;">${repeat?'<span style="font-size:0.55rem;background:var(--amber);color:var(--text-inverse);padding:1px 3px;border-radius:2px;margin-right:3px;font-family:Montserrat,sans-serif;">repeat</span>':''}${escHtml(goal)}</span>`;
           }).join('')}
         </div>`;
       }).join('')}
@@ -9453,7 +9556,7 @@ function _lmStep1() {
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="_lm.step=2;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+        <button onclick="_lm.step=2;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -9519,7 +9622,7 @@ function _lmStep2(search) {
     <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--teal-lt);border:1px solid var(--amber-ring);border-radius:3px;margin-bottom:10px;">
       <span style="font-size:0.7rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Suggested:</span>
       <span style="font-size:0.82rem;color:var(--text);flex:1;">${escHtml(contactFullName(autoC))}${autoC.company?` · <span style="color:var(--text-dim);font-size:0.76rem;">${escHtml(autoC.company)}</span>`:''}</span>
-      <button onclick="_lm.contactId=${autoC.id};_lm._autoContactId=null;_lmStep2('')" style="background:var(--amber);border:none;border-radius:2px;color:#fff;font-size:0.68rem;padding:3px 8px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;">${_lm.contactId===autoC.id?'✓ Selected':'Confirm'}</button>
+      <button onclick="_lm.contactId=${autoC.id};_lm._autoContactId=null;_lmStep2('')" style="background:var(--amber);border:none;border-radius:2px;color:var(--text-inverse);font-size:0.68rem;padding:3px 8px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;">${_lm.contactId===autoC.id?'✓ Selected':'Confirm'}</button>
       <button onclick="_lm._autoContactId=null;if(_lm.contactId===autoC.id)_lm.contactId=null;_lmStep2('')" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;padding:2px 4px;line-height:1;">✕</button>
     </div>` : '';
   inner.innerHTML = `
@@ -9543,7 +9646,7 @@ function _lmStep2(search) {
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;">
         <button onclick="_lm.step=1;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
-        <button onclick="_lm.step=3;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+        <button onclick="_lm.step=3;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -9595,7 +9698,7 @@ function _lmStep3() {
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;">
         <button onclick="_lm.step=2;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
-        <button onclick="_lmSyncStep3();_lm.step=4;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
+        <button onclick="_lmSyncStep3();_lm.step=4;_lmRender()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next →</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -9696,7 +9799,7 @@ function _lmStep4() {
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;">
         <button onclick="_lm.step=3;_lmRender()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">← Back</button>
-        <button onclick="_lmFinish()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save everything →</button>
+        <button onclick="_lmFinish()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save everything →</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -9855,7 +9958,7 @@ function openCalEventFollowUp(title, time) {
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="addCalFollowUpTasks()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Add tasks →</button>
+        <button onclick="addCalFollowUpTasks()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Add tasks →</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -10119,7 +10222,7 @@ function openAddHabitModal() {
     </div>
     <div style="display:flex;gap:8px;">
       <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-      <button onclick="addCustomHabit()" style="flex:2;padding:10px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Add habit</button>
+      <button onclick="addCustomHabit()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Add habit</button>
     </div>
   </div>`);
   setTimeout(() => document.getElementById('new-habit-name')?.focus(), 80);
@@ -10642,7 +10745,7 @@ function deleteInteraction(contactId, index) {
       <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Remove the ${escHtml(label)} entry${ix.method ? ' (' + escHtml(ix.method) + ')' : ''}? This can't be undone.</div>
       <div style="display:flex;gap:8px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Cancel</button>
-        <button onclick="closeModal();confirmDeleteInteraction(${contactId},${index})" style="flex:1;padding:10px;background:var(--red,#c0392b);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Delete</button>
+        <button onclick="closeModal();confirmDeleteInteraction(${contactId},${index})" style="flex:1;padding:10px;background:var(--red,var(--destructive));color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Delete</button>
       </div>
     </div>`);
 }
@@ -10966,7 +11069,7 @@ function getSmartSuggestions() {
       if (t.lifeArea && neglectedAreaKeys.includes(t.lifeArea)) {
         const a = S.lifeAreas[t.lifeArea];
         seen.add(t.id);
-        suggestions.push({ task: t, reason: `${a.icon} ${a.label} — neglected`, color: a.color });
+        suggestions.push({ task: t, reason: `${a.icon} ${a.label} — neglected`, color: getAreaColor(t.lifeArea) });
       }
     });
   }
@@ -11343,7 +11446,7 @@ function openOutreachDrafter(contactId) {
       </select>
       <div style="display:flex;gap:8px;margin-top:22px;">
         <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.82rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="generateOutreachDraft(${contactId})" style="flex:2;padding:9px;background:var(--amber);color:#fff;border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Generate draft</button>
+        <button onclick="generateOutreachDraft(${contactId})" style="flex:2;padding:9px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Generate draft</button>
       </div>
     </div>
   `;
@@ -11584,7 +11687,7 @@ function deleteAllData() {
       <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;">This permanently removes all your tasks, contacts, pipeline entries, XP, and settings from this device. There is no undo. Export first if you want a backup.</div>
       <div style="display:flex;gap:8px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="closeModal();_confirmDeleteAllData()" style="flex:2;padding:10px;background:#c0392b;color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Yes, delete everything</button>
+        <button onclick="closeModal();_confirmDeleteAllData()" style="flex:2;padding:10px;background:var(--destructive);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Yes, delete everything</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -11607,7 +11710,7 @@ function exportAndDeleteData() {
       <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;">We'll download a backup of your data first, then wipe everything from this device. The downloaded file is yours to keep.</div>
       <div style="display:flex;gap:8px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;background:var(--surface2);border:none;border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
-        <button onclick="closeModal();exportData();setTimeout(_confirmDeleteAllData,800)" style="flex:2;padding:10px;background:#c0392b;color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Export &amp; delete</button>
+        <button onclick="closeModal();exportData();setTimeout(_confirmDeleteAllData,800)" style="flex:2;padding:10px;background:var(--destructive);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Export &amp; delete</button>
       </div>
     </div>`;
   document.getElementById('overlay').classList.add('show');
@@ -11641,7 +11744,7 @@ function importData() {
             <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:20px;">This will replace all your current data. This cannot be undone.</div>
             <div style="display:flex;gap:8px;">
               <button onclick="closeModal()" style="flex:1;padding:9px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Cancel</button>
-              <button onclick="closeModal();doImport(_pendingImportData)" style="flex:1;padding:9px;background:var(--red);color:#fff;border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Replace data</button>
+              <button onclick="closeModal();doImport(_pendingImportData)" style="flex:1;padding:9px;background:var(--red);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Replace data</button>
             </div>
           </div>
         `);
@@ -11763,6 +11866,17 @@ function renderAccount() {
     </div>`;
 
   wrap.innerHTML = whatsNewSection + nameSection + modeSection + `
+    <div style="margin-bottom:28px;border-top:1px solid var(--border);padding-top:24px;">
+      <div class="card-label" style="margin-bottom:6px">Palette</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">Choose a color theme for the app.</div>
+      <div style="display:flex;gap:10px;">
+        ${Object.entries(THEMES).map(([key, t]) => `
+        <button onclick="setTheme('${key}')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:4px;border:2px solid ${(S.theme||'earth')===key?'var(--amber)':'var(--border)'};background:${(S.theme||'earth')===key?'var(--amber-lt)':'var(--surface2)'};cursor:pointer;transition:all 0.15s;">
+          <span style="font-size:1.1rem;">${t.emoji}</span>
+          <span style="font-size:0.68rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${(S.theme||'earth')===key?'var(--amber)':'var(--text-dim)'};">${t.label}</span>
+        </button>`).join('')}
+      </div>
+    </div>
     <div style="margin-bottom:28px">
       <div class="card-label" style="margin-bottom:6px">Data &amp; Privacy</div>
       <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">Your data lives on your device and is never sold or shared. You own it — export, import, or delete it any time.</div>
@@ -11786,7 +11900,7 @@ function renderAccount() {
             <div style="font-size:0.84rem;color:var(--text);font-weight:500">Export &amp; leave</div>
             <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Download your data, then wipe everything from this device.</div>
           </div>
-          <button onclick="exportAndDeleteData()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Export &amp; delete</button>
+          <button onclick="exportAndDeleteData()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--destructive)';this.style.color='var(--destructive)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Export &amp; delete</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
@@ -11845,7 +11959,7 @@ function renderAccount() {
       <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">Set a short intention for each area — it'll show as a tooltip on your Today card. Tag tasks with an area from the task edit modal.</div>
       ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <span style="font-size:1rem;color:${a.color};flex-shrink:0;">${a.icon}</span>
+        <span style="font-size:1rem;color:${getAreaColor(k)};flex-shrink:0;">${a.icon}</span>
         <span style="font-size:0.82rem;font-weight:500;color:var(--text);min-width:90px;flex-shrink:0;">${a.label}</span>
         <input type="text" id="area-intention-${k}" value="${escHtml(a.intention||'')}" placeholder="e.g. Run 3× a week" maxlength="60"
           style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text);padding:4px 0;outline:none;"
