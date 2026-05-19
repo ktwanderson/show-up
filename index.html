@@ -466,11 +466,7 @@
     }
 
     /* ── CAT TABS (Quests) ───────────────────────────── */
-    .cat-tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0;
-      -webkit-mask-image: linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%);
-      mask-image: linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%);
-    }
-    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tabs { display: flex; gap: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; align-items: flex-end; }
     .cat-tab {
       padding: 0 0 10px; border-radius: 0;
       border: none; border-bottom: 2px solid transparent;
@@ -911,6 +907,8 @@
 .network-toolbar {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 16px; flex-wrap: wrap;
+}
+.net-sticky-bar {
   position: sticky; top: 0; z-index: 10;
   background: var(--bg); padding: 6px 0 8px;
   margin-top: -6px;
@@ -5699,14 +5697,23 @@ function renderQuests() {
   // Only count top-level tasks in tab badges (subtasks are nested under their parent)
   const active = S.tasks.filter(t => !t.done && !t.parentId);
   const urgentCount = active.filter(t => t.urgent).length;
-  const catTabsHTML = ['thisweek', 'all', 'matrix', ...Object.keys(CATS)].map(c => {
-    let count, label;
-    if (c === 'thisweek') { count = urgentCount; label = 'This Week'; }
-    else if (c === 'all') { count = active.length; label = 'All'; }
-    else if (c === 'matrix') { count = ''; label = 'Matrix'; }
-    else { count = active.filter(t => t.cat === c).length; label = CATS[c].label; }
-    return `<button class="cat-tab ${currentQuestCat===c?'active':''}" onclick="switchQuestCat('${c}')">${label}${count !== '' ? ` <span class="ct-badge">${count}</span>` : ''}</button>`;
+  const isCatView = !['thisweek', 'all', 'matrix'].includes(currentQuestCat);
+  const activeCatLabel = isCatView ? (CATS[currentQuestCat]?.label || 'Category') : 'Category';
+  const catOptions = Object.entries(CATS).map(([k, v]) => {
+    const cnt = active.filter(t => t.cat === k).length;
+    return `<option value="${k}" ${currentQuestCat===k?'selected':''}>${v.label}${cnt?' ('+cnt+')':''}</option>`;
   }).join('');
+  const catTabsHTML = [
+    `<button class="cat-tab ${currentQuestCat==='thisweek'?'active':''}" onclick="switchQuestCat('thisweek')">This Week <span class="ct-badge">${urgentCount}</span></button>`,
+    `<button class="cat-tab ${currentQuestCat==='all'?'active':''}" onclick="switchQuestCat('all')">All <span class="ct-badge">${active.length}</span></button>`,
+    `<button class="cat-tab ${currentQuestCat==='matrix'?'active':''}" onclick="switchQuestCat('matrix')">Matrix</button>`,
+    `<div class="cat-tab ${isCatView?'active':''}" style="margin-left:auto;padding-bottom:10px;">
+      <select onchange="if(this.value)switchQuestCat(this.value)" style="background:none;border:none;font-family:'Montserrat',sans-serif;font-size:var(--fs-ui);letter-spacing:var(--ls-caps);text-transform:uppercase;color:inherit;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;padding:0;font-weight:inherit;">
+        <option value="" ${!isCatView?'selected':''} disabled>${activeCatLabel} ▾</option>
+        ${catOptions}
+      </select>
+    </div>`,
+  ].join('');
 
   const rejHtml = currentQuestCat === 'apply' ? `
     <div class="rejection-bar">
@@ -7432,14 +7439,16 @@ function renderQuestionBank() {
     return `<button onclick="_qbFilter=${JSON.stringify(t)};renderNetwork()" style="background:none;border:none;border-bottom:2px solid ${isActive?'var(--amber)':'transparent'};padding:6px 2px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isActive?'var(--text)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${t}</button>`;
   }).join('');
   let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
-      <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;clearTimeout(window._qbDebounce);window._qbDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('qb-search');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="${iI}max-width:200px;">
-      <div style="display:flex;gap:10px;flex-shrink:0;">
-        <button onclick="openBulkQBankImport()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Bulk import</button>
-        <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
+    <div class="net-sticky-bar">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
+        <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;clearTimeout(window._qbDebounce);window._qbDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('qb-search');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="${iI}max-width:200px;">
+        <div style="display:flex;gap:10px;flex-shrink:0;">
+          <button onclick="openBulkQBankImport()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Bulk import</button>
+          <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:14px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;">${tabsHTML}</div>`;
+      <div style="display:flex;gap:14px;border-bottom:1px solid var(--border);margin-bottom:0;overflow-x:auto;">${tabsHTML}</div>
+    </div>`;
   const search = _qbSearch.toLowerCase();
   let filtered = bank;
   if (_qbFilter !== 'all') filtered = filtered.filter(q => (q.tags||[]).includes(_qbFilter));
@@ -8122,7 +8131,7 @@ function renderCompanies() {
     <span style="font-size:0.8rem;color:var(--text-dim)">${S.companies.length} compan${S.companies.length===1?'y':'ies'}</span>
     <button onclick="openAddCompany()" style="background:none;border:none;color:var(--text-dim);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+  <div class="net-sticky-bar" style="display:flex;gap:8px;align-items:center;">
     <input type="text" id="company-search-input" placeholder="Search companies..." value="${escHtml(companySearch)}"
       oninput="companySearch=this.value;companyOpenId=null;clearTimeout(window._coDebounce);window._coDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('company-search-input');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);"
       style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;">
@@ -11157,6 +11166,13 @@ function getSmartSuggestions() {
   return suggestions.slice(0, 5);
 }
 
+function _stickyNetBar() {
+  requestAnimationFrame(() => {
+    const h = (document.querySelector('.top-bar')?.offsetHeight || 0);
+    document.querySelectorAll('.net-sticky-bar').forEach(el => el.style.top = h + 'px');
+  });
+}
+
 function renderNetwork() {
   const wrap = document.getElementById('network-wrap');
   if (!wrap) return;
@@ -11178,12 +11194,14 @@ function renderNetwork() {
   if (networkView === 'companies') {
     wrap.innerHTML = `<div id="networkContent">${toggleHTML}</div>`;
     renderCompanies();
+    _stickyNetBar();
     return;
   }
 
   if (networkView === 'qbank') {
     wrap.innerHTML = `<div id="networkContent">${toggleHTML}</div>`;
     renderQuestionBank();
+    _stickyNetBar();
     return;
   }
 
@@ -11304,7 +11322,7 @@ function renderNetwork() {
       <button class="net-add-btn" onclick="importContactsCSV()">Import from CSV</button>
       <span style="font-size:0.68rem;color:var(--text-dim);align-self:center;margin-left:2px">${contacts.length} contacts</span>
     </div>
-    <div class="network-toolbar">
+    <div class="network-toolbar net-sticky-bar">
       <div style="position:relative;flex:1;min-width:140px;">
         <input class="network-search" id="net-search-input" placeholder="Search contacts..." value="${escHtml(networkSearch)}"
           oninput="networkSearch=this.value;clearTimeout(window._nsDebounce);window._nsDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('net-search-input');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="width:100%;padding-right:${networkSearch?'24px':'2px'};" autocomplete="off" autocorrect="off" autocapitalize="off">
@@ -11321,11 +11339,7 @@ function renderNetwork() {
     </div>
     <div class="contact-list">${listHTML}</div>
   `;
-  requestAnimationFrame(() => {
-    const topBar = document.querySelector('.top-bar');
-    const toolbar = document.querySelector('.network-toolbar');
-    if (topBar && toolbar) toolbar.style.top = topBar.offsetHeight + 'px';
-  });
+  _stickyNetBar();
 }
 
 function renderContactCard(c) {
