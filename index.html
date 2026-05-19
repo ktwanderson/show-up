@@ -7810,10 +7810,16 @@ async function analyzeJDDetails(id) {
   if (!e) return;
   const ta = document.getElementById(`pe-jdText-${id}`);
   const liveText = ta ? ta.value.trim() : '';
+  // Save live textarea content if it's new or changed
   if (liveText && liveText !== (e.jdText || '').trim()) { e.jdText = liveText; save(); }
-  const text = (liveText || e.jdText || '').trim();
+  // Use whichever source is richer (longer = more complete JD)
+  const text = [liveText, e.jdText || ''].sort((a, b) => b.length - a.length)[0].trim();
   if (!text) { showToast('Add a job description first'); return; }
   showToast('Analyzing JD…');
+  // Smart slice: keep head + tail so benefits/comp sections at the end aren't cut off
+  const textForAnalysis = text.length > 10000
+    ? text.slice(0, 7000) + '\n[...]\n' + text.slice(-3000)
+    : text;
   const prompt = `Analyze this job description and extract key candidate-facing details. Return ONLY a JSON object with these keys:
 - "comp": compensation range if mentioned (e.g. "$120K–$160K"), or null
 - "compType": "Base salary", "Total compensation (base + bonus)", "Base + equity", or describe what's stated — or null if unclear
@@ -7822,7 +7828,7 @@ async function analyzeJDDetails(id) {
 - "bonus": describe bonus/incentive structure if mentioned (e.g. "Annual performance bonus mentioned", "No bonus mentioned"), or null
 
 Job description:
-${text.slice(0, 6000)}`;
+${textForAnalysis}`;
   const result = await callClaude(prompt, { maxTokens: 400 });
   if (!result.ok || !result.json) { showToast('Analysis failed — try again'); return; }
   e.jdHighlights = result.json;
