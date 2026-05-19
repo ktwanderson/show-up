@@ -911,6 +911,9 @@
 .network-toolbar {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 16px; flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg); padding: 6px 0 8px;
+  margin-top: -6px;
 }
 .network-search {
   flex: 1; min-width: 140px;
@@ -3819,7 +3822,8 @@ function renderToday() {
             <div class="nudge-days">${days}d overdue</div>
           </div>
           <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
-          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
+          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Contacted ✓</button>
+          <button onclick="snoozeNudge(${c.id},14)" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">not yet</button>
           ${days >= 3 ? `<button onclick="event.stopPropagation();showLetGoMenu(${c.id},this)" style="background:none;border:none;padding:3px 5px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">let go</button>` : ''}
         </div>`;
       }).join('')}
@@ -3847,7 +3851,8 @@ function renderToday() {
             </div>
           </div>
           <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
-          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done \u2713</button>
+          <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Contacted \u2713</button>
+          <button onclick="snoozeNudge(${c.id},14)" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">not yet</button>
         </div>`;
       }).join('')}
     </div>` : ''}
@@ -6307,12 +6312,34 @@ function markTaskInProgress(id, event) {
   if (currentTab === 'today') renderToday();
 }
 
+let _lastDeletedTask = null, _lastDeletedChildren = [];
 function deleteQuestTask(id) {
-  const childIds = S.tasks.filter(t => t.parentId === id).map(t => t.id);
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const children = S.tasks.filter(t => t.parentId === id);
+  const childIds = children.map(t => t.id);
+  _lastDeletedTask = { ...task };
+  _lastDeletedChildren = children.map(c => ({ ...c }));
   S.tasks = S.tasks.filter(t => t.id !== id && t.parentId !== id);
   S.todayFocusIds = S.todayFocusIds.filter(fid => fid !== id && !childIds.includes(fid));
   save();
   renderQuests();
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = `Deleted · <span onclick="undoDeleteTask()" style="text-decoration:underline;cursor:pointer">Undo</span>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4500);
+  }
+}
+function undoDeleteTask() {
+  if (!_lastDeletedTask) return;
+  S.tasks.push(_lastDeletedTask);
+  _lastDeletedChildren.forEach(c => S.tasks.push(c));
+  _lastDeletedTask = null;
+  _lastDeletedChildren = [];
+  save();
+  renderQuests();
+  showToast('Task restored');
 }
 
 function toggleDoneList() {
@@ -7739,7 +7766,9 @@ async function analyzeJDDetails(id) {
   const e = S.pipeline.find(x => x.id === id);
   if (!e) return;
   const ta = document.getElementById(`pe-jdText-${id}`);
-  const text = (ta ? ta.value : e.jdText || '').trim();
+  const liveText = ta ? ta.value.trim() : '';
+  if (liveText && liveText !== (e.jdText || '').trim()) { e.jdText = liveText; save(); }
+  const text = (liveText || e.jdText || '').trim();
   if (!text) { showToast('Add a job description first'); return; }
   showToast('Analyzing JD…');
   const prompt = `Analyze this job description and extract key candidate-facing details. Return ONLY a JSON object with these keys:
@@ -10668,12 +10697,30 @@ function toggleContactPriority(contactId) {
   renderNetwork();
 }
 
+let _lastDeletedContact = null;
 function deleteContact(contactId) {
-  if (!confirm('Remove this contact? This cannot be undone.')) return;
+  if (!confirm('Remove this contact? You can undo immediately after.')) return;
+  const contact = S.contacts.find(x => x.id === contactId);
+  if (!contact) return;
+  _lastDeletedContact = { ...contact };
   S.contacts = S.contacts.filter(x => x.id !== contactId);
   if (networkOpenId === contactId) networkOpenId = null;
   save();
   renderNetwork();
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = `Contact removed · <span onclick="undoDeleteContact()" style="text-decoration:underline;cursor:pointer">Undo</span>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 6000);
+  }
+}
+function undoDeleteContact() {
+  if (!_lastDeletedContact) return;
+  S.contacts.push(_lastDeletedContact);
+  _lastDeletedContact = null;
+  save();
+  renderNetwork();
+  showToast('Contact restored');
 }
 
 function quickLogInteraction(contactId) {
@@ -10969,8 +11016,23 @@ function toggleAspirationalsVisible() {
   renderNetwork();
 }
 
+function snoozeNudge(contactId, days) {
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  const d = new Date(); d.setDate(d.getDate() + days);
+  c.nudgeSnoozedUntil = d.toISOString().slice(0, 10);
+  save();
+  renderToday();
+  const until = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  showToast(`Snoozed — will resurface after ${until}`);
+}
+
 function getOverdueContacts() {
-  return S.contacts.filter(c => getContactStatus(c) === 'overdue');
+  const today = todayLocal();
+  return S.contacts.filter(c => {
+    if (c.nudgeSnoozedUntil && c.nudgeSnoozedUntil >= today) return false;
+    return getContactStatus(c) === 'overdue';
+  });
 }
 
 // Proactive nudges for contacts with no explicit cadence set, ranked by signal strength.
@@ -10983,9 +11045,11 @@ function getSmartNudges() {
   const overdueIds = new Set(getOverdueContacts().map(c => c.id));
   const interviewStages = new Set(['phone','interview1','interview2','interview3','interview4','interview5','final']);
 
+  const today = todayLocal();
   const nudges = [];
   contacts.forEach(c => {
     if (overdueIds.has(c.id)) return; // already in the overdue card
+    if (c.nudgeSnoozedUntil && c.nudgeSnoozedUntil >= today) return; // snoozed by user
     const interactions = c.interactions || [];
     const days = getDaysSince(c.lastContact);
 
@@ -11257,6 +11321,11 @@ function renderNetwork() {
     </div>
     <div class="contact-list">${listHTML}</div>
   `;
+  requestAnimationFrame(() => {
+    const topBar = document.querySelector('.top-bar');
+    const toolbar = document.querySelector('.network-toolbar');
+    if (topBar && toolbar) toolbar.style.top = topBar.offsetHeight + 'px';
+  });
 }
 
 function renderContactCard(c) {
