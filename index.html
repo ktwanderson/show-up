@@ -2999,6 +2999,11 @@ let pinInput  = '';
 let pinStage  = 'entry';   // 'entry' | 'setup' | 'confirm'
 let pinFirst  = '';
 
+function pinIsEnabled() {
+  const stored = localStorage.getItem(PIN_KEY);
+  return stored && stored !== 'disabled';
+}
+
 function initPin() {
   const stored = localStorage.getItem(PIN_KEY);
   const overlay = document.getElementById('pinOverlay');
@@ -3006,6 +3011,8 @@ function initPin() {
     pinStage = 'setup';
     updatePinUI('Choose a 4-digit PIN to protect your app');
     overlay.classList.remove('hidden');
+  } else if (stored === 'disabled') {
+    return; // PIN turned off — skip entirely
   } else {
     pinStage = 'entry';
     updatePinUI('Enter your PIN');
@@ -3041,6 +3048,15 @@ function pinSubmit() {
     } else {
       pinError('Incorrect PIN');
     }
+  } else if (pinStage === 'disable') {
+    if (pinInput === stored) {
+      localStorage.setItem(PIN_KEY, 'disabled');
+      document.getElementById('pinOverlay').classList.add('hidden');
+      showToast('PIN disabled — app will open without a lock screen');
+      if (typeof renderAccount === 'function') renderAccount();
+    } else {
+      pinError('Incorrect PIN');
+    }
   } else if (pinStage === 'setup') {
     pinFirst = pinInput;
     pinInput = '';
@@ -3051,6 +3067,7 @@ function pinSubmit() {
     if (pinInput === pinFirst) {
       localStorage.setItem(PIN_KEY, pinInput);
       document.getElementById('pinOverlay').classList.add('hidden');
+      if (typeof renderAccount === 'function') renderAccount();
     } else {
       pinFirst = '';
       pinStage = 'setup';
@@ -3081,6 +3098,8 @@ function updatePinUI(promptText) {
   const footer = document.getElementById('pinFooter');
   if (pinStage === 'setup') {
     footer.textContent = '';
+  } else if (pinStage === 'disable') {
+    footer.innerHTML = '<span onclick="document.getElementById(\'pinOverlay\').classList.add(\'hidden\')" style="cursor:pointer;text-decoration:underline;">Cancel</span>';
   } else {
     footer.innerHTML = 'Forgot your PIN?<br>Clear site data in browser settings to reset.';
   }
@@ -3094,6 +3113,20 @@ function changePin() {
   updatePinDots();
   document.getElementById('pinError').textContent = '';
   document.getElementById('pinOverlay').classList.remove('hidden');
+}
+
+function disablePin() {
+  pinInput = '';
+  pinStage = 'disable';
+  updatePinUI('Enter your PIN to disable the lock screen');
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinOverlay').classList.remove('hidden');
+}
+
+function enablePin() {
+  localStorage.removeItem(PIN_KEY);
+  changePin();
 }
 
 // Timer — not persisted
@@ -12193,13 +12226,24 @@ function renderAccount() {
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
       <div class="card-label" style="margin-bottom:16px">Security</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      ${pinIsEnabled() ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
         <div>
-          <div style="font-size:0.84rem;color:var(--text);font-weight:500">Change PIN</div>
-          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Update the 4-digit PIN used to unlock this app.</div>
+          <div style="font-size:0.84rem;color:var(--text);font-weight:500">PIN lock</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">A 4-digit PIN is required to open this app.</div>
         </div>
-        <button onclick="changePin()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Change</button>
-      </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button onclick="changePin()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Change</button>
+          <button onclick="disablePin()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Disable</button>
+        </div>
+      </div>` : `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+        <div>
+          <div style="font-size:0.84rem;color:var(--text);font-weight:500">PIN lock</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">PIN is off — the app opens without a lock screen.</div>
+        </div>
+        <button onclick="enablePin()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Enable</button>
+      </div>`}
     </div>
   `;
 }
