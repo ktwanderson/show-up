@@ -7685,6 +7685,7 @@ function updatePipelineStage(id, stage) {
   }
   const prevStage = e.stage;
   e.stage = stage;
+  syncCompanyStatusFromPipeline();
   save();
   renderNetwork();
   if (stage === 'rejected') {
@@ -7875,6 +7876,7 @@ function saveNewPipelineEntry() {
     return;
   }
   S.pipeline.push({ id: S.nextPipelineId++, company, role, stage, appliedDate, jdUrl, jdText, nextStep: '', notes: '' });
+  syncCompanyStatusFromPipeline();
   save();
   closeModal();
   networkView = 'pipeline';
@@ -8103,9 +8105,26 @@ No extra text outside the JSON.`;
 }
 
 // ── COMPANIES ─────────────────────────────────────────────────
+function syncCompanyStatusFromPipeline() {
+  const appliedStages = new Set(['applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer']);
+  let changed = false;
+  (S.companies || []).forEach(co => {
+    if (co.status === 'applied') return;
+    const hasApplied = (S.pipeline || []).some(e =>
+      e.company && co.name &&
+      e.company.toLowerCase() === co.name.toLowerCase() &&
+      appliedStages.has(e.stage)
+    );
+    if (hasApplied) { co.status = 'applied'; changed = true; }
+  });
+  if (changed) save();
+}
+
 function renderCompanies() {
   const container = document.getElementById('networkContent');
   if (!container) return;
+
+  syncCompanyStatusFromPipeline();
 
   const statuses = ['researching', 'targeting', 'applied'];
 
