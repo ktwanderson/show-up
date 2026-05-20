@@ -3541,7 +3541,7 @@ function renderToday() {
       const statusCls = isPast ? 'overdue' : isToday ? 'due-soon' : 'ok';
       const label = isPast ? 'overdue' : isToday ? 'today' : 'upcoming';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+        <div onclick="switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
           <div class="contact-status-dot ${statusCls}"></div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(c))}</div>
@@ -3880,7 +3880,7 @@ function renderToday() {
       ${overdueContacts.map(c => {
         const days = getDaysSince(c.lastContact);
         return `<div class="nudge-row">
-          <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+          <div onclick="switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
             <div class="contact-status-dot overdue" style="flex-shrink:0"></div>
             <div class="nudge-name">${escHtml(contactFullName(c))} <span style="font-size:0.7rem;color:var(--text-dim)">\u00b7 ${escHtml(c.company||'')}</span></div>
             <div class="nudge-days">${days}d overdue</div>
@@ -3904,7 +3904,7 @@ function renderToday() {
         const noteSnippet = n.lastNote ? escHtml(n.lastNote.slice(0, 60)) + (n.lastNote.length > 60 ? '\u2026' : '') : '';
         const dotColor = n.tier === 1 ? 'var(--amber)' : 'var(--teal)';
         return `<div class="nudge-row">
-          <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+          <div onclick="switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${c.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${c.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
             <div style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:5px;"></div>
             <div style="min-width:0;flex:1;">
               <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
@@ -3959,11 +3959,11 @@ function renderToday() {
       <div class="card-label" style="margin-bottom:4px;">In your calendar today</div>
       <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:10px;">These contacts are mentioned in today's events.</div>
       ${calContactNudges.map(n => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div onclick="switchTab('network');setTimeout(()=>{networkOpenId=${n.contact.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${n.contact.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="flex:1;min-width:0;cursor:pointer;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+        <div onclick="switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${n.contact.id};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${n.contact.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);},50)" style="flex:1;min-width:0;cursor:pointer;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
           <div style="font-size:0.84rem;font-weight:500;color:var(--text);">${escHtml(contactFullName(n.contact))}</div>
           <div style="font-size:0.7rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.event.time || '')} · ${escHtml(n.event.title || '')}</div>
         </div>
-        <button onclick="switchTab('network');setTimeout(()=>{networkOpenId=${n.contact.id};renderNetwork();},50)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:3px 10px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">View →</button>
+        <button onclick="switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${n.contact.id};renderNetwork();},50)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:3px 10px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">View →</button>
       </div>`).join('')}
     </div>` : ''}
 
@@ -5879,6 +5879,17 @@ function cycleTaskPoints(id, event) {
   renderQuests();
 }
 
+function cycleSubtaskCat(id, event) {
+  event.stopPropagation();
+  const task = S.tasks.find(t => t.id === id);
+  if (!task) return;
+  const keys = Object.keys(CATS);
+  const idx = keys.indexOf(task.cat);
+  task.cat = keys[(idx + 1) % keys.length];
+  save();
+  renderQuests();
+}
+
 function makeQuestTaskHTML(task, showCat) {
   const cat = CATS[task.cat] || {};
   const isPinned = S.todayFocusIds.includes(task.id);
@@ -5915,7 +5926,7 @@ function makeQuestTaskHTML(task, showCat) {
 
   const contactTag = task.contactId && !task.done ? (() => {
     const c = S.contacts.find(x => x.id === task.contactId);
-    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">→ ${escHtml(contactFullName(c))}</span>` : '';
+    return c ? `<span onclick="event.stopPropagation();switchTab('network');setTimeout(()=>{networkView='people';networkOpenId=${task.contactId};renderNetwork();setTimeout(()=>{const el=document.getElementById('crow-${task.contactId}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},150);},50)" style="display:inline-block;margin-top:3px;font-size:0.6rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;touch-action:manipulation;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">→ ${escHtml(contactFullName(c))}</span>` : '';
   })() : '';
 
   const recurBadge = task.recurrence && !task.done
@@ -6047,6 +6058,9 @@ function makeSubtaskHTML(task, showReorder) {
   const isPinned = S.todayFocusIds.includes(task.id);
   const siblings = task.parentId ? S.tasks.filter(t => t.parentId === task.parentId) : [];
   const idx = siblings.findIndex(t => t.id === task.id);
+  const parent = task.parentId ? S.tasks.find(t => t.id === task.parentId) : null;
+  const catOverridden = parent && task.cat !== parent.cat;
+  const catInfo = CATS[task.cat] || { abbr: '?', color: '#8c8880' };
   return `
     <div class="task ${task.done?'done':''}" id="task-row-${task.id}">
       <div class="check-circle ${task.done?'checked':''}" onclick="completeQuestTask(${task.id},event)" style="cursor:pointer;width:18px;height:18px;min-width:18px;font-size:0.68rem;">${task.done?'✓':''}</div>
@@ -6054,6 +6068,7 @@ function makeSubtaskHTML(task, showReorder) {
       <div class="task-text" style="font-size:0.82rem;">${escHtml(task.text)}</div>
       <div class="task-meta">
         ${!task.done ? `<div class="xp-badge">+${(CATS[task.cat]||{}).xp||15}</div>` : ''}
+        ${!task.done ? `<span onclick="cycleSubtaskCat(${task.id},event)" title="${catInfo.label} — tap to change category" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:${catInfo.color}18;color:${catInfo.color};font-size:0.55rem;font-weight:700;font-family:'Montserrat',sans-serif;flex-shrink:0;cursor:pointer;opacity:${catOverridden?'1':'0.35'};transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${catOverridden?'1':'0.35'}'>${catInfo.abbr}</span>` : ''}
         ${showReorder && !task.done && siblings.length > 1 ? `
           <button onclick="event.stopPropagation();moveSubtask(${task.id},-1)" title="Move up" style="background:none;border:none;cursor:pointer;padding:0 1px;line-height:1;opacity:${idx===0?'0.15':'0.4'};font-size:0.65rem;color:var(--text-dim);pointer-events:${idx===0?'none':'auto'};" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='${idx===0?'0.15':'0.4'}'">▲</button>
           <button onclick="event.stopPropagation();moveSubtask(${task.id},1)" title="Move down" style="background:none;border:none;cursor:pointer;padding:0 1px;line-height:1;opacity:${idx===siblings.length-1?'0.15':'0.4'};font-size:0.65rem;color:var(--text-dim);pointer-events:${idx===siblings.length-1?'none':'auto'};" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='${idx===siblings.length-1?'0.15':'0.4'}'">▼</button>` : ''}
@@ -6111,6 +6126,7 @@ function addSubtask(parentId) {
   if (!parent) return;
   S.tasks.push({ id: S.nextId++, text, cat: parent.cat, done: false, createdAt: Date.now(), points: 1, parentId });
   S.totalAdded++;
+  _expandedProjects.add(parentId);
   trackEvent('subtask_add', { cat: parent.cat });
   save();
   renderQuests();
