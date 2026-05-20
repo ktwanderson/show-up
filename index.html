@@ -3508,7 +3508,9 @@ function renderToday() {
   const smartNudges = getSmartNudges ? getSmartNudges() : [];
   const ec = ENERGY[S.todayEnergy];
   const isRest = S.todayEnergy === 'rest';
-  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean);
+  const _focusIdSet = new Set(S.todayFocusIds);
+  const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean)
+    .filter(t => !(t.parentId && _focusIdSet.has(t.parentId)));
   const recentWins = [...S.wins].reverse().slice(0, 5);
 
   const sessionDots = Array.from({ length: Math.max(4, S.focusBlocksToday + 1) }, (_, i) =>
