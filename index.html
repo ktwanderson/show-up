@@ -1713,6 +1713,12 @@ function normalizeStateArrays(s) {
     s.customHabits.forEach(h => {
       if (h.log && !Array.isArray(h.log)) h.log = Object.values(h.log);
       if (!h.log) h.log = [];
+      if (!h.trackingType) h.trackingType = 'binary';
+      if (!h.goalPeriod) h.goalPeriod = 'day';
+      if (h.trackingType === 'numeric') {
+        if (!h.numericLog) h.numericLog = [];
+        if (h.numericLog && !Array.isArray(h.numericLog)) h.numericLog = Object.values(h.numericLog);
+      }
     });
   }
   // Ensure lifeAreas object is present and fully populated (existing users get defaults)
@@ -3778,6 +3784,31 @@ function renderToday() {
       const streak = getHabitStreak(h.log, h.goal, h.goalPeriod);
       const count = getHabitCountThisPeriod(h.log, h.goal, h.goalPeriod);
       const streakLabel = streak >= 2 ? `<span style="font-size:0.62rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-weight:600;">${streak}${h.goalPeriod==='day'?'d':h.goalPeriod==='month'?'mo':'wk'}</span>` : '';
+      if (h.trackingType === 'numeric') {
+        const todayVal = getTodayNumericValue(h);
+        const isHit = todayVal >= (h.targetValue || 1);
+        const u = h.unit ? ` ${escHtml(h.unit)}` : '';
+        const subText = (h.goalPeriod || 'day') === 'day'
+          ? `${todayVal}${u} of ${h.targetValue}${u} today`
+          : `${count} of ${h.goal} this ${h.goalPeriod}`;
+        return `<div class="rhythm-row ${isHit ? 'rhythm-done' : ''}" onclick="openNumericHabitLogger('${h.id}')">
+          <div class="rhythm-left">
+            <div class="rhythm-icon" style="font-size:1rem;opacity:0.7;display:flex;align-items:center;justify-content:center;">${h.icon}</div>
+            <div>
+              <div class="rhythm-label">${escHtml(h.name)}</div>
+              <div class="rhythm-sub">${subText}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${streakLabel}
+            <div style="text-align:right;line-height:1.2;">
+              <div style="font-size:0.8rem;font-weight:600;color:${isHit?'var(--amber)':'var(--text-mid)'};">${todayVal}${h.unit?escHtml(h.unit):''}</div>
+              <div style="font-size:0.58rem;color:var(--text-dim);">/ ${h.targetValue}${h.unit?escHtml(h.unit):''}</div>
+            </div>
+            <div class="check-circle ${isHit ? 'checked' : ''}">${isHit ? '✓' : ''}</div>
+          </div>
+        </div>`;
+      }
       const subText = h.goalPeriod === 'day'
         ? (h.doneToday ? 'done today' : 'not yet today')
         : `${count} of ${h.goal} this ${h.goalPeriod}`;
@@ -10294,30 +10325,113 @@ function toggleCustomHabit(id) {
   showToast(count === h.goal ? `${h.name} goal hit! +25 XP` : `${h.name} logged ✓`);
 }
 
+function getTodayNumericValue(h) {
+  const today = todayLocal();
+  const entry = (h.numericLog || []).find(e => e.date === today);
+  return entry ? entry.value : 0;
+}
+
+function openNumericHabitLogger(id) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  const todayVal = getTodayNumericValue(h);
+  const u = h.unit ? ` ${escHtml(h.unit)}` : '';
+  const iI = 'border:none;border-bottom:1px solid var(--border);background:transparent;font-family:\'DM Sans\',sans-serif;color:var(--text);padding:6px 0;outline:none;width:100%;';
+  showModal(`<div style="text-align:left;">
+    <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:2px;font-family:'Montserrat',sans-serif;">${escHtml(h.name)}</div>
+    <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:18px;">Target: ${h.targetValue}${u} today</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <input id="numeric-habit-val" type="number" value="${todayVal || ''}" min="0" placeholder="0"
+        style="${iI}font-size:1.6rem;text-align:center;"
+        onkeydown="if(event.key==='Enter')logNumericHabit('${id}',this.value)">
+      ${h.unit ? `<span style="font-size:1rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;flex-shrink:0;">${escHtml(h.unit)}</span>` : ''}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+      <button onclick="logNumericHabit('${id}',document.getElementById('numeric-habit-val')?.value)" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
+    </div>
+  </div>`);
+  setTimeout(() => { const el = document.getElementById('numeric-habit-val'); if (el) { el.focus(); el.select(); } }, 80);
+}
+
+function logNumericHabit(id, rawValue) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h || h.trackingType !== 'numeric') return;
+  const val = parseFloat(rawValue);
+  if (isNaN(val) || val < 0) { showToast('Enter a valid number'); return; }
+  const today = todayLocal();
+  if (!h.numericLog) h.numericLog = [];
+  const existing = h.numericLog.find(e => e.date === today);
+  if (existing) { existing.value = val; } else { h.numericLog.push({ date: today, value: val }); }
+  const isHit = val >= (h.targetValue || 1);
+  const wasAlreadyLogged = (h.log || []).includes(today);
+  h.doneToday = isHit;
+  if (isHit && !wasAlreadyLogged) {
+    if (!h.log) h.log = [];
+    h.log.push(today);
+    gainXP(20);
+    const count = getHabitCountThisPeriod(h.log, h.goal, h.goalPeriod);
+    if (count === h.goal) gainXP(25);
+    save(); closeModal(); renderToday(); updateHeader();
+    showToast(count === h.goal ? `${h.name} goal hit! +25 XP` : `${h.name} target reached! +20 XP`);
+  } else {
+    if (!isHit) h.log = (h.log || []).filter(d => d !== today);
+    save(); closeModal(); renderToday();
+    showToast(isHit ? `${h.name} updated ✓` : `${h.name} — ${val}${h.unit ? ' ' + h.unit : ''} logged`);
+  }
+}
+
+function onHabitTypeChange() {
+  const isNum = document.getElementById('new-habit-type')?.value === 'numeric';
+  const bF = document.getElementById('habit-binary-fields');
+  const nF = document.getElementById('habit-numeric-fields');
+  if (bF) bF.style.display = isNum ? 'none' : 'flex';
+  if (nF) nF.style.display = isNum ? 'flex' : 'none';
+}
+
 function openAddHabitModal() {
   const presetOptions = HABIT_PRESETS.map((p, i) =>
     `<div onclick="prefillHabitForm(${i})" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:0.72rem;color:var(--text-mid);font-family:'DM Sans',sans-serif;margin:2px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">${p.icon} ${p.name}</div>`
   ).join('');
+  const fL = 'font-size:0.6rem;font-family:\'Montserrat\',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;display:block;';
+  const iS = 'border:none;border-bottom:1px solid var(--border);background:transparent;font-family:\'DM Sans\',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;';
   showModal(`<div style="text-align:left;">
     <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Add habit</div>
     <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:12px;line-height:1.4;">Quick-add from presets or create your own.</div>
     <div style="margin-bottom:14px;line-height:2;">${presetOptions}</div>
     <div style="margin-bottom:10px;">
-      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Name</div>
-      <input id="new-habit-name" type="text" placeholder="e.g. Meditate" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;">
+      <label style="${fL}">Name</label>
+      <input id="new-habit-name" type="text" placeholder="e.g. Protein" style="${iS}">
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <div style="margin-bottom:12px;">
+      <label style="${fL}">Tracking type</label>
+      <select id="new-habit-type" onchange="onHabitTypeChange()" style="${iS}cursor:pointer;">
+        <option value="binary">✓ Done / not done</option>
+        <option value="numeric">## Track a number (g, ml, mins…)</option>
+      </select>
+    </div>
+    <div id="habit-binary-fields" style="display:flex;gap:10px;margin-bottom:16px;">
       <div style="flex:1;">
-        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Goal</div>
-        <input id="new-habit-goal" type="number" value="1" min="1" max="31" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;">
+        <label style="${fL}">Goal</label>
+        <input id="new-habit-goal" type="number" value="1" min="1" max="31" style="${iS}">
       </div>
       <div style="flex:1;">
-        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Per</div>
-        <select id="new-habit-period" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;cursor:pointer;">
+        <label style="${fL}">Per</label>
+        <select id="new-habit-period" style="${iS}cursor:pointer;">
           <option value="day">day</option>
           <option value="week">week</option>
           <option value="month">month</option>
         </select>
+      </div>
+    </div>
+    <div id="habit-numeric-fields" style="display:none;gap:10px;margin-bottom:16px;">
+      <div style="flex:2;">
+        <label style="${fL}">Daily target</label>
+        <input id="new-habit-target" type="number" value="100" min="1" style="${iS}" placeholder="e.g. 100">
+      </div>
+      <div style="flex:1;">
+        <label style="${fL}">Unit</label>
+        <input id="new-habit-unit" type="text" placeholder="g, ml, mins…" style="${iS}">
       </div>
     </div>
     <div style="display:flex;gap:8px;">
@@ -10342,12 +10456,19 @@ function prefillHabitForm(presetIdx) {
 function addCustomHabit() {
   const name = (document.getElementById('new-habit-name')?.value || '').trim();
   if (!name) { showToast('Enter a habit name'); return; }
-  const goal = parseInt(document.getElementById('new-habit-goal')?.value || '1');
-  const goalPeriod = document.getElementById('new-habit-period')?.value || 'day';
+  const trackingType = document.getElementById('new-habit-type')?.value || 'binary';
   const preset = HABIT_PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
   const icon = preset ? preset.icon : '◇';
   if (!S.customHabits) S.customHabits = [];
-  S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, goal, goalPeriod, log: [], doneToday: false });
+  if (trackingType === 'numeric') {
+    const targetValue = parseFloat(document.getElementById('new-habit-target')?.value || '1') || 1;
+    const unit = (document.getElementById('new-habit-unit')?.value || '').trim();
+    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'numeric', goal: 1, goalPeriod: 'day', targetValue, unit, log: [], numericLog: [], doneToday: false });
+  } else {
+    const goal = parseInt(document.getElementById('new-habit-goal')?.value || '1');
+    const goalPeriod = document.getElementById('new-habit-period')?.value || 'day';
+    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'binary', goal, goalPeriod, log: [], doneToday: false });
+  }
   save();
   closeModal();
   if (currentTab === 'today') renderToday();
