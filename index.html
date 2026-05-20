@@ -4027,6 +4027,13 @@ function makeFocusItemHTML(task) {
   const ptsColor = pts >= 3 ? 'var(--amber)' : 'var(--text-dim)';
   const isDone = actionTask.done || allDone || task.done;
 
+  const parentTask = task.parentId ? S.tasks.find(t => t.id === task.parentId) : null;
+  const parentContext = parentTask ? `
+    <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;margin-bottom:3px;display:flex;align-items:center;gap:4px;">
+      <span style="opacity:0.5;flex-shrink:0;">↳</span>
+      <span style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(parentTask.text)}</span>
+    </div>` : '';
+
   const projectContext = hasChildren ? `
     <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
       <span style="opacity:0.6;">↳</span>
@@ -4043,7 +4050,7 @@ function makeFocusItemHTML(task) {
     <div class="focus-item ${isDone ? 'focus-done' : ''}">
       <div class="check-circle ${isDone ? 'checked' : ''}" onclick="completeFocusTask(${actionTask.id},event)" style="cursor:pointer;flex-shrink:0;">${isDone ? '✓' : ''}</div>
       <div style="flex:1;min-width:0;">
-        ${projectContext}
+        ${parentContext}${projectContext}
         <div class="focus-text">${textHTML}</div>
         ${progressBar}
       </div>
