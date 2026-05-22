@@ -53,7 +53,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -114,6 +114,9 @@
       --fs-body:   0.84rem;
       --ls-caps:   0.07em;
       --ls-ui:     0.05em;
+
+      /* ── Headline font (swapped per theme) ─────────────── */
+      --font-head: 'Montserrat', sans-serif;
     }
 
     body {
@@ -151,7 +154,7 @@
       font-weight: 800;
       letter-spacing: -0.035em;
       color: var(--amber);
-      font-family: 'Montserrat', sans-serif;
+      font-family: var(--font-head);
       line-height: 1;
       margin-bottom: 2px;
     }
@@ -377,7 +380,7 @@
     .win-date { font-size: 0.67rem; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; padding-top: 1px; }
 
     /* ── GREETING ────────────────────────────────────── */
-    .greeting-line { font-size: 1.75rem; font-weight: 300; color: var(--text); font-family: 'Montserrat', sans-serif; letter-spacing: -0.02em; line-height: 1.2; }
+    .greeting-line { font-size: 1.75rem; font-weight: 300; color: var(--text); font-family: var(--font-head); letter-spacing: -0.02em; line-height: 1.2; }
     .greeting-date { font-size: 0.74rem; color: var(--text-dim); margin-top: 6px; letter-spacing: 0.04em; font-family: 'Montserrat', sans-serif; }
 
     /* ── TASKS (Quests tab) ───────────────────────────── */
@@ -674,7 +677,7 @@
     }
     @keyframes popIn { from { transform: scale(0.72); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-big-icon { font-size: 2.8rem; margin-bottom: 12px; }
-    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; font-family: 'Montserrat', sans-serif; letter-spacing: -0.01em; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; font-family: var(--font-head); letter-spacing: -0.01em; }
     .modal-body { font-size: var(--fs-body); color: var(--text-mid); margin-bottom: 24px; line-height: 1.65; }
     .modal-btn {
       background: var(--text); color: var(--surface);
@@ -2174,6 +2177,7 @@ const THEMES = {
     '--area-learning':        '#5a6a80',
     '--area-relationships':   '#80506a',
     '--area-home':            '#5a7040',
+    '--font-head':            "'Montserrat', sans-serif",
   },
   summer: {
     label: 'Summer', emoji: '○',
@@ -2208,6 +2212,41 @@ const THEMES = {
     '--area-learning':        '#6baed6',
     '--area-relationships':   '#d98cb3',
     '--area-home':            '#81c784',
+    '--font-head':            "'Montserrat', sans-serif",
+  },
+  hoxton: {
+    label: 'Hoxton', emoji: '◈',
+    // Inspired by the Hoxton Edinburgh interior palette:
+    // deep hunter green paneling, warm linen walls, antique brass,
+    // burgundy velvet, and warm charcoal.
+    '--bg':                   '#e5ddd0',
+    '--surface':              '#ede5d8',
+    '--surface2':             '#d9d0c1',
+    '--border':               '#c8bfb0',
+    '--border-hl':            '#9a9080',
+    '--amber':                '#223830',
+    '--amber-fill':           '#2e4a40',
+    '--amber-lt':             'rgba(34,56,48,0.09)',
+    '--amber-ring':           'rgba(34,56,48,0.22)',
+    '--teal':                 '#8a6a24',
+    '--teal-lt':              'rgba(138,106,36,0.09)',
+    '--green':                '#223830',
+    '--green-lt':             'rgba(34,56,48,0.07)',
+    '--red':                  '#7a3040',
+    '--error':                '#b03428',
+    '--orange':               '#8a6a24',
+    '--text':                 '#1e1815',
+    '--text-dim':             '#7a7268',
+    '--text-mid':             '#4e4840',
+    '--text-inverse':         '#ffffff',
+    '--destructive':          '#b03428',
+    '--success':              '#223830',
+    '--area-health':          '#3d6e5e',
+    '--area-finance':         '#7a6020',
+    '--area-learning':        '#4a5f78',
+    '--area-relationships':   '#7a3040',
+    '--area-home':            '#4e6438',
+    '--font-head':            "'DM Serif Display', serif",
   },
 };
 
