@@ -3032,6 +3032,7 @@ let questsView = 'tasks';
 let pipelineOpenId = null;
 let _pipelineTab = {}; // id → 'detail' | 'prep' | 'debrief'
 let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'digest'
+let _pipelineCollapsed = {}; // section key → bool
 let networkView = 'people';
 let focusView = 'timer';
 let _pendingImportRows = null;
@@ -6519,28 +6520,55 @@ function renderPipeline() {
     return;
   }
 
+  // Active roles first (applied through offer), tracking second-to-last, closed last
+  const activeStageOrder = ['applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer'];
   let firstActiveSection = true;
-  const stageOrder = ['prospect','applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer'];
-  stageOrder.forEach(stageKey => {
+  activeStageOrder.forEach(stageKey => {
     const entries = active.filter(e => e.stage === stageKey);
     if (entries.length === 0) return;
     const stageInfo = PIPELINE_STAGES.find(s => s.key === stageKey);
     const anchorId = firstActiveSection ? 'id="pipeline-active-section"' : '';
+    const collapsed = !!_pipelineCollapsed[stageKey];
     firstActiveSection = false;
     html += `<div ${anchorId} style="margin-bottom:12px;">
-      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
-      ${entries.map(e => renderPipelineEntry(e)).join('')}
+      <div onclick="togglePipelineSection('${stageKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${collapsed?'0':'6px'};" onmouseover="this.querySelector('.ps-chev').style.opacity='1'" onmouseout="this.querySelector('.ps-chev').style.opacity='0.4'">
+        <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;">${stageInfo.label} <span style="opacity:0.6">${entries.length}</span></div>
+        <span class="ps-chev" style="font-size:0.62rem;color:var(--text-dim);opacity:0.4;transition:opacity 0.15s;">${collapsed?'▸':'▾'}</span>
+      </div>
+      ${collapsed ? '' : entries.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   });
 
+  const tracking = active.filter(e => e.stage === 'prospect');
+  if (tracking.length > 0) {
+    const collapsed = !!_pipelineCollapsed['prospect'];
+    const hasBorder = active.some(e => e.stage !== 'prospect');
+    html += `<div style="margin-bottom:12px;${hasBorder?'margin-top:16px;padding-top:16px;border-top:1px solid var(--border);':''}">
+      <div onclick="togglePipelineSection('prospect')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${collapsed?'0':'6px'};" onmouseover="this.querySelector('.ps-chev').style.opacity='1'" onmouseout="this.querySelector('.ps-chev').style.opacity='0.4'">
+        <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;">Tracking <span style="opacity:0.6">${tracking.length}</span></div>
+        <span class="ps-chev" style="font-size:0.62rem;color:var(--text-dim);opacity:0.4;transition:opacity 0.15s;">${collapsed?'▸':'▾'}</span>
+      </div>
+      ${collapsed ? '' : tracking.map(e => renderPipelineEntry(e)).join('')}
+    </div>`;
+  }
+
   if (closed.length > 0) {
+    const collapsed = !!_pipelineCollapsed['closed'];
     html += `<div id="pipeline-closed-section" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);margin-bottom:6px;font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
-      ${closed.map(e => renderPipelineEntry(e)).join('')}
+      <div onclick="togglePipelineSection('closed')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${collapsed?'0':'6px'};" onmouseover="this.querySelector('.ps-chev').style.opacity='1'" onmouseout="this.querySelector('.ps-chev').style.opacity='0.4'">
+        <div style="font-size:0.68rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:var(--ls-caps);font-family:'Montserrat',sans-serif;">Closed <span style="opacity:0.6">${closed.length}</span></div>
+        <span class="ps-chev" style="font-size:0.62rem;color:var(--text-dim);opacity:0.4;transition:opacity 0.15s;">${collapsed?'▸':'▾'}</span>
+      </div>
+      ${collapsed ? '' : closed.map(e => renderPipelineEntry(e)).join('')}
     </div>`;
   }
 
   container.insertAdjacentHTML('beforeend', html);
+}
+
+function togglePipelineSection(key) {
+  _pipelineCollapsed[key] = !_pipelineCollapsed[key];
+  renderNetwork();
 }
 
 function renderPipelineEntry(e) {
@@ -12382,23 +12410,119 @@ function renderAccount() {
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
-      <div class="card-label" style="margin-bottom:6px">Siri &amp; iOS Shortcuts</div>
-      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.6;">Add tasks to Show Up with your voice using the iOS Shortcuts app. Say "Hey Siri, add to Show Up" and Siri runs your shortcut automatically.</div>
+      <div class="card-label" style="margin-bottom:6px">User Guide</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">How to get the most out of Show Up. Tap any section to expand.</div>
+
       <details style="margin-bottom:8px;">
-        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Setup guide ▾</summary>
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Daily routine ▾</summary>
         <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
           <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
-            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">One-time setup in iOS Shortcuts app</div>
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Every day in 5 steps</div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">1.</span> Open the <strong>Shortcuts</strong> app → tap <strong>+</strong> to create a new shortcut</div>
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">2.</span> Add action: <strong>Ask for Input</strong> — set prompt to "What's the task?"</div>
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">3.</span> Add action: <strong>Open URL</strong> — paste this URL:</div>
-              <div style="background:var(--bg);border-radius:2px;padding:8px 10px;font-family:monospace;font-size:0.68rem;color:var(--text);word-break:break-all;border:1px solid var(--border);">${location.origin + location.pathname}?add=<span style="color:var(--amber);">[Provided Input]</span>&amp;cat=personal&amp;today=1</div>
-              <div style="font-size:0.66rem;color:var(--text-dim);">Replace <code style="color:var(--amber);">[Provided Input]</code> with the Shortcut variable from step 2. Set <code>cat=</code> to: apply, followup, network, research, admin, personal, or schedule. Add <code>&amp;today=1</code> to pin it to today's focus.</div>
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">4.</span> Name it <strong>"Add to Show Up"</strong> and enable <strong>Add to Siri</strong></div>
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">5.</span> Record your phrase, e.g. <em>"Add to Show Up"</em></div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">1.</span> <strong>Check in</strong> on the Today tab — set your energy level (Light, Regular, Full Send, or Rest Day) to calibrate your day.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">2.</span> <strong>Pin focus tasks</strong> — tap the star on any task to move it into Today's Focus. Aim for 1–3.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">3.</span> <strong>Work your list</strong> — check tasks off as you go. Use the focus timer for deep work sessions.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">4.</span> <strong>Log habits</strong> — workout, journaling, time outside — from the habit row in Today.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">5.</span> <strong>Log your win</strong> — one small thing that went well. Keeps momentum through a long search.</div>
             </div>
-            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:0.66rem;color:var(--text-dim);">After setup, say "Hey Siri, Add to Show Up" → dictate your task → it appears here instantly.</div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:0.66rem;color:var(--text-dim);">Checking in each day builds your streak. The 2-day grace rule means missing one day doesn't reset it.</div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Adding &amp; managing tasks ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Categories &amp; XP</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-bottom:14px;">
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">A</span><span>Apply — send an application (50 XP)</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">F</span><span>Follow Up — after an interview or intro (30 XP)</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">N</span><span>Network — reach out or meet someone (25 XP)</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">R</span><span>Research — company or role research (20 XP)</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">S</span><span>Schedule — set up a meeting or call (15 XP)</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">Ad</span><span>Admin — logistics, non-search tasks</span>
+              <span style="font-weight:700;color:var(--amber);font-family:'Montserrat',sans-serif;">Pe</span><span>Personal — anything else</span>
+            </div>
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Effort &amp; scheduling</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>Set <strong>effort points</strong> (1–5) on each task — the sprint bar in Tasks shows your weekly load vs. capacity.</div>
+              <div>Tap the <strong>📅 button</strong> on any task card to schedule it for a future date. It disappears from Today until that day arrives.</div>
+              <div>High-effort tasks (4–5 pts) prompt you to add <strong>subtasks</strong> automatically. Break big tasks into steps so the next action is always clear.</div>
+              <div>Tag any task to a <strong>life area</strong> or <strong>week goal</strong> from the edit modal.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Logging meetings &amp; follow-ups ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div><span style="font-weight:700;color:var(--amber);">From the calendar —</span> tap <strong>＋ log meeting</strong> next to any event in Today's schedule. The wizard auto-detects the meeting type and generates relevant follow-up tasks.</div>
+              <div><span style="font-weight:700;color:var(--amber);">From a contact —</span> open their card in the Contacts tab → tap <strong>↳ Log meeting</strong>. Pre-fills their name and links the interaction to their timeline.</div>
+              <div><span style="font-weight:700;color:var(--amber);">From the pipeline —</span> interview-stage entries show a <strong>＋ Log follow-up</strong> button directly on the card.</div>
+              <div><span style="font-weight:700;color:var(--amber);">For a past meeting —</span> use the contact card or pipeline entry. The log modal has a date field you can adjust to reflect when the meeting actually happened.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Pipeline ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Stages</div>
+            <div style="margin-bottom:12px;">Tracking → Applied → Phone Screen → Interview → Offer → Closed. Move entries between stages using the selector inside each card.</div>
+            <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Prep &amp; debrief</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>Each entry has a <strong>Prep tab</strong> — paste a job description or notes and the AI parses it into interviewers, STAR stories, questions to ask, and talking points (requires API key).</div>
+              <div>Use the <strong>Debrief tab</strong> after each round to capture what went well, what was hard, and next steps while it's still fresh.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Network &amp; contacts ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>Add contacts in the <strong>People tab</strong>. Set a <strong>next outreach date</strong> on each contact — Show Up surfaces them as overdue or due-soon in a filter at the top.</div>
+              <div>Each contact card has a <strong>Log interaction</strong> button (date, method, notes). Interactions build a timeline so you know exactly where each relationship stands.</div>
+              <div>The <strong>Companies tab</strong> tracks target employers with status, industry, notes, linked contacts, and applied jobs. Use <strong>Company Headlines</strong> (AI) inside any company card to pull recent news before an interview.</div>
+              <div>People, Pipeline, and Companies are fully cross-linked — tap any name to jump directly to the relevant card in the other tab.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">The Coach ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>The Coach runs adaptive skill sessions on ad tech, programmatic, and digital media topics. Add your Claude API key in <strong>Account → The Coach</strong> to enable it.</div>
+              <div><strong>First session:</strong> describe what you already know. The Coach calibrates its starting difficulty to your level.</div>
+              <div><strong>Return sessions:</strong> harder questions targeting your weak spots from last time. Each session logs your score, level assessment, and recommended next focus.</div>
+              <div>Session history is visible before you start — so you can see your score trend and pick up exactly where you left off.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-bottom:8px;">
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Tips &amp; shortcuts ▾</summary>
+        <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
+          <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div><span style="font-weight:700;color:var(--amber);">Add to Home Screen —</span> on iOS, tap Share → Add to Home Screen for a full-screen, app-like experience with no browser chrome.</div>
+              <div><span style="font-weight:700;color:var(--amber);">URL task import —</span> add tasks via URL: <code style="font-size:0.65rem;background:var(--bg);padding:2px 5px;border-radius:2px;border:1px solid var(--border);">?add=Task+text&amp;cat=apply&amp;today=1</code>. Categories: apply, followup, network, research, admin, personal, schedule.</div>
+              <div><span style="font-weight:700;color:var(--amber);">Undo —</span> accidentally checked off a task? Tap <strong>Undo</strong> in the toast that appears immediately after completing it.</div>
+              <div><span style="font-weight:700;color:var(--amber);">Cloud sync —</span> sign in with Google (top of this tab) to sync across devices. Your local data is never wiped — sync merges it.</div>
+              <div><span style="font-weight:700;color:var(--amber);">Export —</span> Account → Data &amp; Privacy → Export downloads a full JSON backup of everything on this device.</div>
+            </div>
           </div>
         </div>
       </details>
