@@ -7881,13 +7881,42 @@ function renderJDHighlights(h) {
         <div style="font-size:0.78rem;color:${highlight?'var(--amber)':'var(--text-mid)'};line-height:1.4;flex:1;">${escHtml(val)}</div>
       </div>`
     : '';
+
+  let compRow = '', totalCashRow = '', bonusRow = '';
+  const bNotes = h.bonusNotes || h.bonus || null;
+
+  if (h.compIsTotal) {
+    // Stated comp already is total cash — surface it as such
+    totalCashRow = row('Total cash', h.comp, true);
+    if (bNotes) bonusRow = row('Bonus', bNotes, false);
+  } else if (h.comp) {
+    compRow = row('Base salary', h.comp, true);
+    if (h.bonusPercent && h.compLow) {
+      // Calculate estimated total cash comp
+      const mult = 1 + (h.bonusPercent / 100);
+      const tcLow = Math.round(h.compLow * mult / 1000) * 1000;
+      const tcHigh = h.compHigh ? Math.round(h.compHigh * mult / 1000) * 1000 : null;
+      const fmt = n => `$${Math.round(n / 1000)}K`;
+      const tcText = tcHigh
+        ? `${fmt(tcLow)} – ${fmt(tcHigh)}  (base + ${h.bonusPercent}% bonus)`
+        : `~${fmt(tcLow)}  (base + ${h.bonusPercent}% bonus)`;
+      totalCashRow = row('Total cash', tcText, true);
+    } else if (bNotes) {
+      bonusRow = row('Bonus', bNotes, false);
+    }
+  } else if (bNotes) {
+    bonusRow = row('Bonus', bNotes, false);
+  }
+
+  const healthcareDisplay = h.healthcarePremiums || h.healthcare || null;
+
   return `<div style="margin-top:8px;border:1px solid var(--amber-ring);border-radius:3px;padding:6px 10px;background:var(--amber-lt);">
     <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;font-weight:600;">JD Key Details</div>
-    ${row('Compensation', h.comp, true)}
-    ${row('Comp type', h.compType, false)}
+    ${compRow}
+    ${totalCashRow}
+    ${bonusRow}
     ${row('In-office', h.officeDays, false)}
-    ${row('Healthcare', h.healthcare, false)}
-    ${row('Bonus', h.bonus, false)}
+    ${row('Healthcare', healthcareDisplay, false)}
   </div>`;
 }
 
@@ -7943,15 +7972,19 @@ async function analyzeJDDetails(id) {
     ? text.slice(0, 7000) + '\n[...]\n' + text.slice(-3000)
     : text;
   const prompt = `Analyze this job description and extract key candidate-facing details. Return ONLY a JSON object with these keys:
-- "comp": compensation range if mentioned (e.g. "$120K–$160K"), or null
-- "compType": "Base salary", "Total compensation (base + bonus)", "Base + equity", or describe what's stated — or null if unclear
-- "officeDays": office requirement (e.g. "Fully remote", "Hybrid — 3 days/week in NYC", "Fully in-office"), or null
-- "healthcare": "100% covered by employer" if stated, "Offered (employee contribution not specified)", or null if not mentioned
-- "bonus": describe bonus/incentive structure if mentioned (e.g. "Annual performance bonus mentioned", "No bonus mentioned"), or null
+- "comp": compensation range exactly as written in the JD (e.g. "$120K–$160K base"), or null if not mentioned
+- "compLow": low end of comp range as a plain integer in USD (e.g. 120000), or null
+- "compHigh": high end of comp range as a plain integer in USD (e.g. 160000), or null
+- "compIsTotal": true if the stated comp is explicitly total compensation or OTE (already includes bonus/incentive), false if it's base salary or ambiguous
+- "compType": brief label — "Base salary", "Total compensation", "OTE", or what's stated — or null
+- "bonusPercent": target bonus as a plain number if explicitly stated as a percentage (e.g. 15 for "15% target annual bonus"), or null
+- "bonusNotes": concise description of bonus/incentive structure if mentioned (e.g. "15% target annual performance bonus", "Discretionary bonus"), or null if none mentioned
+- "officeDays": office/remote requirement (e.g. "Fully remote", "Hybrid — 3 days/week in NYC"), or null
+- "healthcarePremiums": specific monthly premium coverage if stated (e.g. "100% employer-paid for employee + family", "Employee premiums fully covered, dependents at employee cost"), or null if not mentioned
 
 Job description:
 ${textForAnalysis}`;
-  const result = await callClaude(prompt, { maxTokens: 400 });
+  const result = await callClaude(prompt, { maxTokens: 500 });
   if (!result.ok || !result.json) { showToast('Analysis failed — try again'); return; }
   e.jdHighlights = result.json;
   save();
