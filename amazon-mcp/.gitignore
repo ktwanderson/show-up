@@ -1,0 +1,7 @@
+node_modules/
+dist/
+
+# IMPORTANT: never commit your Amazon session cookies
+~/.config/amazon-mcp/
+session.json
+*.json.bak
