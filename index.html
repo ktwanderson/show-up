@@ -9020,7 +9020,6 @@ function renderProgress() {
     </div>` : '';
 
   // ── Pipeline velocity ──
-  const todayStr = todayLocal();
   const activePipe = (S.pipeline||[]).filter(e => !['rejected','withdrawn'].includes(e.stage));
   const pipelineVelocityHTML = (() => {
     if (activePipe.length === 0) return '';
