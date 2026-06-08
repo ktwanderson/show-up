@@ -12999,7 +12999,7 @@ function initGCalClient() {
   if (!clientId || !window.google?.accounts?.oauth2) return;
   _gCalTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
-    scope: 'https://www.googleapis.com/auth/calendar.events.readonly',
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
     callback: (response) => {
       if (response.error) { showToast('Calendar auth failed · check your Client ID'); return; }
       _gCalAccessToken = response.access_token;
