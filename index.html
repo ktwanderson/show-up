@@ -3071,6 +3071,28 @@ function initPin() {
     if (e.key >= '0' && e.key <= '9') { pinPress(e.key); e.preventDefault(); }
     else if (e.key === 'Backspace') { pinBack(); e.preventDefault(); }
   });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      triggerGlobalUndo();
+    }
+  });
+}
+
+function triggerGlobalUndo() {
+  const toast = document.getElementById('toast');
+  if (_lastDeletedTask)        { undoDeleteTask();        return; }
+  if (_lastDeletedContact)     { undoDeleteContact();     return; }
+  if (_lastDeletedPipeline)    { undoDeletePipeline();    return; }
+  if (_lastDeletedInteraction) { undoDeleteInteraction(); return; }
+  // Check if a "done ✓ · Undo" toast is showing (task completion undo)
+  if (toast && toast.classList.contains('show') && toast.innerHTML.includes('undoCompleteTask')) {
+    const match = toast.innerHTML.match(/undoCompleteTask\((\d+),(\d+)\)/);
+    if (match) { undoCompleteTask(+match[1], +match[2]); return; }
+  }
+  showToast('Nothing to undo');
 }
 
 function pinPress(digit) {
@@ -8077,11 +8099,29 @@ function saveNewPipelineEntry() {
   switchTab('network');
 }
 
+let _lastDeletedPipeline = null;
 function deletePipelineEntry(id) {
+  const entry = S.pipeline.find(x => x.id === id);
+  if (!entry) return;
+  _lastDeletedPipeline = { ...entry };
   S.pipeline = S.pipeline.filter(x => x.id !== id);
   pipelineOpenId = null;
   save();
   renderNetwork();
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = `Job removed · <span onclick="undoDeletePipeline()" style="text-decoration:underline;cursor:pointer">Undo</span>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4500);
+  }
+}
+function undoDeletePipeline() {
+  if (!_lastDeletedPipeline) return;
+  S.pipeline.push(_lastDeletedPipeline);
+  _lastDeletedPipeline = null;
+  save();
+  renderNetwork();
+  showToast('Job restored');
 }
 
 function openPrepReview(id) {
@@ -8979,6 +9019,60 @@ function renderProgress() {
         </div>`).join('')}
     </div>` : '';
 
+  // ── Pipeline velocity ──
+  const todayStr = todayLocal();
+  const activePipe = (S.pipeline||[]).filter(e => !['rejected','withdrawn'].includes(e.stage));
+  const pipelineVelocityHTML = (() => {
+    if (activePipe.length === 0) return '';
+    const daysSince = (dateStr) => {
+      if (!dateStr) return null;
+      const diff = new Date(todayStr) - new Date(dateStr);
+      return Math.floor(diff / 86400000);
+    };
+    const stageOrder = ['prospect','applied','phone','interview1','interview2','interview3','interview4','interview5','final','offer'];
+    const rows = activePipe.map(e => {
+      const hist = e.stageHistory || [];
+      const stageEntry = hist.find(h => h.stage === e.stage);
+      const days = stageEntry ? daysSince(stageEntry.date) : (e.addedAt ? Math.floor((Date.now() - e.addedAt) / 86400000) : null);
+      const stageInfo = PIPELINE_STAGES.find(s => s.key === e.stage) || PIPELINE_STAGES[0];
+      const stalled = days !== null && days >= 7;
+      return { e, days, stageInfo, stalled };
+    }).sort((a, b) => (b.days||0) - (a.days||0));
+
+    // Avg days per stage across completed transitions
+    const transitions = [];
+    (S.pipeline||[]).forEach(e => {
+      const hist = (e.stageHistory||[]).slice().sort((a,b) => new Date(a.date)-new Date(b.date));
+      for (let i = 1; i < hist.length; i++) {
+        const d = daysSince(hist[i-1].date) - daysSince(hist[i].date);
+        if (d >= 0) transitions.push(d);
+      }
+    });
+    const avgTransition = transitions.length >= 2 ? Math.round(transitions.reduce((a,v)=>a+v,0)/transitions.length) : null;
+
+    const followupTasks = (S.tasks||[]).filter(t => t.cat === 'followup');
+    const followupDone = followupTasks.filter(t => t.done).length;
+    const followupPct = followupTasks.length >= 3 ? Math.round(followupDone / followupTasks.length * 100) : null;
+
+    const stalledRows = rows.filter(r => r.stalled);
+
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Pipeline momentum</div>
+      ${avgTransition !== null ? `<div style="font-size:0.78rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);">Avg time between stage moves: <strong>${avgTransition} day${avgTransition!==1?'s':''}</strong></div>` : ''}
+      ${followupPct !== null ? `<div style="font-size:0.78rem;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);">Follow-up task completion: <strong>${followupPct}%</strong> <span style="color:var(--text-dim);font-size:0.7rem;">(${followupDone} of ${followupTasks.length})</span></div>` : ''}
+      ${stalledRows.length > 0 ? `
+        <div style="font-size:0.7rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);margin-top:10px;margin-bottom:6px;">Stalled (7+ days in stage)</div>
+        ${stalledRows.map(r => `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <span style="width:6px;height:6px;border-radius:50%;background:${r.stalled&&r.days>=14?'var(--red,#c84b4b)':'var(--amber)'};flex-shrink:0;display:inline-block;"></span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:0.82rem;color:var(--text);font-weight:500;">${escHtml(r.e.role||'Role TBD')} · ${escHtml(r.e.company||'')}</div>
+              <div style="font-size:0.68rem;color:var(--text-dim);">${escHtml(r.stageInfo.label)} · ${r.days} day${r.days!==1?'s':''}</div>
+            </div>
+          </div>`).join('')}` : (activePipe.length > 0 ? `<div style="font-size:0.78rem;color:var(--text-mid);padding:5px 0;">All active jobs moved in the last 7 days — good velocity.</div>` : '')}
+    </div>`;
+  })();
+
   // ── Recommendations ──
   const recs = [];
   const totalDoneAll = (S.doneBy ? Object.values(S.doneBy).reduce((a,v)=>a+v,0) : 0);
@@ -8990,6 +9084,10 @@ function renderProgress() {
   if ((S.contacts||[]).length === 0) recs.push('Add your first contact to track who\'s in your network. Warm connections often matter more than applications.');
   if (totalSnapDays >= 14 && (S.doneBy?.apply||0) === 0) recs.push('No applications logged yet. Even one per week keeps your momentum visible and your skills sharp.');
   if (avgWithFocus !== null && avgNoFocus !== null && avgWithFocus <= avgNoFocus) recs.push('Focus sessions aren\'t boosting your task count yet — try pairing the timer with your hardest task of the day.');
+  const stalledCount = activePipe.filter(e => { const h = (e.stageHistory||[]).find(x=>x.stage===e.stage); const d = h ? Math.floor((new Date(todayStr)-new Date(h.date))/86400000) : null; return d !== null && d >= 14; }).length;
+  if (stalledCount > 0) recs.push(`${stalledCount} pipeline job${stalledCount!==1?'s have':' has'} been in the same stage for 2+ weeks — send a check-in or move it to closed to keep your pipeline honest.`);
+  const followupAll = (S.tasks||[]).filter(t=>t.cat==='followup');
+  if (followupAll.length >= 5) { const pct = Math.round(followupAll.filter(t=>t.done).length/followupAll.length*100); if (pct < 60) recs.push(`Only ${pct}% of your follow-up tasks are getting done. Try scheduling them the moment you log a meeting.`); }
   const recsHTML = recs.length > 0 ? `
     <div class="card">
       <div class="card-label" style="margin-bottom:12px;">Recommendations</div>
@@ -9021,6 +9119,7 @@ function renderProgress() {
     ${funnelHTML}
     ${catBreakdownHTML}
     ${topContactsHTML}
+    ${pipelineVelocityHTML}
     ${recsHTML}
 
     <div class="card">
@@ -9826,10 +9925,14 @@ function _lmStep2(search) {
     return !query || name.includes(query) || co.includes(query);
   }).slice(0, 8);
 
-  // Pipeline entries matching event title (company name heuristic)
+  // Pipeline entries matching — active only, prefer contact's company when selected
   const titleWords = _lm.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const selectedContact = _lm.contactId ? (S.contacts || []).find(c => c.id === _lm.contactId) : null;
+  const activePipeline = (S.pipeline || []).filter(j => !['rejected','withdrawn'].includes(j.stage));
   const linkedJobs = (_lm.type === 'interview' || _lm.type === 'phone')
-    ? (S.pipeline || []).filter(j => titleWords.some(w => (j.company||'').toLowerCase().includes(w) || (j.role||'').toLowerCase().includes(w))).slice(0, 4)
+    ? (selectedContact
+        ? activePipeline.filter(j => (j.company||'').toLowerCase() === (selectedContact.company||'').toLowerCase()).slice(0, 4)
+        : activePipeline.filter(j => titleWords.some(w => (j.company||'').toLowerCase().includes(w) || (j.role||'').toLowerCase().includes(w))).slice(0, 4))
     : [];
 
   const contactRows = filtered.length
@@ -11097,20 +11200,36 @@ function saveInteractionEdit(contactId, index) {
   showToast('Interaction updated ✓');
 }
 
+let _lastDeletedInteraction = null;
 function deleteInteraction(contactId, index) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c || !c.interactions[index]) return;
-  const ix = c.interactions[index];
-  const label = parseLocalDate(ix.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  showModal(`
-    <div style="text-align:left">
-      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Delete interaction?</div>
-      <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">Remove the ${escHtml(label)} entry${ix.method ? ' (' + escHtml(ix.method) + ')' : ''}? This can't be undone.</div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.85rem;cursor:pointer;color:var(--text-mid);">Cancel</button>
-        <button onclick="closeModal();confirmDeleteInteraction(${contactId},${index})" style="flex:1;padding:10px;background:var(--red,var(--destructive));color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;">Delete</button>
-      </div>
-    </div>`);
+  _lastDeletedInteraction = { contactId, index, data: { ...c.interactions[index] }, prevLastContact: c.lastContact };
+  c.interactions.splice(index, 1);
+  if (c.interactions.length > 0) c.lastContact = c.interactions[0].date;
+  _editingInteraction = null;
+  save();
+  networkOpenId = contactId;
+  renderNetwork();
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = `Interaction removed · <span onclick="undoDeleteInteraction()" style="text-decoration:underline;cursor:pointer">Undo</span>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4500);
+  }
+}
+function undoDeleteInteraction() {
+  if (!_lastDeletedInteraction) return;
+  const { contactId, index, data, prevLastContact } = _lastDeletedInteraction;
+  const c = S.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  c.interactions.splice(index, 0, data);
+  c.lastContact = prevLastContact;
+  _lastDeletedInteraction = null;
+  save();
+  networkOpenId = contactId;
+  renderNetwork();
+  showToast('Interaction restored');
 }
 
 function confirmDeleteInteraction(contactId, index) {
@@ -12404,6 +12523,24 @@ function renderAccount() {
           ${localStorage.getItem('showup_gcal_connected') === '1' ? `<button onclick="disconnectGCal()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.68rem;padding:6px 4px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">Disconnect</button>` : ''}
         </div>
         ${localStorage.getItem('showup_gcal_connected') === '1' ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:7px;">Connected · events sync to your Today tab daily</div>` : ''}
+        ${(() => {
+          if (localStorage.getItem('showup_gcal_connected') !== '1') return '';
+          const cals = JSON.parse(localStorage.getItem('showup_gcal_calendars') || '[]');
+          const selected = JSON.parse(localStorage.getItem('showup_gcal_selected') || '[]');
+          if (cals.length === 0) return `<button onclick="fetchGCalCalendars()" style="margin-top:10px;background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;text-decoration:underline;">Load calendars to customize sync</button>`;
+          return `<div style="margin-top:12px;">
+            <div style="font-size:0.72rem;color:var(--text);font-weight:500;margin-bottom:6px;">Calendars to sync</div>
+            ${cals.map(c => {
+              const on = selected.includes(c.id);
+              return `<div onclick="toggleGCalCalendar('${c.id.replace(/'/g,"\\'")}')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;">
+                <div style="width:13px;height:13px;border-radius:2px;border:1px solid ${on?'var(--amber)':'var(--border)'};background:${on?'var(--amber)':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                  ${on?'<span style="font-size:9px;color:var(--text-inverse);line-height:1;">✓</span>':''}
+                </div>
+                <span style="font-size:0.78rem;color:var(--text-mid);">${escHtml(c.summary)}${c.primary?' <span style="font-size:0.65rem;color:var(--text-dim);">(primary)</span>':''}</span>
+              </div>`;
+            }).join('')}
+          </div>`;
+        })()}
         <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
           <div style="font-size:0.75rem;color:var(--text);font-weight:500;margin-bottom:3px;">Gmail Drafts</div>
           <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:8px;">Save email drafts directly to Gmail. Uses the same Client ID above — you'll approve the Gmail scope once.</div>
@@ -12890,39 +13027,82 @@ function connectGCal() {
   _gCalTokenClient.requestAccessToken({ prompt: '' });
 }
 
+async function fetchGCalCalendars() {
+  if (!_gCalAccessToken || Date.now() > _gCalTokenExpiry) { connectGCal(); return; }
+  try {
+    const resp = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=50',
+      { headers: { Authorization: `Bearer ${_gCalAccessToken}` } }
+    );
+    if (!resp.ok) throw new Error('CalendarList API error ' + resp.status);
+    const data = await resp.json();
+    const cals = (data.items || []).map(c => ({ id: c.id, summary: c.summary || c.id, primary: !!c.primary }));
+    localStorage.setItem('showup_gcal_calendars', JSON.stringify(cals));
+    // Default: select primary only if nothing selected yet
+    if (!localStorage.getItem('showup_gcal_selected')) {
+      const primaryId = (cals.find(c => c.primary) || cals[0] || {}).id;
+      if (primaryId) localStorage.setItem('showup_gcal_selected', JSON.stringify([primaryId]));
+    }
+    renderAccount();
+  } catch(e) {
+    console.error('GCal calendar list error:', e);
+    showToast('Could not load calendar list');
+  }
+}
+
+function toggleGCalCalendar(id) {
+  const selected = JSON.parse(localStorage.getItem('showup_gcal_selected') || '[]');
+  const idx = selected.indexOf(id);
+  if (idx === -1) selected.push(id); else selected.splice(idx, 1);
+  localStorage.setItem('showup_gcal_selected', JSON.stringify(selected));
+  renderAccount();
+  if (selected.length > 0) fetchGCalEvents();
+}
+
 async function fetchGCalEvents() {
   if (!_gCalAccessToken || Date.now() > _gCalTokenExpiry) { connectGCal(); return; }
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const end   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+  const selected = JSON.parse(localStorage.getItem('showup_gcal_selected') || '["primary"]');
+  const calIds = selected.length > 0 ? selected : ['primary'];
+  const parseEvent = (e) => {
+    let time = 'All day';
+    if (e.start.dateTime) {
+      const d = new Date(e.start.dateTime);
+      time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+    const attendees = (e.attendees || [])
+      .filter(a => !a.self)
+      .map(a => (a.displayName || a.email || '').trim())
+      .filter(Boolean);
+    return {
+      time,
+      title: e.summary || '(No title)',
+      link: e.htmlLink || null,
+      description: (e.description || '').replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 1200),
+      attendees,
+    };
+  };
   try {
-    const resp = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events` +
-      `?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}` +
-      `&singleEvents=true&orderBy=startTime&maxResults=20`,
-      { headers: { Authorization: `Bearer ${_gCalAccessToken}` } }
-    );
-    if (resp.status === 401) { _gCalAccessToken = null; connectGCal(); return; }
-    if (!resp.ok) throw new Error('Calendar API error ' + resp.status);
-    const data = await resp.json();
-    S.todayCalEvents = (data.items || []).filter(e => e.start).map(e => {
-      let time = 'All day';
-      if (e.start.dateTime) {
-        const d = new Date(e.start.dateTime);
-        time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      }
-      const attendees = (e.attendees || [])
-        .filter(a => !a.self)
-        .map(a => (a.displayName || a.email || '').trim())
-        .filter(Boolean);
-      return {
-        time,
-        title: e.summary || '(No title)',
-        link: e.htmlLink || null,
-        description: (e.description || '').replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 1200),
-        attendees,
-      };
-    });
+    const allEvents = [];
+    for (const calId of calIds) {
+      const resp = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events` +
+        `?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}` +
+        `&singleEvents=true&orderBy=startTime&maxResults=20`,
+        { headers: { Authorization: `Bearer ${_gCalAccessToken}` } }
+      );
+      if (resp.status === 401) { _gCalAccessToken = null; connectGCal(); return; }
+      if (!resp.ok) { console.warn('Calendar fetch error for', calId, resp.status); continue; }
+      const data = await resp.json();
+      (data.items || []).filter(e => e.start).forEach(e => allEvents.push(parseEvent(e)));
+    }
+    // Sort merged events by time
+    allEvents.sort((a, b) => a.time.localeCompare(b.time));
+    S.todayCalEvents = allEvents;
+    // Fetch calendar list in background so Account UI can show picker
+    if (!localStorage.getItem('showup_gcal_calendars')) fetchGCalCalendars();
     save();
     trackEvent('gcal_sync', { event_count: S.todayCalEvents.length });
     if (currentTab === 'today') renderToday();
