@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.13',
+        release: 'show-up@0.18',
       });
     });
   </script>
@@ -2640,6 +2640,26 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.18',
+    date: '2026-06-11',
+    items: [
+      'Today — calendar, reach out, reconnect, suggested, and weekly goals sections are now collapsible',
+      'Today — "not today" button on follow-up and reconnect nudges hides them until tomorrow',
+      'Today — wins log moved off Today tab; lives only in Close Out the Day',
+      'Today — supportive message appears after 3+ consecutive low-energy days',
+      'Pipeline — log meeting wizard only shows active jobs (not closed) and matches by contact\'s company',
+      'Pipeline — deleting a job now shows a toast with Undo',
+      'Contacts — deleting an interaction now shows a toast with Undo (no longer permanent)',
+      'Undo — ⌘Z / Ctrl+Z globally undoes the last delete or task completion',
+      'Rejections — shows your interview rate and context after logging a rejection',
+      'Progress — new "Your search so far" card with applications, interviews, conversations, and wins',
+      'Progress — new timeline showing your search milestones from first application to today',
+      'Progress — new "How long does this take?" card with industry benchmarks and personalized context',
+      'Progress — new Pipeline Momentum card with stalled jobs, avg stage velocity, and follow-up rate',
+      'Calendar sync — multi-calendar support: pick which calendars to sync in Account settings',
+    ],
+  },
+  {
     version: '0.17',
     date: '2026-05-18',
     items: [
@@ -3573,19 +3593,25 @@ function renderToday() {
   const _focusIdSet = new Set(S.todayFocusIds);
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean)
     .filter(t => !(t.parentId && _focusIdSet.has(t.parentId)));
-  const recentWins = [...S.wins].reverse().slice(0, 5);
-
   const sessionDots = Array.from({ length: Math.max(4, S.focusBlocksToday + 1) }, (_, i) =>
     `<div class="sdot ${i < S.focusBlocksToday ? 'done' : ''}"></div>`
   ).join('');
 
-  const winsHtml = recentWins.length > 0
-    ? recentWins.map(w => `
-        <div class="win-entry">
-          <div class="win-date">${fmtWinDate(w.date)}</div>
-          <div style="color:var(--text-mid)">${escHtml(w.text)}</div>
-        </div>`).join('')
-    : `<div style="font-size:0.77rem;color:var(--text-dim);padding:8px 0">Nothing logged yet. Even a tiny thing counts.</div>`;
+  const recentDayEnergies = (() => {
+    const result = [];
+    for (let i = 1; i <= 5; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const entry = S.showUpDays.find(x => x.date === d.toDateString());
+      if (entry) result.push(entry.energy); else break;
+    }
+    return result;
+  })();
+  const hardStreak = recentDayEnergies.length >= 3 && recentDayEnergies.every(e => e === 'light' || e === 'rest');
+  const hardDayHtml = (hardStreak && (S.todayEnergy === 'light' || S.todayEnergy === 'rest')) ? `
+    <div style="margin-bottom:16px;padding:14px 16px;background:var(--surface2);border-left:3px solid var(--teal);border-radius:2px;">
+      <div style="font-size:0.72rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;margin-bottom:6px;">A few quiet days in a row.</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;">That's allowed. Job searching is emotionally hard in a way most people don't acknowledge. Showing up at all — even lightly — is the work. What's one small thing that would feel like a win today?</div>
+    </div>` : '';
 
   const _hasPlan = getCurrentWeekPlan() && (getCurrentWeekPlan().goals||[]).filter(Boolean).length > 0;
   const weekPlannerHtml = (shouldShowWeekPlanner() || _weekPlanEditing)
@@ -3595,8 +3621,16 @@ function renderToday() {
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
   const calContactNudges = getCalendarContactNudges();
   const todayIso = new Date().toISOString().slice(0,10);
-  const followUpNudgesHtml = followUpNudges.length > 0 ? `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
-    <div class="card-label" style="margin-bottom:12px;">Reach out</div>
+  const followUpNudgesHtml = (() => {
+    if (followUpNudges.length === 0) return '';
+    const collapsed = _todayCollapsed('reachout');
+    const hdr = `<div onclick="_todayToggle('reachout')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${collapsed?'0':'12px'};">
+      <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Reach out · ${followUpNudges.length}</span>
+      <span style="font-size:0.6rem;color:var(--text-dim);">${collapsed ? '▾' : '▴'}</span>
+    </div>`;
+    if (collapsed) return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">${hdr}</div>`;
+    return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">
+    ${hdr}
     ${followUpNudges.map(c => {
       const isToday = c.nextContactDate === todayIso;
       const isPast = c.nextContactDate < todayIso;
@@ -3611,17 +3645,38 @@ function renderToday() {
           </div>
           <div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isPast?'var(--red)':isToday?'var(--teal)':'var(--text-dim)'};">${label}</div>
         </div>
+        <button onclick="hideNudgeTomorrow(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--text-dim)'" onmouseout="this.style.borderColor='var(--border)'">not today</button>
         <button onclick="dismissFollowUpNudge(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Done ✓</button>
       </div>`;
     }).join('')}
-  </div>` : '';
+  </div>`;
+  })();
 
   wrap.innerHTML = `
-    ${weekPlannerHtml}${weekReviewHtml}
+    ${(weekPlannerHtml || weekReviewHtml) ? (() => {
+      const collapsed = _todayCollapsed('weekgoals');
+      const hdr = '<div onclick="_todayToggle(\'weekgoals\')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:8px;">'
+        + '<span style="font-size:0.6rem;font-family:\'Montserrat\',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Weekly Goals</span>'
+        + '<span style="font-size:0.6rem;color:var(--text-dim);">' + (collapsed ? '▾' : '▴') + '</span>'
+        + '</div>';
+      return hdr + (collapsed ? '' : weekPlannerHtml + weekReviewHtml);
+    })() : ''}
     ${(function() {
       const hasEvents = S.todayCalEvents && S.todayCalEvents.length > 0;
       const gcalConfigured = !!localStorage.getItem('showup_gcal_client_id');
       if (!hasEvents && !gcalConfigured) return '';
+
+      const calCollapsed = _todayCollapsed('cal');
+      const eventCount = hasEvents ? S.todayCalEvents.length : 0;
+      const countBadge = eventCount > 0 ? ` · ${eventCount}` : '';
+      const calHeader = '<div onclick="_todayToggle(\'cal\')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:8px;">'
+        + '<span style="font-size:0.6rem;font-family:\'Montserrat\',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Today\'s schedule' + countBadge + '</span>'
+        + '<span style="font-size:0.6rem;color:var(--text-dim);">' + (calCollapsed ? '▾' : '▴') + '</span>'
+        + '</div>';
+
+      if (calCollapsed) {
+        return '<div style="margin-bottom:20px;">' + calHeader + '</div>';
+      }
 
       const syncBtn = gcalConfigured
         ? '<button onclick="connectGCal()" style="background:none;border:none;color:var(--amber);font-size:0.72rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0;transition:opacity 0.15s;" onmouseover="this.style.opacity=\'0.65\'" onmouseout="this.style.opacity=\'1\'">↻ Sync</button>'
@@ -3629,10 +3684,8 @@ function renderToday() {
 
       if (!hasEvents) {
         return '<div style="margin-bottom:20px;">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
-          + '<div class="card-label">Today\'s schedule</div>'
-          + syncBtn
-          + '</div>'
+          + calHeader
+          + '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px;">' + syncBtn + '</div>'
           + '<div style="font-size:0.78rem;color:var(--text-dim);padding:4px 0;">No events loaded — tap Sync to pull from Google Calendar.</div>'
           + '</div>';
       }
@@ -3666,12 +3719,10 @@ function renderToday() {
         return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);' + (isPast ? 'opacity:0.45;' : '') + '">' + rowInner + '</div>';
       }).join('');
       return '<div style="margin-bottom:20px;">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
-        + '<div class="card-label">Today\'s schedule</div>'
-        + '<div style="display:flex;gap:10px;align-items:center;">'
+        + calHeader
+        + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:4px;">'
         + syncBtn
         + '<button onclick="S.todayCalEvents=[];save();renderToday()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;cursor:pointer;font-family:\'Montserrat\',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-dim)\'">Clear</button>'
-        + '</div>'
         + '</div>'
         + rows
         + '</div>';
@@ -3683,6 +3734,8 @@ function renderToday() {
       </div>
       <button onclick="resetCheckin()" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;padding:4px 0;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em">Change</button>
     </div>
+
+    ${hardDayHtml}
 
     ${(function() {
       const interviews = getInterviewEvents();
@@ -3758,9 +3811,13 @@ function renderToday() {
       if (isRest) return '';
       const suggestions = getSmartSuggestions ? getSmartSuggestions() : [];
       if (suggestions.length === 0) return '';
+      const suggestCollapsed = _todayCollapsed('suggest');
       return `<div style="margin-top:14px;">
-        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Suggested for today</div>
-        <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
+        <div onclick="_todayToggle('suggest')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${suggestCollapsed?'0':'8px'};">
+          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Suggested for today</span>
+          <span style="font-size:0.6rem;color:var(--text-dim);">${suggestCollapsed ? '▾' : '▴'}</span>
+        </div>
+        ${suggestCollapsed ? '' : `<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
           ${suggestions.map((s,i) => {
             const t = s.task;
             const cat = CATS[t.cat] || {};
@@ -3770,7 +3827,7 @@ function renderToday() {
               <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
             </div>`;
           }).join('')}
-        </div>
+        </div>`}
       </div>`;
     })()}
 
@@ -3926,16 +3983,6 @@ function renderToday() {
       ${S.todayFocusIds.length > 0 ? `<div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Your focus items will be included in the event description.</div>` : ''}
     </div>
 
-    <div class="card">
-      <div class="card-label">Today's win</div>
-      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:9px;margin-top:-4px">One thing that went well — even if small.</div>
-      <div class="add-form" style="margin-bottom:${recentWins.length > 0 ? '10px' : '0'}">
-        <input class="add-input" id="win-input" placeholder="Something that went well today..." onkeydown="if(event.key==='Enter')logWin()">
-        <button class="add-btn" onclick="logWin()" style="font-size:0.9rem">→</button>
-      </div>
-      <div id="wins-list">${winsHtml}</div>
-    </div>
-
     ${overdueContacts.length > 0 ? `
     <div class="nudge-card">
       <div class="card-label" style="margin-bottom:10px">Network check-ins due</div>
@@ -3956,9 +4003,15 @@ function renderToday() {
       ${getOverdueContacts().length > 3 ? `<div style="font-size:0.7rem;color:var(--text-dim);padding-top:8px;cursor:pointer" onclick="switchTab('network');setNetworkFilter('not-recently')">+${getOverdueContacts().length - 3} more \u2192 Network</div>` : ''}
     </div>` : ''}
 
-    ${smartNudges.length > 0 ? `
-    <div class="nudge-card">
-      <div class="card-label" style="margin-bottom:10px">Worth reconnecting</div>
+    ${smartNudges.length > 0 ? (() => {
+      const reconnectCollapsed = _todayCollapsed('reconnect');
+      const reconnectHdr = `<div onclick="_todayToggle('reconnect')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${reconnectCollapsed?'0':'10px'};">
+        <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Worth reconnecting \u00b7 ${smartNudges.length}</span>
+        <span style="font-size:0.6rem;color:var(--text-dim);">${reconnectCollapsed ? '\u25be' : '\u25b4'}</span>
+      </div>`;
+      if (reconnectCollapsed) return `<div class="nudge-card">${reconnectHdr}</div>`;
+      return `<div class="nudge-card">
+      ${reconnectHdr}
       ${smartNudges.map(n => {
         const c = n.contact;
         const daysText = n.days === 0 ? 'no contact logged' : `${n.days}d ago`;
@@ -3978,10 +4031,12 @@ function renderToday() {
           </div>
           <button class="contact-today-btn" onclick="addContactToToday(${c.id})">\u2192 Today</button>
           <button onclick="markContactedToday(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Contacted \u2713</button>
+          <button onclick="hideNudgeTomorrow(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--text-dim)'" onmouseout="this.style.borderColor='var(--border)'">not today</button>
           <button onclick="snoozeNudge(${c.id},14)" style="background:none;border:1px solid var(--border);border-radius:2px;padding:3px 7px;font-size:0.68rem;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;flex-shrink:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">not yet</button>
         </div>`;
       }).join('')}
-    </div>` : ''}
+    </div>`;
+    })() : ''}
 
     ${(() => {
       const areas = S.lifeAreas || {};
@@ -8798,12 +8853,22 @@ function confirmRejection() {
     ? "This is the first one. It won't be the last — and that's okay."
     : `${count} rejections logged. Each one is proof you're in motion.`;
 
+  const totalApps = (S.pipeline || []).filter(j => j.stage !== 'prospect').length + (S.rejectionLog || []).length;
+  const totalInterviews = (S.pipeline || []).filter(j => ['phone','interview1','interview2','interview3','interview4','interview5','final','offer'].includes(j.stage)).length
+    + (S.rejectionLog || []).filter(r => ['phone','interview1','interview2','interview3','interview4','interview5','final'].includes(r.stage)).length;
+  const ratioLine = totalApps >= 3 && totalInterviews > 0
+    ? `${totalInterviews} interview${totalInterviews!==1?'s':''} from ${totalApps} application${totalApps!==1?'s':''} — that's a ${Math.round(totalInterviews/totalApps*100)}% interview rate.`
+    : totalApps >= 5
+    ? `${totalApps} applications in. Keep building pipeline — interviews come in clusters.`
+    : null;
+
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `
     <div style="text-align:center;padding:8px 0">
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:16px">Logged</div>
       <div style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:8px">Your feelings are valid.<br>You're allowed to sit with this.</div>
-      <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:24px">${countLine}</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:${ratioLine?'12px':'24px'}">${countLine}</div>
+      ${ratioLine ? `<div style="font-size:0.78rem;color:var(--teal);line-height:1.6;margin-bottom:12px;padding:8px 12px;background:var(--teal-lt);border-radius:2px;">${ratioLine}</div>` : ''}
       ${_rejQuote ? `<div class="rej-quote" style="font-size:0.82rem;margin-bottom:6px">"${escHtml(_rejQuote.text)}"</div>${_rejQuote.author ? `<div class="rej-author">— ${escHtml(_rejQuote.author)}</div>` : ''}` : ''}
       <button class="modal-btn" onclick="closeModal()">Keep going</button>
     </div>`;
@@ -9093,6 +9158,122 @@ function renderProgress() {
       ${recs.map(r => `<div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;"><span style="color:var(--amber);font-size:0.75rem;margin-top:3px;flex-shrink:0;">→</span><span>${r}</span></div>`).join('')}
     </div>` : '';
 
+  // ── Evidence wall ──
+  const evidenceHTML = (() => {
+    const allPipeline = S.pipeline || [];
+    const rejLog = S.rejectionLog || [];
+    const totalApps = allPipeline.filter(j => j.stage !== 'prospect').length + rejLog.length;
+    const totalInterviews = allPipeline.filter(j => ['phone','interview1','interview2','interview3','interview4','interview5','final','offer'].includes(j.stage)).length
+      + rejLog.filter(r => ['phone','interview1','interview2','interview3','interview4','interview5','final'].includes(r.stage)).length;
+    const totalOffers = allPipeline.filter(j => j.stage === 'offer').length;
+    const totalContacts = (S.contacts||[]).length;
+    const totalConversations = (S.contacts||[]).reduce((a,c) => a+(c.interactions||[]).length, 0);
+    const totalWinsLogged = S.wins ? S.wins.length : 0;
+    if (totalApps === 0 && totalContacts === 0) return '';
+    const items = [
+      totalApps > 0 && { icon: '→', label: 'Applications sent', value: totalApps },
+      totalInterviews > 0 && { icon: '◎', label: 'Interviews secured', value: totalInterviews, highlight: true },
+      totalOffers > 0 && { icon: '★', label: 'Offers received', value: totalOffers, highlight: true },
+      totalContacts > 0 && { icon: '◦', label: 'People in your network', value: totalContacts },
+      totalConversations > 0 && { icon: '↳', label: 'Conversations logged', value: totalConversations },
+      totalWinsLogged > 0 && { icon: '✓', label: 'Small wins recorded', value: totalWinsLogged },
+    ].filter(Boolean);
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Your search so far</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5;">Everything you've put in motion — regardless of where things stand today.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;">
+        ${items.map(item => `
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:1.4rem;font-weight:200;font-family:'Montserrat',sans-serif;color:${item.highlight?'var(--amber)':'var(--text)'};line-height:1;">${item.value}</span>
+            <span style="font-size:0.68rem;color:var(--text-dim);line-height:1.3;">${item.label}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  })();
+
+  // ── Long game timeline ──
+  const timelineHTML = (() => {
+    const events = [];
+    const fmt = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const firstApp = (S.pipeline||[]).filter(j=>j.stage!=='prospect'&&j.addedAt).sort((a,b)=>a.addedAt-b.addedAt)[0];
+    if (firstApp) events.push({ ms: firstApp.addedAt, label: 'First application', sub: escHtml(firstApp.company||'') });
+    const phoneScreens = (S.pipeline||[]).flatMap(j => (j.stageHistory||[]).filter(h=>h.stage==='phone').map(h=>({ ms: new Date(h.date+'T12:00:00').getTime(), label: 'First phone screen', sub: escHtml(j.company||''), once: 'phone' })));
+    const firstPhone = phoneScreens.sort((a,b)=>a.ms-b.ms)[0];
+    if (firstPhone) events.push(firstPhone);
+    const interviews = (S.pipeline||[]).flatMap(j => (j.stageHistory||[]).filter(h=>h.stage==='interview1').map(h=>({ ms: new Date(h.date+'T12:00:00').getTime(), label: 'First interview', sub: escHtml(j.company||''), once: 'int' })));
+    const firstInterview = interviews.sort((a,b)=>a.ms-b.ms)[0];
+    if (firstInterview) events.push(firstInterview);
+    const offers = (S.pipeline||[]).filter(j=>j.stage==='offer'&&j.addedAt).sort((a,b)=>a.addedAt-b.addedAt)[0];
+    if (offers) events.push({ ms: offers.addedAt, label: 'Offer received', sub: escHtml(offers.company||'') });
+    const firstWin = S.wins && S.wins.length > 0 ? S.wins[0] : null;
+    if (firstWin) events.push({ ms: new Date(firstWin.date).getTime(), label: 'First win logged', sub: escHtml(firstWin.text.slice(0,40)) });
+    if (events.length < 2) return '';
+    events.sort((a,b) => a.ms - b.ms);
+    const now = Date.now();
+    const searchStart = events[0].ms;
+    const totalDays = Math.floor((now - searchStart) / 86400000);
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:4px;">Your timeline</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;">${totalDays} day${totalDays!==1?'s':''} of showing up</div>
+      <div style="position:relative;padding-left:20px;">
+        <div style="position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--border);"></div>
+        ${events.map((ev,i) => `
+          <div style="position:relative;margin-bottom:${i<events.length-1?'14':'0'}px;">
+            <div style="position:absolute;left:-18px;top:4px;width:7px;height:7px;border-radius:50%;background:var(--amber);border:1.5px solid var(--surface);"></div>
+            <div style="font-size:0.76rem;font-weight:600;color:var(--text);">${ev.label}</div>
+            ${ev.sub ? `<div style="font-size:0.68rem;color:var(--text-dim);">${ev.sub}</div>` : ''}
+            <div style="font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:1px;">${fmt(ev.ms)}</div>
+          </div>`).join('')}
+        <div style="position:relative;margin-top:14px;">
+          <div style="position:absolute;left:-18px;top:4px;width:7px;height:7px;border-radius:50%;background:var(--teal);border:1.5px solid var(--surface);"></div>
+          <div style="font-size:0.76rem;font-weight:600;color:var(--teal);">Today</div>
+          <div style="font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;margin-top:1px;">${fmt(now)}</div>
+        </div>
+      </div>
+    </div>`;
+  })();
+
+  // ── Market context ──
+  const marketContextHTML = (() => {
+    const collapsed = localStorage.getItem('showup_market_ctx') === '0';
+    const toggle = `onclick="localStorage.setItem('showup_market_ctx', localStorage.getItem('showup_market_ctx')==='0'?'1':'0');renderProgress()"`;
+    const allDates = [
+      ...(S.pipeline||[]).filter(j=>j.addedAt).map(j=>j.addedAt),
+      ...(S.rejectionLog||[]).map(r=>new Date(r.date).getTime()),
+    ].filter(Boolean);
+    const earliestMs = allDates.length > 0 ? Math.min(...allDates) : null;
+    const searchWeeks = earliestMs ? Math.floor((Date.now() - earliestMs) / (7*24*60*60*1000)) : null;
+    const contextNote = searchWeeks !== null
+      ? (searchWeeks < 4 ? "You're in the early phase — building pipeline takes time."
+        : searchWeeks < 12 ? "You're a few months in. Most searches hit a quiet patch before things accelerate."
+        : searchWeeks < 24 ? "You've been at it a while. Extended searches are common in senior roles and competitive markets."
+        : "Long searches are real and valid. The market can be genuinely slow. Keep your network warm.")
+      : null;
+    return `<div class="card">
+      <div ${toggle} style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+        <div class="card-label" style="margin-bottom:0;">How long does this take?</div>
+        <span style="font-size:0.62rem;color:var(--text-dim);">${collapsed ? '▾' : '▴'}</span>
+      </div>
+      ${collapsed ? '' : `
+        <div style="margin-top:12px;">
+          ${contextNote ? `<div style="font-size:0.8rem;color:var(--teal);line-height:1.6;margin-bottom:10px;padding:8px 10px;background:var(--teal-lt);border-radius:2px;">${contextNote}</div>` : ''}
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${[
+              ['Median search duration', '5–6 months for experienced candidates'],
+              ['Applications per interview', '10–20 applications on average'],
+              ['Interviews per offer', '3–5 rounds across companies'],
+              ['Networking vs. applying', 'Referrals are 4× more likely to get an interview'],
+              ['Rejection is normal', 'Even strong candidates face 80–90% rejection rates'],
+            ].map(([k,v]) => `<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+              <span style="font-size:0.72rem;color:var(--text-dim);flex:0 0 40%;line-height:1.4;">${k}</span>
+              <span style="font-size:0.78rem;color:var(--text);font-weight:500;flex:1;line-height:1.4;">${v}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+      `}
+    </div>`;
+  })();
+
   wrap.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -9114,12 +9295,15 @@ function renderProgress() {
       </div>
     </div>
 
+    ${evidenceHTML}
+    ${timelineHTML}
     ${insightsHTML}
     ${funnelHTML}
     ${catBreakdownHTML}
     ${topContactsHTML}
     ${pipelineVelocityHTML}
     ${recsHTML}
+    ${marketContextHTML}
 
     <div class="card">
       <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
@@ -10779,6 +10963,9 @@ function checkWorkoutImport() {
   }
 }
 
+function _todayCollapsed(key) { return localStorage.getItem('showup_tc_' + key) === '1'; }
+function _todayToggle(key) { localStorage.setItem('showup_tc_' + key, _todayCollapsed(key) ? '0' : '1'); renderToday(); }
+
 function showToast(msg) {
   const el = document.createElement('div');
   el.textContent = msg;
@@ -11401,6 +11588,15 @@ function releaseContactCadence(contactId, snooze) {
   if (currentTab === 'network') renderNetwork();
 }
 
+function hideNudgeTomorrow(contactId) {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tStr = tomorrow.toISOString().slice(0,10);
+  const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
+  hidden[contactId] = tStr;
+  localStorage.setItem('showup_nudge_hidden', JSON.stringify(hidden));
+  renderToday();
+}
+
 function dismissFollowUpNudge(contactId) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
@@ -11427,7 +11623,12 @@ function getFollowUpNudges() {
   const twoDaysOut = new Date();
   twoDaysOut.setDate(twoDaysOut.getDate() + 2);
   const cutoff = twoDaysOut.toISOString().slice(0,10);
-  return (S.contacts || []).filter(c => c.nextContactDate && c.nextContactDate <= cutoff);
+  const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
+  return (S.contacts || []).filter(c => {
+    if (!c.nextContactDate || c.nextContactDate > cutoff) return false;
+    if (hidden[c.id] && hidden[c.id] >= today) return false;
+    return true;
+  });
 }
 
 function toggleNetworkOpen(id) {
