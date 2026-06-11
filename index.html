@@ -11693,7 +11693,7 @@ function getFollowUpNudges() {
   const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
   return (S.contacts || []).filter(c => {
     if (!c.nextContactDate || c.nextContactDate > cutoff) return false;
-    if (hidden[c.id] && hidden[c.id] >= today) return false;
+    if (hidden[c.id] && hidden[c.id] > today) return false;
     return true;
   });
 }
@@ -11744,10 +11744,12 @@ function getSmartNudges() {
   const interviewStages = new Set(['phone','interview1','interview2','interview3','interview4','interview5','final']);
 
   const today = todayLocal();
+  const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
   const nudges = [];
   contacts.forEach(c => {
     if (overdueIds.has(c.id)) return; // already in the overdue card
     if (c.nudgeSnoozedUntil && c.nudgeSnoozedUntil >= today) return; // snoozed by user
+    if (hidden[c.id] && hidden[c.id] > today) return; // hidden until tomorrow
     const interactions = c.interactions || [];
     const days = getDaysSince(c.lastContact);
 
