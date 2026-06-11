@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.18',
+        release: 'show-up@0.19',
       });
     });
   </script>
@@ -2640,6 +2640,14 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.19',
+    date: '2026-06-11',
+    items: [
+      'Progress — Badges redesigned: earned badges collapse into a compact chip row, "Next up" shows 3 closest-to-earning with progress bars',
+      'Progress — 10 new badges for longer searches: 30/60/100 days, follow-up milestones, company research, phone screens, interviews, wide pipeline, and thick skin',
+    ],
+  },
+  {
     version: '0.18',
     date: '2026-06-11',
     items: [
@@ -2747,6 +2755,17 @@ const ACHIEVEMENTS = [
   { id: 'skill_familiar', icon: '◈', name: 'Getting Familiar', desc: 'Reach Level 2 on any skill',               check: s => (s.maxSkillLevel||0) >= 2 },
   { id: 'skill_fluent',   icon: '◈', name: 'Fluent',           desc: 'Reach Level 3 (Fluent) on any skill',      check: s => (s.maxSkillLevel||0) >= 3 },
   { id: 'skill_five',     icon: '◈', name: 'Learning Stack',   desc: 'Activate 5 skills',                        check: s => (s.activeSkillCount||0) >= 5 },
+  // Long-search badges
+  { id: 'days_30',        icon: '|', name: '30 Days In',        desc: 'Show up for 30 days total',                check: s => (s.totalShowUpDays||0) >= 30,  progress: s => ({ val: Math.min(s.totalShowUpDays||0, 30), max: 30 }) },
+  { id: 'days_60',        icon: '∥', name: '60 Days Strong',    desc: 'Show up for 60 days total',                check: s => (s.totalShowUpDays||0) >= 60,  progress: s => ({ val: Math.min(s.totalShowUpDays||0, 60), max: 60 }) },
+  { id: 'days_100',       icon: '≡', name: 'Triple Digits',     desc: 'Show up for 100 days total',               check: s => (s.totalShowUpDays||0) >= 100, progress: s => ({ val: Math.min(s.totalShowUpDays||0, 100), max: 100 }) },
+  { id: 'followup_10',    icon: '↻', name: 'Always Following Up', desc: 'Complete 10 follow-up tasks',            check: s => (s.doneBy.followup||0) >= 10,  progress: s => ({ val: Math.min(s.doneBy.followup||0, 10), max: 10 }) },
+  { id: 'followup_25',    icon: '↻', name: 'Relentless',        desc: 'Complete 25 follow-up tasks',              check: s => (s.doneBy.followup||0) >= 25,  progress: s => ({ val: Math.min(s.doneBy.followup||0, 25), max: 25 }) },
+  { id: 'research_5',     icon: '◉', name: 'Do Your Homework',  desc: 'Research 5 companies',                    check: s => (s.companiesResearched||0) >= 5, progress: s => ({ val: Math.min(s.companiesResearched||0, 5), max: 5 }) },
+  { id: 'pipeline_phone', icon: '◎', name: 'Getting Calls',     desc: 'Reach the phone screen stage',             check: s => (s.pipelinePhoneCount||0) >= 1 },
+  { id: 'pipeline_int',   icon: '◆', name: 'In the Room',       desc: 'Reach a first-round interview',            check: s => (s.pipelineInterviewCount||0) >= 1 },
+  { id: 'pipeline_3co',   icon: '◆', name: 'Wide Net',          desc: 'Apply to 3 different companies',           check: s => (s.distinctCompanies||0) >= 3,   progress: s => ({ val: Math.min(s.distinctCompanies||0, 3), max: 3 }) },
+  { id: 'rejection_10',   icon: '·', name: 'Thick Skin',        desc: 'Log 10 rejections and keep going',         check: s => (s.rejections||0) >= 10,         progress: s => ({ val: Math.min(s.rejections||0, 10), max: 10 }) },
 ];
 
 // ── SKILLS ───────────────────────────────────────────────────
@@ -8995,24 +9014,73 @@ function renderProgress() {
     showUpStreak: S.showUpStreak, maxShowUpStreak: S.maxShowUpStreak,
     totalWins: S.totalWins||0, totalOutside: S.totalOutside||0,
     totalFocusBlocks: S.totalFocusBlocks||0, doneBy: S.doneBy,
-    rejections: S.rejections, totalRestDays: S.totalRestDays||0, level: lv.num,
+    rejections: S.rejections||0, totalRestDays: S.totalRestDays||0, level: lv.num,
     totalSkillSessions: (S.skills||[]).reduce((a,sk)=>a+(sk.sessionsTotal||0),0),
     maxSkillLevel: (S.skills||[]).reduce((a,sk)=>Math.max(a,sk.level||0),0),
     activeSkillCount: (S.skills||[]).filter(sk=>sk.active).length,
+    totalShowUpDays: (S.showUpDays||[]).length,
+    companiesResearched: (S.companies||[]).filter(c=>c.notes&&c.notes.trim().length>0).length + (S.pipeline||[]).filter(j=>j.prepPeople||j.prepQuestions||j.prepStories).length,
+    pipelinePhoneCount: (S.pipeline||[]).filter(j=>['phone','interview1','interview2','interview3','interview4','interview5','final','offer'].includes(j.stage)).length + (S.rejectionLog||[]).filter(r=>['phone','interview1','interview2','interview3','interview4','interview5','final'].includes(r.stage)).length,
+    pipelineInterviewCount: (S.pipeline||[]).filter(j=>['interview1','interview2','interview3','interview4','interview5','final','offer'].includes(j.stage)).length + (S.rejectionLog||[]).filter(r=>['interview1','interview2','interview3','interview4','interview5','final'].includes(r.stage)).length,
+    distinctCompanies: new Set([...(S.pipeline||[]).filter(j=>j.stage!=='prospect').map(j=>j.company||''), ...(S.rejectionLog||[]).map(r=>r.company||'')].filter(Boolean)).size,
   };
-  const achHTML = ACHIEVEMENTS.map(a => {
-    const earned = a.check(achStats);
-    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="width:36px;height:36px;border-radius:50%;border:1.5px solid ${earned?'var(--amber)':'var(--border)'};background:${earned?'var(--amber-lt)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <span style="font-size:0.9rem;color:${earned?'var(--amber)':'var(--border)'};font-family:'Montserrat',sans-serif;font-weight:700;">${a.icon}</span>
+
+  const earnedAch = ACHIEVEMENTS.filter(a => a.check(achStats));
+  const unearnedAch = ACHIEVEMENTS.filter(a => !a.check(achStats));
+
+  // Next up: unearned badges with progress functions, sorted by % completion desc, take top 3
+  const nextUp = unearnedAch
+    .filter(a => a.progress)
+    .map(a => { const p = a.progress(achStats); return { a, val: p.val, max: p.max, pct: p.val/p.max }; })
+    .sort((a,b) => b.pct - a.pct)
+    .slice(0, 3);
+  // Also include up-to-2 unearned badges without progress if nextUp has fewer than 3 total
+  const nextUpIds = new Set(nextUp.map(x => x.a.id));
+  const noProgressNext = unearnedAch.filter(a => !a.progress && !nextUpIds.has(a.id)).slice(0, Math.max(0, 3 - nextUp.length));
+  const nextUpAll = [...nextUp, ...noProgressNext.map(a => ({ a, val: null, max: null, pct: 0 }))];
+
+  const achHTML = (() => {
+    const earnedChips = earnedAch.length > 0
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${unearnedAch.length > 0 ? '14px' : '0'};">
+          ${earnedAch.map(a => `
+            <div title="${escHtml(a.name)}: ${escHtml(a.desc)}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;background:var(--amber-lt);border:1px solid var(--amber-ring);border-radius:20px;cursor:default;">
+              <span style="font-size:0.72rem;color:var(--amber);font-family:'Montserrat',sans-serif;font-weight:700;">${a.icon}</span>
+              <span style="font-size:0.68rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.02em;">${escHtml(a.name)}</span>
+            </div>`).join('')}
+        </div>`
+      : '';
+
+    const nextUpCards = nextUpAll.length > 0
+      ? `<div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--text-dim);margin-bottom:8px;">Next up</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${nextUpAll.map(({ a, val, max, pct }) => `
+            <div style="padding:10px 12px;border:1px solid var(--border);border-radius:3px;background:var(--surface2);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:${val !== null ? '8px' : '0'};">
+                <span style="font-size:0.8rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${a.icon}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:0.82rem;font-weight:600;color:var(--text);">${escHtml(a.name)}</div>
+                  <div style="font-size:0.68rem;color:var(--text-dim);margin-top:1px;">${escHtml(a.desc)}</div>
+                </div>
+                ${val !== null ? `<span style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;flex-shrink:0;">${val}/${max}</span>` : ''}
+              </div>
+              ${val !== null ? `
+                <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+                  <div style="height:100%;width:${Math.round(pct*100)}%;background:var(--amber);border-radius:2px;transition:width 0.3s;"></div>
+                </div>` : ''}
+            </div>`).join('')}
+        </div>`
+      : '';
+
+    if (!earnedChips && !nextUpCards) return '';
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="card-label" style="margin-bottom:0;">Badges</div>
+        <span style="font-size:0.68rem;color:var(--text-dim);">${earnedAch.length} / ${ACHIEVEMENTS.length}</span>
       </div>
-      <div style="flex:1;${earned?'':'opacity:0.45'}">
-        <div style="font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:2px;">${a.name}</div>
-        <div style="font-size:0.72rem;color:var(--text-dim);">${a.desc}</div>
-      </div>
-      ${earned?`<div style="font-size:0.65rem;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:var(--ls-caps);color:var(--amber);font-weight:700;">✓</div>`:''}
+      ${earnedChips}
+      ${nextUpCards}
     </div>`;
-  }).join('');
+  })();
 
   // ── This week pts ──
   const ws = getWeekStart();
@@ -9336,8 +9404,7 @@ function renderProgress() {
       ${lv.next?`<div style="font-size:0.68rem;color:var(--text-dim);margin-top:5px">${lv.xpIn} / ${lv.xpFor} XP to Level ${lv.num+1}</div>`:''}
     </div>
 
-    <div class="card-label" style="padding:20px 0 4px;border-top:1px solid var(--border)">Badges</div>
-    <div class="ach-list">${achHTML}</div>
+    ${achHTML}
   `;
 }
 
