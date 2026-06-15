@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.20',
+        release: 'show-up@0.21',
       });
     });
   </script>
@@ -1697,7 +1697,8 @@ function normalizeStateArrays(s) {
     'tasks','pipeline','companies','contacts','wins','weeklyPlans',
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
-    'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits'
+    'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits',
+    'weeklyReflections'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -2640,6 +2641,15 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.21',
+    date: '2026-06-15',
+    items: [
+      'Journal — redesigned as a week-grouped timeline with daily entries (energy, stats, win, note) and weekly reflections',
+      'Journal — weekly reflection prompts: a thought-provoking question each Monday, stays until you answer or dismiss it',
+      'Close out the day — new optional "Anything else about today?" note field saved to your journal entry',
+    ],
+  },
+  {
     version: '0.20',
     date: '2026-06-15',
     items: [
@@ -2981,6 +2991,50 @@ function sessionsToNextLevel(currentSessions) {
 }
 
 // ── STATE ────────────────────────────────────────────────────
+const WEEKLY_PROMPTS = [
+  // Identity & Becoming
+  "Who is the version of you that already has this role? What does she do on a Monday morning that you don't do yet?",
+  "What's one belief about yourself that this search is forcing you to examine? Is it actually true?",
+  "If this period became a chapter in your story, what would you want that chapter to be called?",
+  "What parts of your old professional identity are you holding onto that might not fit who you're becoming?",
+  "What does success actually feel like to you — not the resume version, the felt version in your body when you imagine it?",
+  "What are you becoming during this search that has nothing to do with the search?",
+  // Process & Pace
+  "What would change if you genuinely believed the right thing was still coming — and this week was just part of getting there?",
+  "What's one thing you've learned about yourself or your industry since this started that you didn't know before?",
+  "Where in your search are you playing it safe — staying in lanes you know, underselling what you actually want? And where are you spreading too thin? Both cost you. Which one is happening more right now?",
+  // Day structure
+  "Without a meeting schedule or someone else's agenda to organize your day, what have you learned about how you actually work best? Is that knowledge showing up in how you're spending your time?",
+  "What does a 'successful' day look like when no one else is defining it for you? Not productive — successful. There's a difference.",
+  "The office gave you a rhythm, even when that rhythm wasn't really yours. What rhythm are you building now that actually belongs to you?",
+  // Relationships
+  "Who has shown up for you during this period — even in a small way? Have you told them?",
+  "Is there someone you've been meaning to reach out to — not for a lead, just because you genuinely miss the connection?",
+  "Some people you expected to show up haven't. That's real, and it stings. What are you doing with that?",
+  "Is there anger or hurt from this period that's taking up more space than you want it to? You don't have to forgive it today. But what would it mean to just set it down for a week — and let yourself have this week back?",
+  "Who disappointed you during this period — someone whose support you assumed and didn't get? What story are you telling yourself about why they didn't show up?",
+  "What are you most angry about right now, underneath the search itself? Not about — underneath. Have you let yourself actually feel it, or are you managing it?",
+  // Life you're building
+  "In five years, what will you want to say was true about how you spent this time — beyond the job?",
+  "What's something you've been postponing until you 'land' that you could actually start now?",
+  "What does a good week look like to you — not productive, but genuinely good?",
+  "You've probably told someone recently how lucky you are to have this time. Did you feel it when you were actually living it? What gets in the way of feeling good things while they're happening — not in retrospect, but in the moment?",
+  "What's one thing happening in your life right now that future-you will wish you had been fully present for?",
+  "What would it look like to be in your own day — not managing it, not performing it, just actually in it?",
+  // Craft & Ambition
+  "If you had to describe the work you actually want to be doing — not the industry, not the title, the actual texture of it, what it feels like to do it well — what would you say? Try writing it, even imperfectly.",
+  "When was the last time you did work that felt like you — where you were fully using what you're actually good at? What were you doing?",
+  "What's the through-line in everything you've been drawn to professionally? What does it tell you about what you're actually looking for?",
+  "What do you know how to do that most people in your field don't? Are you leading with it — or burying it?",
+  "What would it feel like to stop auditioning and just show up as the expert you already are?",
+  // Creativity & Staying Sharp
+  "What did you used to do that made you feel creative or alive that you've quietly stopped doing? What would happen if you did it this week?",
+  "What are you intellectually curious about right now that has nothing to do with your job search? Have you let yourself go there?",
+  // Financial Reality
+  "What's the honest version of where you are financially right now — not the managed version you tell people, but the real one? What would it change to say it out loud, even just here?",
+  "How much of your urgency right now is coming from genuine alignment with what you want — and how much is coming from financial pressure? Both are real. But they might be pointing you in different directions.",
+];
+
 const DEFAULT_STATE = {
   userName: '',
   // tasks
@@ -3011,11 +3065,15 @@ const DEFAULT_STATE = {
   focusBlocksToday: 0,
   gotOutsideToday: false,
   todaySealed: false,
+  todayNote: '',
   postSealCompletions: 0,
   triageDoneThisWeek: '',
   carryOverIds: [],
   todayCalEvents: [],
   dailySnapshots: [],
+  weeklyReflections: [],
+  lastPromptWeek: '',
+  lastPromptIndex: -1,
   rolledOverTasks: [],
   contacts: [],
   nextContactId: 1,
@@ -3067,9 +3125,6 @@ const DEFAULT_STATE = {
 let S = loadState();
 let currentTab = 'today';
 let currentQuestCat = 'all';
-let journalViewYear = new Date().getFullYear();
-let journalViewMonth = new Date().getMonth();
-let journalSelectedDate = null;
 let networkFilter = 'all';
 let networkSearch = '';
 let networkOpenId = null;
@@ -3394,6 +3449,7 @@ function saveDaySnapshot(sealed) {
     wins: (S.wins || []).filter(w => new Date(w.date).toDateString() === S.todayDate).map(w => w.text),
     focusSessions: S.focusBlocksToday || 0,
     gotOutside: S.gotOutsideToday || false,
+    note: S.todayNote || '',
   };
   if (!S.dailySnapshots) S.dailySnapshots = [];
   const idx = S.dailySnapshots.findIndex(s => s.date === S.todayDate);
@@ -3433,6 +3489,7 @@ function checkDayReset() {
     S.journaledToday    = false;
     (S.customHabits || []).forEach(h => { h.doneToday = false; });
     S.todaySealed           = false;
+    S.todayNote             = '';
     S.postSealCompletions   = 0;
     S.carryOverIds          = [];
     S.todayCalEvents    = [];
@@ -3569,10 +3626,84 @@ function updateHeader() {
   document.getElementById('streakPill').innerHTML = streakLabel(cur) + bestSuffix;
 }
 
+// ── WEEKLY PROMPTS ───────────────────────────────────────────
+function ensureWeekPrompt() {
+  const weekStart = getWeekStart();
+  if (S.lastPromptWeek !== weekStart) {
+    S.lastPromptWeek = weekStart;
+    S.lastPromptIndex = ((S.lastPromptIndex == null ? -1 : S.lastPromptIndex) + 1) % WEEKLY_PROMPTS.length;
+    if (S._todayCollapsed) delete S._todayCollapsed['weekprompt'];
+    save();
+  }
+}
+
+function getThisWeekReflection() {
+  const weekStart = getWeekStart();
+  return (S.weeklyReflections || []).find(r => r.weekStart === weekStart && !r.dismissed);
+}
+
+function saveWeeklyReflection(answer) {
+  if (!S.weeklyReflections) S.weeklyReflections = [];
+  const weekStart = getWeekStart();
+  const existing = S.weeklyReflections.find(r => r.weekStart === weekStart);
+  if (existing) {
+    existing.answer = answer;
+    existing.editedAt = Date.now();
+    existing.dismissed = false;
+  } else {
+    S.weeklyReflections.push({
+      id: Date.now(),
+      promptIndex: S.lastPromptIndex,
+      promptText: WEEKLY_PROMPTS[S.lastPromptIndex],
+      answer,
+      weekStart,
+      createdAt: Date.now(),
+      editedAt: Date.now(),
+      dismissed: false,
+    });
+  }
+  save();
+  renderToday();
+  if (currentTab === 'journal') renderJournal();
+}
+
+function dismissWeekPrompt() {
+  if (!S.weeklyReflections) S.weeklyReflections = [];
+  const weekStart = getWeekStart();
+  const existing = S.weeklyReflections.find(r => r.weekStart === weekStart);
+  if (existing) {
+    existing.dismissed = true;
+    existing.editedAt = Date.now();
+  } else {
+    S.weeklyReflections.push({
+      id: Date.now(),
+      promptIndex: S.lastPromptIndex,
+      promptText: WEEKLY_PROMPTS[S.lastPromptIndex],
+      answer: '',
+      weekStart,
+      createdAt: Date.now(),
+      editedAt: Date.now(),
+      dismissed: true,
+    });
+  }
+  save();
+  renderToday();
+}
+
+function editWeeklyReflection(weekStart) {
+  const r = (S.weeklyReflections || []).find(r => r.weekStart === weekStart);
+  if (r) { r.dismissed = false; save(); }
+  if (S._todayCollapsed) delete S._todayCollapsed['weekprompt'];
+  switchTab('today');
+  renderToday();
+}
+
 // ── TODAY TAB ────────────────────────────────────────────────
 function renderToday() {
   const wrap = document.getElementById('today-wrap');
   if (!wrap) return;
+
+  ensureWeekPrompt();
 
   const now = getEffectiveDate();
   const h = now.getHours();
@@ -3733,6 +3864,43 @@ function renderToday() {
     </div>
 
     ${hardDayHtml}
+
+    ${(() => {
+      if (isRest) return '';
+      const weekReflection = getThisWeekReflection();
+      const alreadyAnswered = weekReflection && weekReflection.answer && !weekReflection.dismissed;
+      if (alreadyAnswered) return '';
+      const dismissed = weekReflection && weekReflection.dismissed;
+      if (dismissed) return '';
+
+      const prompt = WEEKLY_PROMPTS[S.lastPromptIndex >= 0 ? S.lastPromptIndex : 0];
+      const collapsed = _todayCollapsed('weekprompt');
+      const existingAnswer = weekReflection?.answer || '';
+
+      if (collapsed) {
+        return `<div style="margin-bottom:16px;border-left:2px solid var(--teal);padding:8px 0 8px 14px;cursor:pointer;" onclick="_todayToggle('weekprompt');renderToday()">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);">This week's question</span>
+            <span style="font-size:0.6rem;color:var(--text-dim);">▾</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-mid);margin-top:4px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;">${escHtml(prompt)}</div>
+        </div>`;
+      }
+
+      return `<div style="margin-bottom:20px;border-left:3px solid var(--teal);padding:16px 0 16px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);">This week's question</span>
+          <button onclick="_todayToggle('weekprompt');renderToday()" style="background:none;border:none;color:var(--text-dim);font-size:0.6rem;cursor:pointer;padding:0;">▴</button>
+        </div>
+        <div style="font-size:0.9rem;color:var(--text);line-height:1.55;margin-bottom:14px;font-style:italic;">${escHtml(prompt)}</div>
+        <textarea id="week-reflection-input" rows="4" placeholder="Write as much or as little as you want. It stays here."
+          style="width:100%;border:1px solid var(--border);border-radius:2px;background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:10px 12px;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;">${escHtml(existingAnswer)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button onclick="saveWeeklyReflection(document.getElementById('week-reflection-input').value)" style="flex:1;background:var(--teal);border:none;color:white;padding:9px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;border-radius:2px;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Save to journal</button>
+          <button onclick="dismissWeekPrompt()" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:9px 14px;font-size:0.75rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;border-radius:2px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text-dim)'" onmouseout="this.style.borderColor='var(--border)'">Not this week</button>
+        </div>
+      </div>`;
+    })()}
 
     ${(function() {
       const interviews = getInterviewEvents();
@@ -4507,6 +4675,13 @@ function openCloseOut() {
       ${statsHtml}
       ${incompleteHtml}
       ${winHtml}
+      <div style="margin-bottom:20px">
+        <div class="card-label" style="margin-bottom:8px">Anything else about today?</div>
+        <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">Optional. One line or ten. Just for you.</div>
+        <textarea id="closeout-note-input" rows="2" placeholder="How today actually felt..."
+          style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;resize:none;line-height:1.5;"
+          oninput="S.todayNote=this.value;save()">${escHtml(S.todayNote||'')}</textarea>
+      </div>
       <div style="border-left:2px solid var(--border);padding:2px 0 2px 16px;margin-bottom:24px">
         <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.7">${closeNote}</div>
       </div>
@@ -12355,135 +12530,105 @@ function renderJournal() {
   const wrap = document.getElementById('journal-wrap');
   if (!wrap) return;
 
-  const year = journalViewYear, month = journalViewMonth;
-  const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const today = new Date().toDateString();
+  const reflections = S.weeklyReflections || [];
+  const snapshots = (S.dailySnapshots || []).slice().reverse(); // most recent first
 
-  // Calendar grid
-  const firstDow  = new Date(year, month, 1).getDay(); // 0=Sun
-  const startOff  = (firstDow + 6) % 7;               // shift to Mon=0
-  const daysInMo  = new Date(year, month + 1, 0).getDate();
-  const dayNames  = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  // Gather all week starts from both snapshots and reflections
+  const weekStarts = new Set();
+  snapshots.forEach(s => weekStarts.add(getWeekStart(new Date(s.date + ' 12:00'))));
+  reflections.forEach(r => weekStarts.add(r.weekStart));
 
-  let cells = dayNames.map(d => `<div class="journal-day-label">${d}</div>`).join('');
-  for (let i = 0; i < startOff; i++) cells += '<div></div>';
-  for (let d = 1; d <= daysInMo; d++) {
-    const date = new Date(year, month, d).toDateString();
-    const snap = (S.dailySnapshots || []).find(s => s.date === date);
-    const cls  = ['journal-day',
-      snap ? 'has-data' : '',
-      snap ? snap.energy : '',
-      date === today ? 'is-today' : '',
-      date === journalSelectedDate ? 'selected' : '',
-      snap?.sealed ? 'sealed' : '',
-    ].filter(Boolean).join(' ');
-    const click = snap ? `onclick="selectJournalDay('${date}')"` : '';
-    cells += `<div class="${cls}" ${click}>${d}</div>`;
+  const sortedWeeks = [...weekStarts].sort((a, b) => b.localeCompare(a)); // most recent first
+
+  if (sortedWeeks.length === 0) {
+    wrap.innerHTML = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);line-height:1.7">Nothing here yet.<br>Seal your first day and it'll appear. Your weekly reflections will live here too.</div>`;
+    return;
   }
 
-  const snaps = S.dailySnapshots || [];
-  const selectedSnap = journalSelectedDate ? snaps.find(s => s.date === journalSelectedDate) : null;
-  const noData = snaps.length === 0;
+  wrap.innerHTML = sortedWeeks.map(weekStart => {
+    const weekDate = new Date(weekStart + 'T12:00:00');
+    const weekEndDate = new Date(weekDate); weekEndDate.setDate(weekDate.getDate() + 6);
+    const weekLabel = weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      + ' – ' + weekEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  wrap.innerHTML = `
-    <div class="journal-cal">
-      <div class="journal-cal-header">
-        <button class="journal-cal-nav" onclick="journalPrevMonth()">←</button>
-        <div class="journal-cal-title">${monthLabel}</div>
-        <button class="journal-cal-nav" onclick="journalNextMonth()">→</button>
-      </div>
-      <div class="journal-month-grid">${cells}</div>
-    </div>
-    ${selectedSnap
-      ? `<div style="margin-top:16px;">
-          <button onclick="journalSelectedDate=null;renderJournal()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;display:flex;align-items:center;gap:4px;margin-bottom:16px;">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2L4 6l4 4"/></svg>
-            Back to calendar
-          </button>
-          ${renderJournalDay(selectedSnap)}
-        </div>`
-      : noData
-        ? `<div style="padding-top:4px;font-size:0.8rem;color:var(--text-dim);line-height:1.7">No days recorded yet.<br>Seal your first day and it'll appear here.</div>`
-        : `<div style="padding-top:4px;font-size:0.78rem;color:var(--text-dim)">Select a day above to see what happened.</div>`
-    }
-  `;
+    // Reflection for this week
+    const reflection = reflections.find(r => r.weekStart === weekStart && r.answer);
+    const reflectionHtml = reflection ? `
+      <div style="margin-bottom:14px;border-left:3px solid var(--teal);padding:14px 0 14px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);">Weekly reflection</span>
+          <button onclick="editWeeklyReflection('${weekStart}')" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">Edit →</button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-dim);font-style:italic;margin-bottom:8px;line-height:1.4;">"${escHtml(reflection.promptText)}"</div>
+        <div style="font-size:0.85rem;color:var(--text);line-height:1.6;white-space:pre-wrap;">${escHtml(reflection.answer)}</div>
+      </div>` : '';
+
+    // Daily snapshots for this week
+    const weekSnaps = snapshots.filter(s => getWeekStart(new Date(s.date + ' 12:00')) === weekStart)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const daysHtml = weekSnaps.map(snap => renderJournalDay(snap)).join('');
+
+    return `<div style="margin-bottom:32px;">
+      <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);">${weekLabel}</div>
+      ${reflectionHtml}
+      ${daysHtml || ''}
+    </div>`;
+  }).join('');
 }
 
 function renderJournalDay(snap) {
-  const d = new Date(snap.date);
+  const d = new Date(snap.date + ' 12:00');
   const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const ec = ENERGY[snap.energy] || {};
+  const completedCount = (snap.completedTasks || []).length;
+  const catBreakdown = {};
+  (snap.completedTasks || []).forEach(t => { catBreakdown[t.cat] = (catBreakdown[t.cat] || 0) + 1; });
+  const catHtml = Object.entries(catBreakdown).map(([k, n]) => {
+    const cat = CATS[k] || {};
+    return `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;color:var(--text-dim);">${n} <span style="color:${cat.color||'var(--text-dim)'}">&#9679;</span> ${cat.label||k}</span>`;
+  }).join('  ');
 
-  const completedHtml = snap.completedTasks && snap.completedTasks.length > 0
-    ? snap.completedTasks.map(t => `
-        <div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)">
-          ${catDot(t.cat, '16px')}
-          <div style="font-size:0.82rem;color:var(--text-mid);opacity:0.7;text-decoration:line-through">${escHtml(t.text)}</div>
-        </div>`).join('')
-    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0">Nothing completed.</div>`;
-
-  const incompleteHtml = snap.incompleteTasks && snap.incompleteTasks.length > 0 ? `
-    <div style="margin-top:20px">
-      <div class="card-label" style="margin-bottom:8px">Didn't get to</div>
-      ${snap.incompleteTasks.map(t => `
-        <div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)">
-          ${catDot(t.cat, '16px')}
-          <div style="font-size:0.82rem;color:var(--text-dim)">${escHtml(t.text)}</div>
-        </div>`).join('')}
-    </div>` : '';
+  const statsHtml = `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;">
+    <span style="font-size:0.72rem;color:${completedCount>0?'var(--text-mid)':'var(--text-dim)'};">${completedCount} done</span>
+    ${snap.focusSessions > 0 ? `<span style="font-size:0.72rem;color:var(--text-dim);">${snap.focusSessions} session${snap.focusSessions!==1?'s':''}</span>` : ''}
+    ${snap.gotOutside ? `<span style="font-size:0.72rem;color:var(--text-dim);">got outside</span>` : ''}
+  </div>`;
 
   const winsHtml = snap.wins && snap.wins.length > 0
-    ? snap.wins.map(w => `
-        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem;color:var(--text-mid)">${escHtml(w)}</div>`).join('')
-    : `<div style="font-size:0.78rem;color:var(--text-dim);padding:8px 0">No wins logged.</div>`;
+    ? snap.wins.map(w => `<div style="font-size:0.82rem;color:var(--text-mid);padding:6px 0;border-left:2px solid var(--green);padding-left:10px;margin-bottom:6px;line-height:1.4;">${escHtml(w)}</div>`).join('')
+    : '';
 
-  return `
-    <div style="border-top:1px solid var(--border);padding-top:20px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px">
-        <div class="journal-detail-date">${dateLabel}</div>
-        <span style="font-size:0.56rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:${snap.sealed ? 'var(--amber)' : 'var(--text-dim)'};margin-top:4px">${snap.sealed ? 'Sealed' : 'Partial'}</span>
+  const noteHtml = snap.note
+    ? `<div style="font-size:0.82rem;color:var(--text-mid);margin-top:8px;line-height:1.6;font-style:italic;padding:8px 10px;background:var(--surface2);border-radius:2px;">${escHtml(snap.note)}</div>`
+    : '';
+
+  // Collapsible task list
+  const hasCompletedTasks = snap.completedTasks && snap.completedTasks.length > 0;
+  const taskListHtml = hasCompletedTasks ? `
+    <details style="margin-top:10px;">
+      <summary style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
+        <span>Tasks</span><span style="font-size:0.55rem;">&#9660;</span>
+      </summary>
+      <div style="margin-top:8px;">
+        ${snap.completedTasks.map(t => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">${catDot(t.cat,'14px')}<div style="font-size:0.78rem;color:var(--text-dim);opacity:0.8;text-decoration:line-through;">${escHtml(t.text)}</div></div>`).join('')}
       </div>
-      <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-bottom:0">${ec.label || snap.energy}</div>
+    </details>` : '';
 
-      <div class="journal-stats-row">
-        <div class="journal-stat">
-          <div class="journal-stat-val">${(snap.completedTasks || []).length}</div>
-          <div class="journal-stat-lbl">completed</div>
-        </div>
-        <div class="journal-stat">
-          <div class="journal-stat-val">${snap.focusSessions || 0}</div>
-          <div class="journal-stat-lbl">sessions</div>
-        </div>
-        <div class="journal-stat">
-          <div class="journal-stat-val">${snap.gotOutside ? '✓' : '—'}</div>
-          <div class="journal-stat-lbl">outside</div>
-        </div>
+  return `<div style="padding:14px 0;border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+      <div style="font-size:0.88rem;font-weight:500;color:var(--text);">${dateLabel}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-dim);">${ec.label||snap.energy||''}</span>
+        ${snap.sealed ? `<span style="font-size:0.55rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);">sealed</span>` : ''}
       </div>
-
-      <div class="card-label" style="margin-bottom:8px">Completed</div>
-      ${completedHtml}
-      ${incompleteHtml}
-
-      <div class="card-label" style="margin-top:20px;margin-bottom:8px">Wins</div>
-      ${winsHtml}
-    </div>`;
-}
-
-function journalPrevMonth() {
-  journalViewMonth--;
-  if (journalViewMonth < 0) { journalViewMonth = 11; journalViewYear--; }
-  renderJournal();
-}
-
-function journalNextMonth() {
-  journalViewMonth++;
-  if (journalViewMonth > 11) { journalViewMonth = 0; journalViewYear++; }
-  renderJournal();
-}
-
-function selectJournalDay(date) {
-  journalSelectedDate = journalSelectedDate === date ? null : date;
-  renderJournal();
+    </div>
+    ${statsHtml}
+    ${catHtml ? `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">${catHtml}</div>` : ''}
+    ${winsHtml}
+    ${noteHtml}
+    ${taskListHtml}
+  </div>`;
 }
 
 // ── DATA EXPORT / IMPORT ─────────────────────────────────────
