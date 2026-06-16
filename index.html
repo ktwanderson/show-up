@@ -8815,7 +8815,7 @@ function renderCompanyRow(c) {
             <button onclick="event.stopPropagation();delete _companyNewsCache[${c.id}];fetchCompanyNews(${c.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">↻ Refresh</button>
           </div>
           <div id="co-news-${c.id}">
-            <button onclick="event.stopPropagation();fetchCompanyNews(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.72rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Fetch headlines via AI</button>
+            <button onclick="event.stopPropagation();fetchCompanyNews(${c.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 12px;font-size:0.72rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Fetch headlines</button>
           </div>
         </div>
       </div>
@@ -8828,7 +8828,7 @@ function toggleCompanyDetail(id) {
   renderNetwork();
 }
 
-// ── COMPANY NEWS (AI) ────────────────────────────────────────
+// ── COMPANY NEWS (real headlines via Google News RSS) ─────────
 const _companyNewsCache = {}; // id → { headlines, fetchedAt }
 
 async function fetchCompanyNews(companyId) {
@@ -8845,49 +8845,37 @@ async function fetchCompanyNews(companyId) {
   const el = document.getElementById(`co-news-${companyId}`);
   if (el) el.innerHTML = `<div style="font-size:0.78rem;color:var(--text-dim);padding:6px 0;">Fetching headlines…</div>`;
 
-  const context = [
-    c.industry ? `Industry: ${c.industry}` : '',
-    c.why ? `Why interested: ${c.why}` : '',
-  ].filter(Boolean).join('. ');
+  const query = encodeURIComponent(`"${c.name}"`);
+  const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
 
-  const isAdTech = ['ad tech','adtech','advertising','programmatic','media','martech','marketing technology','digital media','publisher','dsp','ssp','data'].some(kw =>
-    (c.industry || '').toLowerCase().includes(kw) || (c.why || '').toLowerCase().includes(kw)
-  );
+  try {
+    const resp = await fetch(`${RSS2JSON_ENDPOINT}?rss_url=${encodeURIComponent(rssUrl)}&count=6`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.status !== 'ok' || !Array.isArray(data.items)) throw new Error('bad feed');
 
-  const prompt = `You are a job search research assistant. Give me the 3–5 most recent, relevant news headlines about the company "${c.name}"${context ? ` (${context})` : ''}. Focus on:
-- Business developments, product launches, funding, acquisitions, or partnerships
-- Leadership changes (new hires, departures, reorgs)
-- Layoffs, hiring freezes, or hiring surges
-- Strategic shifts or pivots${isAdTech ? `
-- Ad tech / advertising industry angles: programmatic, privacy changes (third-party cookie deprecation, clean rooms, identity), AI in advertising, new ad formats, publisher/buyer dynamics` : ''}
+    const headlines = data.items.map(item => {
+      const title = item.title || '';
+      // Google News titles are formatted "Headline - Source"
+      const sourceMatch = title.match(/^(.*) - ([^-]+)$/);
+      return {
+        headline: sourceMatch ? sourceMatch[1].trim() : title,
+        source: sourceMatch ? sourceMatch[2].trim() : '',
+        link: item.link || '',
+        pubDate: item.pubDate || '',
+      };
+    });
 
-Return ONLY a JSON array of objects with these fields:
-- "headline": string — 1-sentence summary written as a real headline
-- "relevance": string — one short phrase for a job seeker (e.g. "Hiring signal", "Leadership change", "New direction", "Industry shift")
-- "searchQuery": string — 4–6 words to search Google News for this story (company name + key terms)
+    if (headlines.length === 0) {
+      renderCompanyNewsSection(companyId, null, 'No recent headlines found.');
+      return;
+    }
 
-No extra text outside the JSON.
-
-Example:
-[{"headline":"Company X raises $50M to expand its programmatic platform","relevance":"Hiring signal","searchQuery":"Company X raises funding programmatic"},{"headline":"New CTO joins from Google","relevance":"Leadership change","searchQuery":"Company X new CTO hire"}]`;
-
-  const result = await callClaude(prompt, { maxTokens: 600 });
-
-  if (result.error) {
-    renderCompanyNewsSection(companyId, null, result.error === 'no_key'
-      ? 'Add a Claude API key in Account to enable news.'
-      : 'Could not load headlines — try again.');
-    return;
+    _companyNewsCache[companyId] = { headlines, fetchedAt: Date.now() };
+    renderCompanyNewsSection(companyId, headlines, null);
+  } catch (e) {
+    renderCompanyNewsSection(companyId, null, 'Could not load headlines — try again.');
   }
-
-  const headlines = Array.isArray(result.json) ? result.json : null;
-  if (!headlines || headlines.length === 0) {
-    renderCompanyNewsSection(companyId, null, 'No recent headlines found.');
-    return;
-  }
-
-  _companyNewsCache[companyId] = { headlines, fetchedAt: Date.now() };
-  renderCompanyNewsSection(companyId, headlines, null);
 }
 
 function renderCompanyNewsSection(companyId, headlines, errorMsg) {
@@ -8897,18 +8885,14 @@ function renderCompanyNewsSection(companyId, headlines, errorMsg) {
     el.innerHTML = `<div style="font-size:0.75rem;color:var(--text-dim);padding:4px 0;">${escHtml(errorMsg)}</div>`;
     return;
   }
-  el.innerHTML = headlines.map(h => {
-    const query = encodeURIComponent(h.searchQuery || h.headline);
-    const url = `https://news.google.com/search?q=${query}`;
-    return `
-    <a href="${url}" target="_blank" rel="noopener" style="display:block;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+  el.innerHTML = headlines.map(h => `
+    <a href="${escHtml(h.link)}" target="_blank" rel="noopener" style="display:block;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
       <div style="font-size:0.82rem;color:var(--text);line-height:1.45;">${escHtml(h.headline)}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
-        ${h.relevance ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);text-transform:uppercase;">${escHtml(h.relevance)}</span>` : ''}
-        <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">Search Google News →</span>
+        ${h.source ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);text-transform:uppercase;">${escHtml(h.source)}</span>` : ''}
+        <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">${escHtml(relativeTimeAgo(h.pubDate))}</span>
       </div>
-    </a>`;
-  }).join('');
+    </a>`).join('');
 }
 
 function updateCompanyStatus(id, status) {
