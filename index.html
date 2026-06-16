@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.21',
+        release: 'show-up@0.22',
       });
     });
   </script>
@@ -1303,6 +1303,7 @@
   <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
   <button class="tab"        data-tab="quests"   data-mode-required="full" onclick="switchTab('quests')">Tasks</button>
   <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
+  <button class="tab" data-tab="briefing" data-mode-required="full" onclick="switchTab('briefing')">Briefing</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
   <button class="tab" data-tab="journal" data-mode-required="full" onclick="switchTab('journal')">Journal</button>
   <button class="tab" data-tab="account" onclick="switchTab('account')" style="position:relative;">Account<span id="account-badge" style="display:none;position:absolute;top:6px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--amber);"></span></button>
@@ -1314,6 +1315,7 @@
   <div class="section"        id="sec-focus"><div id="focus-wrap"></div></div>
   <div class="section"        id="sec-quests"><div id="quests-wrap"></div></div>
   <div class="section" id="sec-network"><div id="network-wrap"></div></div>
+  <div class="section" id="sec-briefing"><div id="briefing-wrap"></div></div>
   <div class="section"        id="sec-progress"><div id="progress-wrap"></div></div>
   <div class="section" id="sec-journal"><div id="journal-wrap"></div></div>
   <div class="section" id="sec-account"><div id="account-wrap"></div></div>
@@ -1698,7 +1700,7 @@ function normalizeStateArrays(s) {
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
     'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits',
-    'weeklyReflections'
+    'weeklyReflections','briefingSources'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -2641,6 +2643,14 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.22',
+    date: '2026-06-16',
+    items: [
+      'Briefing — new tab: curated industry news from RSS sources, with an optional Claude-generated digest summarizing what matters',
+      'Briefing — manage your own source list (add, remove, enable/disable feeds)',
+    ],
+  },
+  {
     version: '0.21',
     date: '2026-06-15',
     items: [
@@ -3072,6 +3082,18 @@ const DEFAULT_STATE = {
   todayCalEvents: [],
   dailySnapshots: [],
   weeklyReflections: [],
+  briefingSources: [
+    { id: 'digiday', name: 'Digiday', url: 'https://digiday.com/feed/', enabled: true },
+    { id: 'adexchanger', name: 'AdExchanger', url: 'https://www.adexchanger.com/feed/', enabled: true },
+    { id: 'niemanlab', name: 'NiemanLab', url: 'https://www.niemanlab.org/feed/', enabled: true },
+    { id: 'adweek', name: 'Adweek', url: 'https://www.adweek.com/feed/', enabled: true },
+    { id: 'marketingbrew', name: 'Marketing Brew', url: 'https://www.marketingbrew.com/feed', enabled: true },
+    { id: 'axiosmedia', name: 'Axios Media Trends', url: 'https://www.axios.com/media-trends/feed', enabled: true },
+    { id: 'iabtechlab', name: 'IAB Tech Lab', url: 'https://iabtechlab.com/feed/', enabled: true },
+    { id: 'adexchanger2', name: 'Marketing Dive', url: 'https://www.marketingdive.com/feeds/news/', enabled: true },
+  ],
+  briefingCache: { articles: [], fetchedAt: 0 },
+  briefingDigest: { text: '', generatedAt: 0, articleSignature: '' },
   lastPromptWeek: '',
   lastPromptIndex: -1,
   rolledOverTasks: [],
@@ -3604,6 +3626,7 @@ function render() {
   if (currentTab === 'focus')    renderFocusTimer();
   if (currentTab === 'quests')   renderQuests();
   if (currentTab === 'network')  renderNetwork();
+  if (currentTab === 'briefing') renderBriefing();
   if (currentTab === 'progress') renderProgress();
   if (currentTab === 'journal')  renderJournal();
   if (currentTab === 'account')  renderAccount();
@@ -10134,7 +10157,7 @@ function checkAchievements() {
 // ── NAV ──────────────────────────────────────────────────────
 
 // Tabs hidden in coach-only mode
-const JOBSEEKER_TABS = ['today', 'quests', 'network', 'journal'];
+const JOBSEEKER_TABS = ['today', 'quests', 'network', 'journal', 'briefing'];
 
 function updateTabVisibility() {
   const isCoach = S.mode === 'coach';
@@ -12523,6 +12546,235 @@ Return ONLY the message text — no subject line label (unless it's email, then 
       </div>
     </div>
   `;
+}
+
+// ── BRIEFING ─────────────────────────────────────────────────
+const RSS2JSON_ENDPOINT = 'https://api.rss2json.com/v1/api.json';
+let _briefingFetching = false;
+let _briefingDigestLoading = false;
+let _briefingSettingsOpen = false;
+
+function relativeTimeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (isNaN(diff) || diff < 0) return '';
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+async function fetchBriefingArticles(force) {
+  const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
+  const twoHours = 2 * 60 * 60 * 1000;
+  if (!force && cache.articles.length > 0 && (Date.now() - cache.fetchedAt) < twoHours) {
+    return cache.articles;
+  }
+
+  const sources = (S.briefingSources || []).filter(s => s.enabled);
+  const results = await Promise.allSettled(sources.map(async src => {
+    const resp = await fetch(`${RSS2JSON_ENDPOINT}?rss_url=${encodeURIComponent(src.url)}&count=10`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.status !== 'ok' || !Array.isArray(data.items)) throw new Error('bad feed');
+    return data.items.map(item => ({
+      title: item.title || '',
+      link: item.link || '',
+      description: (item.description || '').replace(/<[^>]*>/g, '').slice(0, 200),
+      pubDate: item.pubDate || '',
+      sourceName: src.name,
+      sourceId: src.id,
+    }));
+  }));
+
+  const articles = [];
+  const failedSources = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') articles.push(...r.value);
+    else failedSources.push(sources[i].name);
+  });
+
+  articles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+  S.briefingCache = { articles, fetchedAt: Date.now(), failedSources };
+  save();
+  return articles;
+}
+
+async function generateBriefingDigest(articles) {
+  const apiKey = localStorage.getItem('showup_claude_api_key');
+  if (!apiKey || articles.length === 0) return null;
+
+  const signature = articles.slice(0, 20).map(a => a.title).join('|').slice(0, 500);
+  const existing = S.briefingDigest;
+  if (existing && existing.articleSignature === signature && (Date.now() - existing.generatedAt) < 12 * 60 * 60 * 1000) {
+    return existing.text;
+  }
+
+  const list = articles.slice(0, 20).map((a, i) => `${i + 1}. [${a.sourceName}] ${a.title} — ${a.description}`).join('\n');
+  const prompt = `Here are recent headlines from industry trade publications:\n\n${list}\n\nIn 3-4 sentences, synthesize what's actually worth paying attention to here and why — for someone job searching in media/advertising/tech who wants to stay informed without doom-scrolling. Be specific, reference actual stories by name. No generic statements like "the industry continues to evolve." If nothing stands out, say so plainly. Write in plain prose, no bullet points, no markdown formatting.`;
+
+  const result = await callClaude(prompt, { maxTokens: 300 });
+  if (result.error) return null;
+
+  S.briefingDigest = { text: result.text.trim(), generatedAt: Date.now(), articleSignature: signature };
+  save();
+  return result.text.trim();
+}
+
+function toggleBriefingSource(id) {
+  const src = (S.briefingSources || []).find(s => s.id === id);
+  if (src) { src.enabled = !src.enabled; save(); renderBriefing(); }
+}
+
+function removeBriefingSource(id) {
+  S.briefingSources = (S.briefingSources || []).filter(s => s.id !== id);
+  save();
+  renderBriefing();
+}
+
+function addBriefingSource() {
+  const nameInput = document.getElementById('briefing-source-name');
+  const urlInput = document.getElementById('briefing-source-url');
+  if (!nameInput || !urlInput) return;
+  const name = nameInput.value.trim();
+  const url = urlInput.value.trim();
+  if (!name || !url) return;
+  if (!S.briefingSources) S.briefingSources = [];
+  S.briefingSources.push({ id: 'custom-' + Date.now(), name, url, enabled: true });
+  save();
+  renderBriefing();
+}
+
+function toggleBriefingSettings() {
+  _briefingSettingsOpen = !_briefingSettingsOpen;
+  renderBriefing();
+}
+
+function refreshBriefing() {
+  if (_briefingFetching) return;
+  _briefingFetching = true;
+  renderBriefing();
+  fetchBriefingArticles(true).then(() => {
+    _briefingFetching = false;
+    renderBriefing();
+    const articles = S.briefingCache?.articles || [];
+    if (articles.length > 0 && localStorage.getItem('showup_claude_api_key')) {
+      _briefingDigestLoading = true;
+      renderBriefing();
+      generateBriefingDigest(articles).then(() => {
+        _briefingDigestLoading = false;
+        renderBriefing();
+      });
+    }
+  });
+}
+
+function renderBriefingSettings() {
+  const sources = S.briefingSources || [];
+  const failedSources = S.briefingCache?.failedSources || [];
+  return `
+    <div style="margin-top:10px;border:1px solid var(--border);border-radius:2px;padding:14px;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Sources</div>
+      ${sources.map(s => {
+        const failed = failedSources.includes(s.name);
+        return `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleBriefingSource('${escHtml(s.id)}')" style="cursor:pointer;">
+          <span style="font-size:0.8rem;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(s.name)}</span>
+          ${failed ? `<span style="font-size:0.62rem;color:var(--red);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">couldn't load</span>` : ''}
+          <button onclick="removeBriefingSource('${escHtml(s.id)}')" style="border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:0.7rem;font-family:'Montserrat',sans-serif;">remove</button>
+        </div>`;
+      }).join('') || `<div style="font-size:0.78rem;color:var(--text-dim);padding:6px 0;">No sources configured.</div>`}
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <input id="briefing-source-name" type="text" placeholder="Source name" style="flex:1;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <input id="briefing-source-url" type="text" placeholder="RSS feed URL" style="flex:2;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <button onclick="addBriefingSource()" style="padding:7px 12px;border:none;background:var(--text);color:var(--surface);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Add</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderBriefing() {
+  const wrap = document.getElementById('briefing-wrap');
+  if (!wrap) return;
+
+  const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
+  const hasApiKey = !!localStorage.getItem('showup_claude_api_key');
+  const articles = cache.articles || [];
+
+  // Trigger initial fetch if no cache and not already fetching
+  if (articles.length === 0 && cache.fetchedAt === 0 && !_briefingFetching) {
+    _briefingFetching = true;
+    fetchBriefingArticles().then(fetched => {
+      _briefingFetching = false;
+      renderBriefing();
+      if (fetched.length > 0 && hasApiKey) {
+        _briefingDigestLoading = true;
+        renderBriefing();
+        generateBriefingDigest(fetched).then(() => {
+          _briefingDigestLoading = false;
+          renderBriefing();
+        });
+      }
+    });
+  }
+
+  const header = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);">Briefing</div>
+      <div style="display:flex;gap:14px;align-items:center;">
+        <button onclick="toggleBriefingSettings()" style="border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:0.7rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">${_briefingSettingsOpen ? 'Hide sources' : 'Manage sources'}</button>
+        <button onclick="refreshBriefing()" ${_briefingFetching ? 'disabled' : ''} style="border:none;background:none;color:var(--teal);cursor:pointer;font-size:0.7rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">${_briefingFetching ? 'Refreshing…' : 'Refresh'}</button>
+      </div>
+    </div>
+  `;
+
+  const settingsHtml = _briefingSettingsOpen ? renderBriefingSettings() : '';
+
+  let digestHtml = '';
+  if (hasApiKey) {
+    const digest = S.briefingDigest?.text || '';
+    if (_briefingDigestLoading) {
+      digestHtml = `
+        <div style="margin-bottom:18px;border-left:3px solid var(--teal);padding:14px 0 14px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest</div>
+          <div style="font-size:0.82rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Synthesizing what's worth reading…</div>
+        </div>`;
+    } else if (digest) {
+      digestHtml = `
+        <div style="margin-bottom:18px;border-left:3px solid var(--teal);padding:14px 0 14px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest</div>
+          <div style="font-size:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.6;">${escHtml(digest)}</div>
+        </div>`;
+    }
+  } else {
+    digestHtml = `
+      <div style="margin-bottom:18px;font-size:0.76rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Add a Claude API key in Account → AI Settings to get a synthesized digest of what's worth reading.</div>`;
+  }
+
+  let listHtml = '';
+  if (articles.length === 0) {
+    if (_briefingFetching) {
+      listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);">Loading articles…</div>`;
+    } else if (!(S.briefingSources || []).some(s => s.enabled)) {
+      listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);line-height:1.7">No sources configured yet.<br>Add or enable a source below.</div>`;
+    } else {
+      listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);line-height:1.7">Couldn't load any articles — check your sources in settings below.</div>`;
+    }
+  } else {
+    listHtml = articles.map(a => `
+      <a href="${escHtml(a.link)}" target="_blank" rel="noopener" style="display:block;padding:12px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+        <div style="font-size:0.85rem;color:var(--text);line-height:1.45;font-family:'DM Sans',sans-serif;">${escHtml(a.title)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--amber);text-transform:uppercase;">${escHtml(a.sourceName)}</span>
+          <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${escHtml(relativeTimeAgo(a.pubDate))}</span>
+        </div>
+        ${a.description ? `<div style="font-size:0.78rem;color:var(--text-mid);margin-top:5px;line-height:1.5;font-family:'DM Sans',sans-serif;">${escHtml(a.description)}</div>` : ''}
+      </a>`).join('');
+  }
+
+  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${listHtml}</div>`;
 }
 
 // ── JOURNAL ──────────────────────────────────────────────────
