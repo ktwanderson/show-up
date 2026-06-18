@@ -1034,6 +1034,8 @@
 .net-add-row {
   display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
 }
+.li-triage-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.li-triage-row:hover { background: var(--surface2); }
 .net-add-btn {
   background: none; border: 1px solid var(--border); border-radius: 2px;
   font-size: 0.7rem; font-family: 'Montserrat', sans-serif;
@@ -8778,7 +8780,10 @@ function renderCompanyRow(c) {
         <div style="font-weight:600;font-size:0.85rem;color:var(--text);">${escHtml(c.name)}</div>
         ${c.industry ? `<div style="font-size:0.75rem;color:var(--text-dim);">${escHtml(c.industry)}</div>` : ''}
       </div>
-      ${linkedContacts.length > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${linkedContacts.length} contact${linkedContacts.length!==1?'s':''}</div>` : ''}
+      ${linkedContacts.length > 0 ? `<div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${linkedContacts.length <= 3 ? linkedContacts.map(ct => escHtml(ct.first)).join(', ') : linkedContacts.length + ' contacts'}</div>
+        <div style="font-size:0.58rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;">warm path</div>
+      </div>` : ''}
       <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${isOpen?180:0}deg);transition:transform 0.2s;flex-shrink:0;color:var(--text-dim);"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </div>
     ${isOpen ? `<div style="padding-bottom:14px;">
@@ -10303,6 +10308,7 @@ function escHtml(s) {
 // Multi-step modal: type → who → interaction log → follow-up tasks → save
 
 let _lm = {};  // wizard state
+let _li = {};  // LinkedIn import wizard state
 
 function openLogMeetingForContact(contactId) {
   const c = S.contacts.find(x => x.id === contactId);
@@ -11454,6 +11460,262 @@ function runContactImport(defaultType) {
   showToast(`${count} contacts imported \u2713`);
 }
 
+// ── LINKEDIN IMPORT WIZARD ────────────────────────────────────
+
+function openLinkedInImport() {
+  _li = { step: 1 };
+  _liRender();
+}
+
+function _liRender() {
+  if (_li.step === 1) _liStep1();
+  else if (_li.step === 2) _liStep2();
+  else if (_li.step === 3) _liStep3();
+  else if (_li.step === 4) _liStep4();
+}
+
+function _liStep1() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Import from LinkedIn</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px">Triage your network</div>
+
+      <p style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin:0 0 18px">This import triages your LinkedIn connections — it doesn't dump everyone in. You'll review contacts before anything is saved, and Show Up will highlight which ones are at your target companies.</p>
+
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px">How to export your LinkedIn connections</div>
+      <ol style="font-size:0.82rem;color:var(--text-mid);line-height:1.8;margin:0 0 6px;padding-left:18px;">
+        <li>Go to <strong style="color:var(--text)">linkedin.com/mypreferences/d/categories/connections</strong></li>
+        <li>Under "How LinkedIn uses your data," click <strong style="color:var(--text)">Get a copy of your data</strong></li>
+        <li>Select <strong style="color:var(--text)">Connections</strong> and request the archive</li>
+        <li>Download the .zip and open <strong style="color:var(--text)">Connections.csv</strong></li>
+      </ol>
+      <a href="https://www.linkedin.com/mypreferences/d/categories/connections" target="_blank" style="display:inline-block;font-size:0.72rem;color:var(--amber);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;text-decoration:none;margin-bottom:24px;">Open LinkedIn export page →</a>
+
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="net-add-btn primary" onclick="_li.step=2;_liRender()" style="flex:1;">Next: Upload CSV</button>
+        <button class="net-add-btn" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _liStep2() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Upload Connections.csv</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px">Step 2 of 4</div>
+
+      <label for="li-file-input" style="display:block;border:2px dashed var(--border);border-radius:4px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border-hl)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:1.6rem;margin-bottom:8px;">📎</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:4px;">Click to choose file</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);">Connections.csv from your LinkedIn export</div>
+        <input type="file" id="li-file-input" accept=".csv,text/csv" style="display:none" onchange="_liParseAndAdvance(this.files[0])">
+      </label>
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="net-add-btn" onclick="_li.step=1;_liRender()" style="flex:1;">← Back</button>
+        <button class="net-add-btn" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _liParseAndAdvance(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const rows = parseCSVText(e.target.result);
+    if (rows.length < 2) { showToast('CSV appears empty'); return; }
+    const hdrs = rows[0].map(h => h.toLowerCase().trim());
+    const firstI = hdrs.findIndex(h => h.includes('first name') || h === 'first');
+    const lastI  = hdrs.findIndex(h => h.includes('last name')  || h === 'last');
+    if (firstI === -1 || lastI === -1) {
+      showToast("This doesn't look like a LinkedIn Connections CSV");
+      return;
+    }
+    const companyI = hdrs.findIndex(h => h === 'company');
+    const positionI = hdrs.findIndex(h => h === 'position');
+    const emailI = hdrs.findIndex(h => h.includes('email'));
+    const connectedI = hdrs.findIndex(h => h.includes('connected on') || h === 'connected');
+
+    _li.parsed = rows.slice(1).filter(r => r.some(c => c.trim())).map(r => ({
+      first: (r[firstI] || '').trim(),
+      last:  (r[lastI]  || '').trim(),
+      company:     companyI  >= 0 ? (r[companyI]  || '').trim() : '',
+      role:        positionI >= 0 ? (r[positionI] || '').trim() : '',
+      email:       emailI    >= 0 ? (r[emailI]    || '').trim() : '',
+      connectedOn: connectedI >= 0 ? (r[connectedI]|| '').trim() : '',
+    })).filter(p => p.first || p.last);
+
+    _liTriage();
+    _li.step = 3;
+    _liRender();
+  };
+  reader.readAsText(file);
+}
+
+function _liTriage() {
+  _li.triage = _li.parsed.map((p, i) => {
+    const fn = p.first.toLowerCase();
+    const ln = p.last.toLowerCase();
+    const existing = S.contacts.find(c =>
+      c.first.toLowerCase() === fn && c.last.toLowerCase() === ln
+    ) || null;
+    const isTarget = !existing && S.companies.some(co =>
+      co.name.toLowerCase().trim() === p.company.toLowerCase().trim() && p.company
+    );
+    return {
+      contact: p,
+      idx: i,
+      status: existing ? 'exists' : isTarget ? 'target' : 'other',
+      checked: isTarget,
+      existingId: existing ? existing.id : null,
+    };
+  });
+  // Sort: target first, then other, then exists — each group alpha by last name
+  const rank = { target: 0, other: 1, exists: 2 };
+  _li.triage.sort((a, b) => {
+    if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+    return (a.contact.last + a.contact.first).localeCompare(b.contact.last + b.contact.first);
+  });
+}
+
+function _liToggle(i) {
+  _li.triage[i].checked = !_li.triage[i].checked;
+  const checked = _li.triage.filter(t => t.checked).length;
+  const el = document.getElementById('li-sel-count');
+  if (el) el.textContent = checked + ' selected';
+  const btn = document.getElementById('li-import-btn');
+  if (btn) btn.disabled = checked === 0;
+}
+
+function _liToggleGroup(groupId) {
+  const el = document.getElementById(groupId);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const btn = document.getElementById(groupId + '-toggle');
+  if (btn) btn.textContent = el.style.display === 'none' ? 'Show all' : 'Show less';
+}
+
+function _liStep3() {
+  const targets = _li.triage.filter(t => t.status === 'target');
+  const others  = _li.triage.filter(t => t.status === 'other');
+  const exists  = _li.triage.filter(t => t.status === 'exists');
+  const checked = _li.triage.filter(t => t.checked).length;
+
+  const rowHTML = (t, i) => `
+    <label class="li-triage-row" onclick="_liToggle(${i});event.preventDefault()">
+      <input type="checkbox" ${t.checked ? 'checked' : ''} style="flex-shrink:0;cursor:pointer;" onchange="_liToggle(${i})">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.82rem;color:var(--text);font-weight:500;">${escHtml(t.contact.first)} ${escHtml(t.contact.last)}</div>
+        ${t.contact.company || t.contact.role ? `<div style="font-size:0.72rem;color:var(--text-dim);">${escHtml(t.contact.company)}${t.contact.company && t.contact.role ? ' · ' : ''}${escHtml(t.contact.role)}</div>` : ''}
+      </div>
+    </label>`;
+
+  const existsRowHTML = t => `
+    <div class="li-triage-row" style="cursor:default;opacity:0.6;">
+      <div style="width:16px;flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.82rem;color:var(--text);font-weight:500;">${escHtml(t.contact.first)} ${escHtml(t.contact.last)}</div>
+        ${t.contact.company || t.contact.role ? `<div style="font-size:0.72rem;color:var(--text-dim);">${escHtml(t.contact.company)}${t.contact.company && t.contact.role ? ' · ' : ''}${escHtml(t.contact.role)}</div>` : ''}
+      </div>
+      <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;color:var(--green);text-transform:uppercase;flex-shrink:0;">In Show Up</span>
+    </div>`;
+
+  const othersFirst5 = others.slice(0, 5);
+  const othersRest   = others.slice(5);
+
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:left">
+      <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Review contacts</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px">Step 3 of 4</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:16px;">${_li.parsed.length} connections from LinkedIn${targets.length > 0 ? ` · <span style="color:var(--amber);font-weight:600;">${targets.length} at your target companies</span>` : ''}</div>
+
+      <div style="max-height:52vh;overflow-y:auto;padding-right:4px;">
+        ${targets.length > 0 ? `
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);margin-bottom:4px;margin-top:4px;">At your target companies</div>
+          ${targets.map(t => rowHTML(t, _li.triage.indexOf(t))).join('')}
+        ` : ''}
+
+        ${others.length > 0 ? `
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;margin-top:14px;">Others</div>
+          ${othersFirst5.map(t => rowHTML(t, _li.triage.indexOf(t))).join('')}
+          ${othersRest.length > 0 ? `
+            <div id="li-others-rest" style="display:none;">${othersRest.map(t => rowHTML(t, _li.triage.indexOf(t))).join('')}</div>
+            <button id="li-others-rest-toggle" onclick="_liToggleGroup('li-others-rest')" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;cursor:pointer;padding:8px 0;text-decoration:underline;">Show all ${others.length} others</button>
+          ` : ''}
+        ` : ''}
+
+        ${exists.length > 0 ? `
+          <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;margin-top:14px;">Already in Show Up</div>
+          <div id="li-exists-list" style="display:none;">${exists.map(t => existsRowHTML(t)).join('')}</div>
+          <button id="li-exists-list-toggle" onclick="_liToggleGroup('li-exists-list')" style="background:none;border:none;color:var(--text-dim);font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;cursor:pointer;padding:8px 0;text-decoration:underline;">Show ${exists.length} existing</button>
+        ` : ''}
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
+        <span id="li-sel-count" style="font-size:0.78rem;color:var(--text-dim);flex:1;">${checked} selected</span>
+        <button class="net-add-btn" onclick="_li.step=2;_liRender()">← Back</button>
+        <button id="li-import-btn" class="net-add-btn primary" onclick="_liDoImport()" ${checked === 0 ? 'disabled style="opacity:0.4;cursor:default;"' : ''}>Import selected →</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function _liDoImport() {
+  const toImport = _li.triage.filter(t => t.checked && t.status !== 'exists');
+  if (toImport.length === 0) { showToast('No contacts selected'); return; }
+
+  toImport.forEach(t => {
+    const p = t.contact;
+    S.contacts.push({
+      id: S.nextContactId++,
+      first: p.first,
+      last: p.last,
+      name: [p.first, p.last].filter(Boolean).join(' '),
+      company: p.company || '',
+      role: p.role || '',
+      email: p.email || '',
+      type: 'peer',
+      notes: p.connectedOn ? `LinkedIn connection since ${p.connectedOn}` : '',
+      about: '',
+      lastContact: null,
+      cadence: null,
+      preferredMethod: 'LinkedIn',
+      resumeSent: false,
+      nextStep: '',
+      interactions: [],
+      priority: t.status === 'target',
+      nextContactDate: '',
+      followUpNote: '',
+    });
+  });
+
+  _li.importedCount = toImport.length;
+  _li.targetCount = toImport.filter(t => t.status === 'target').length;
+  save();
+  _li.step = 4;
+  _liRender();
+}
+
+function _liStep4() {
+  const inner = document.getElementById('modal-inner');
+  inner.innerHTML = `
+    <div style="text-align:center;padding:8px 0;">
+      <div style="font-size:2.4rem;margin-bottom:12px;">✓</div>
+      <div style="font-size:1.3rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;margin-bottom:8px;">${_li.importedCount} contact${_li.importedCount !== 1 ? 's' : ''} imported</div>
+      ${_li.targetCount > 0 ? `<p style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin:0 0 20px;">${_li.targetCount} contact${_li.targetCount !== 1 ? 's are' : ' is'} at your target companies and ${_li.targetCount !== 1 ? 'have' : 'has'} been starred. Find them in Network › People.</p>` : `<p style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin:0 0 20px;">Find your new contacts in Network › People.</p>`}
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${_li.targetCount > 0 ? `<button class="net-add-btn primary" onclick="closeModal();networkView='people';networkFilter='priority';renderNetwork()">View starred contacts →</button>` : ''}
+        <button class="net-add-btn${_li.targetCount > 0 ? '' : ' primary'}" onclick="closeModal();renderNetwork()">Done</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+
 function openAddContactForm() {
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = `
@@ -12244,6 +12506,7 @@ function renderNetwork() {
     <div class="net-add-row">
       <button class="net-add-btn primary" onclick="openAddContactForm()">+ Add contact</button>
       <button class="net-add-btn" onclick="importContactsCSV()">Import from CSV</button>
+      <button class="net-add-btn" onclick="openLinkedInImport()">Import from LinkedIn</button>
       <span style="font-size:0.68rem;color:var(--text-dim);align-self:center;margin-left:2px">${contacts.length} contacts</span>
     </div>
     <div class="network-toolbar net-sticky-bar">
