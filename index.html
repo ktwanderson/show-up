@@ -8863,12 +8863,9 @@ async function fetchCompanyNews(companyId) {
   const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
 
   try {
-    const resp = await fetch(`${RSS2JSON_ENDPOINT}?rss_url=${encodeURIComponent(rssUrl)}&count=6`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    if (data.status !== 'ok' || !Array.isArray(data.items)) throw new Error('bad feed');
+    const items = await _fetchRSS(rssUrl, 6);
 
-    const headlines = data.items.map(item => {
+    const headlines = items.map(item => {
       const title = item.title || '';
       // Google News titles are formatted "Headline - Source"
       const sourceMatch = title.match(/^(.*) - ([^-]+)$/);
@@ -11479,13 +11476,13 @@ function _liStep1() {
   inner.innerHTML = `
     <div style="text-align:left">
       <div style="font-size:1.4rem;font-weight:300;font-family:'Montserrat',sans-serif;letter-spacing:-0.02em;line-height:1.2;margin-bottom:4px">Import from LinkedIn</div>
-      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px">Triage your network</div>
+      <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px">Curate your network</div>
 
-      <p style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin:0 0 18px">This import triages your LinkedIn connections — it doesn't dump everyone in. You'll review contacts before anything is saved, and Show Up will highlight which ones are at your target companies.</p>
+      <p style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin:0 0 18px">This import helps you curate your LinkedIn connections — it doesn't dump everyone in. You'll review contacts before anything is saved, and Show Up will highlight which ones are at your target companies.</p>
 
       <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px">How to export your LinkedIn connections</div>
-      <ol style="font-size:0.82rem;color:var(--text-mid);line-height:1.8;margin:0 0 6px;padding-left:18px;">
-        <li>Go to <strong style="color:var(--text)">linkedin.com/mypreferences/d/categories/connections</strong></li>
+      <ol style="font-size:0.82rem;color:var(--text-mid);line-height:1.8;margin:0 0 6px;padding-left:18px;overflow-wrap:break-word;word-break:break-word;">
+        <li>Go to <strong style="color:var(--text);word-break:break-all;">linkedin.com/mypreferences/d/categories/connections</strong></li>
         <li>Under "How LinkedIn uses your data," click <strong style="color:var(--text)">Get a copy of your data</strong></li>
         <li>Select <strong style="color:var(--text)">Connections</strong> and request the archive</li>
         <li>Download the .zip and open <strong style="color:var(--text)">Connections.csv</strong></li>
@@ -12805,7 +12802,32 @@ Return ONLY the message text — no subject line label (unless it's email, then 
 }
 
 // ── BRIEFING ─────────────────────────────────────────────────
-const RSS2JSON_ENDPOINT = 'https://api.rss2json.com/v1/api.json';
+function _parseRSS(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+  const items = Array.from(doc.querySelectorAll('item'));
+  return items.map(item => ({
+    title: item.querySelector('title')?.textContent?.trim() || '',
+    link: item.querySelector('link')?.textContent?.trim() || '',
+    description: (item.querySelector('description')?.textContent || '').replace(/<[^>]*>/g, '').slice(0, 200),
+    pubDate: item.querySelector('pubDate')?.textContent?.trim() || '',
+  }));
+}
+
+async function _fetchRSS(url, count = 10) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const items = _parseRSS(data.contents || '');
+    return items.slice(0, count);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 let _briefingFetching = false;
 let _briefingDigestLoading = false;
 let _briefingSettingsOpen = false;
@@ -12829,25 +12851,8 @@ async function fetchBriefingArticles(force) {
 
   const sources = (S.briefingSources || []).filter(s => s.enabled);
   const results = await Promise.allSettled(sources.map(async src => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    let resp;
-    try {
-      resp = await fetch(`${RSS2JSON_ENDPOINT}?rss_url=${encodeURIComponent(src.url)}&count=10`, { signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    if (data.status !== 'ok' || !Array.isArray(data.items)) throw new Error('bad feed');
-    return data.items.map(item => ({
-      title: item.title || '',
-      link: item.link || '',
-      description: (item.description || '').replace(/<[^>]*>/g, '').slice(0, 200),
-      pubDate: item.pubDate || '',
-      sourceName: src.name,
-      sourceId: src.id,
-    }));
+    const items = await _fetchRSS(src.url, 10);
+    return items.map(item => ({ ...item, sourceName: src.name, sourceId: src.id }));
   }));
 
   const articles = [];
