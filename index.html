@@ -12901,15 +12901,108 @@ function removeBriefingSource(id) {
   renderBriefing();
 }
 
-function addBriefingSource() {
+const SUGGESTED_BRIEFING_SOURCES = [
+  { id: 'sug-thr',       name: 'The Hollywood Reporter', url: 'https://www.hollywoodreporter.com/feed/' },
+  { id: 'sug-variety',   name: 'Variety',                url: 'https://variety.com/feed/' },
+  { id: 'sug-deadline',  name: 'Deadline',               url: 'https://deadline.com/feed/' },
+  { id: 'sug-thewrap',   name: 'The Wrap',               url: 'https://www.thewrap.com/feed/' },
+  { id: 'sug-cynopsis',  name: 'Cynopsis',               url: 'https://www.cynopsis.com/feed/' },
+  { id: 'sug-adage',     name: 'Ad Age',                 url: 'https://adage.com/feed' },
+  { id: 'sug-mediapost', name: 'Mediapost',              url: 'https://www.mediapost.com/feed/' },
+  { id: 'sug-puck',      name: 'Puck News',              url: 'https://puck.news/feed/' },
+  { id: 'sug-semafor',   name: 'Semafor Technology',     url: 'https://www.semafor.com/rss/technology' },
+  { id: 'sug-adtechgod', name: 'AdTech God',             url: 'https://adtechgod.substack.com/feed' },
+  { id: 'sug-evanshap',  name: 'Evan Shapiro',           url: 'https://evanshapiro.substack.com/feed' },
+  { id: 'sug-wsjcmo',    name: 'WSJ CMO Today',          url: 'https://news.google.com/rss/search?q=WSJ+CMO+Today&hl=en-US&gl=US&ceid=US:en' },
+  { id: 'sug-theinfo',   name: 'The Information',        url: 'https://www.theinformation.com/feed' },
+];
+
+function addSuggestedSource(id) {
+  const src = SUGGESTED_BRIEFING_SOURCES.find(s => s.id === id);
+  if (!src) return;
+  if (!S.briefingSources) S.briefingSources = [];
+  if (S.briefingSources.some(s => s.url === src.url)) return;
+  S.briefingSources.push({ id: 'custom-' + Date.now(), name: src.name, url: src.url, enabled: true });
+  save();
+  renderBriefing();
+}
+
+async function discoverRSSFeed(siteUrl) {
+  // Normalize URL
+  if (!siteUrl.startsWith('http')) siteUrl = 'https://' + siteUrl;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(siteUrl)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const html = data.contents || '';
+
+    // Try autodiscovery link tag
+    const linkMatch = html.match(/<link[^>]+type=["']application\/(?:rss|atom)\+xml["'][^>]*href=["']([^"']+)["']/i)
+      || html.match(/<link[^>]+href=["']([^"']+)["'][^>]*type=["']application\/(?:rss|atom)\+xml["']/i);
+    if (linkMatch) {
+      let feedUrl = linkMatch[1];
+      if (feedUrl.startsWith('/')) feedUrl = new URL(siteUrl).origin + feedUrl;
+      return feedUrl;
+    }
+
+    // Try common feed paths
+    const origin = new URL(siteUrl).origin;
+    const candidates = ['/feed', '/feed/', '/rss', '/rss.xml', '/feed.xml', '/index.xml'];
+    for (const path of candidates) {
+      try {
+        const testResp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(origin + path)}`, { signal: AbortSignal.timeout(5000) });
+        if (testResp.ok) {
+          const testData = await testResp.json();
+          if (testData.contents && testData.contents.includes('<rss') || testData.contents && testData.contents.includes('<feed')) {
+            return origin + path;
+          }
+        }
+      } catch(e) { /* skip */ }
+    }
+    return null;
+  } catch(e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+async function addBriefingSource() {
   const nameInput = document.getElementById('briefing-source-name');
   const urlInput = document.getElementById('briefing-source-url');
+  const addBtn = document.getElementById('briefing-add-btn');
   if (!nameInput || !urlInput) return;
-  const name = nameInput.value.trim();
-  const url = urlInput.value.trim();
-  if (!name || !url) return;
+  let name = nameInput.value.trim();
+  let url = urlInput.value.trim();
+  if (!url) return;
+  if (!url.startsWith('http')) url = 'https://' + url;
+
+  const looksLikeFeed = /\/(feed|rss|atom)(\/|\.xml|$)/i.test(url) || url.endsWith('.xml');
+
+  if (!looksLikeFeed) {
+    if (addBtn) { addBtn.textContent = 'Finding feed…'; addBtn.disabled = true; }
+    const feedUrl = await discoverRSSFeed(url);
+    if (addBtn) { addBtn.textContent = 'Add'; addBtn.disabled = false; }
+    if (!feedUrl) {
+      const errEl = document.getElementById('briefing-add-error');
+      if (errEl) { errEl.textContent = 'Could not find an RSS feed for that site. Try pasting the feed URL directly.'; errEl.style.display = 'block'; }
+      return;
+    }
+    url = feedUrl;
+    // Auto-name from domain if name not provided
+    if (!name) name = new URL(url).hostname.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  if (!name) name = new URL(url).hostname.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   if (!S.briefingSources) S.briefingSources = [];
   S.briefingSources.push({ id: 'custom-' + Date.now(), name, url, enabled: true });
+  nameInput.value = '';
+  urlInput.value = '';
+  const errEl = document.getElementById('briefing-add-error');
+  if (errEl) errEl.style.display = 'none';
   save();
   renderBriefing();
 }
@@ -12948,16 +13041,26 @@ function renderBriefingSettings() {
         const failed = failedSources.includes(s.name);
         return `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-          <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleBriefingSource('${escHtml(s.id)}')" style="cursor:pointer;">
+          <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleBriefingSource('${escHtml(s.id)}')" style="cursor:pointer;accent-color:var(--teal);width:15px;height:15px;">
           <span style="font-size:0.8rem;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(s.name)}</span>
           ${failed ? `<span style="font-size:0.62rem;color:var(--red);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;">couldn't load</span>` : ''}
           <button onclick="removeBriefingSource('${escHtml(s.id)}')" style="border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:0.7rem;font-family:'Montserrat',sans-serif;">remove</button>
         </div>`;
       }).join('') || `<div style="font-size:0.78rem;color:var(--text-dim);padding:6px 0;">No sources configured.</div>`}
       <div style="display:flex;gap:6px;margin-top:12px;">
-        <input id="briefing-source-name" type="text" placeholder="Source name" style="flex:1;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
-        <input id="briefing-source-url" type="text" placeholder="RSS feed URL" style="flex:2;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
-        <button onclick="addBriefingSource()" style="padding:7px 12px;border:none;background:var(--text);color:var(--surface);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Add</button>
+        <input id="briefing-source-name" type="text" placeholder="Name (optional)" style="flex:1;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <input id="briefing-source-url" type="text" placeholder="Website or RSS feed URL" style="flex:2;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <button id="briefing-add-btn" onclick="addBriefingSource()" style="padding:7px 12px;border:none;background:var(--text);color:var(--surface);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Add</button>
+      </div>
+      <div id="briefing-add-error" style="display:none;font-size:0.72rem;color:var(--red);margin-top:6px;"></div>
+      <div style="margin-top:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Suggested sources</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${SUGGESTED_BRIEFING_SOURCES.map(s => {
+            const already = (S.briefingSources || []).some(x => x.url === s.url);
+            return `<button onclick="addSuggestedSource('${s.id}')" ${already ? 'disabled' : ''} style="padding:5px 10px;border:1px solid var(--border);border-radius:2px;background:none;font-size:0.72rem;font-family:'DM Sans',sans-serif;cursor:${already ? 'default' : 'pointer'};color:${already ? 'var(--text-dim)' : 'var(--text)'};opacity:${already ? '0.45' : '1'};transition:border-color 0.15s;" ${already ? '' : `onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"`}>${already ? '✓ ' : '+ '}${escHtml(s.name)}</button>`;
+          }).join('')}
+        </div>
       </div>
     </div>
   `;
