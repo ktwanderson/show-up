@@ -13074,8 +13074,8 @@ function renderBriefing() {
   const hasApiKey = !!localStorage.getItem('showup_claude_api_key');
   const articles = cache.articles || [];
 
-  // Trigger initial fetch if no cache and not already fetching
-  if (articles.length === 0 && cache.fetchedAt === 0 && !_briefingFetching) {
+  // Trigger initial fetch if no articles cached and not already fetching
+  if (articles.length === 0 && !_briefingFetching) {
     _briefingFetching = true;
     fetchBriefingArticles().then(fetched => {
       _briefingFetching = false;
