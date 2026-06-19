@@ -6400,7 +6400,7 @@ function renderListsView() {
   return `
     <div style="margin-bottom:16px;">
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-        <button onclick="addList()" style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 14px;font-size:0.75rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mid);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ New list</button>
+        <button onclick="addList()" style="background:none;border:0.5px solid var(--border);border-radius:4px;padding:4px 10px;font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.color='var(--amber)';this.style.borderColor='var(--amber)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">+ new list</button>
       </div>
       ${lists.length === 0 ? `<div class="empty"><div class="empty-icon">◦</div>No lists yet. Create one above.</div>` :
         `<div style="display:flex;flex-direction:column;gap:8px;">
@@ -6408,7 +6408,7 @@ function renderListsView() {
             const cnt = S.tasks.filter(t => !t.done && !t.parentId && t.listId === l.id).length;
             const icon = l.icon || '◆';
             return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.15s;" onclick="switchQuestCat('list_${l.id}')" onmouseover="this.style.borderColor='${l.color}'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="width:24px;height:24px;border-radius:6px;background:${l.color};display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;color:#fff;">${icon}</div>
+              <span style="font-size:1rem;color:${l.color};width:18px;text-align:center;flex-shrink:0;line-height:1;">${icon}</span>
               <div style="flex:1;font-size:0.88rem;font-weight:500;color:var(--text);font-family:'DM Sans',sans-serif;">${escHtml(l.name)}</div>
               <div style="font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${cnt > 0 ? `${cnt} active` : ''}</div>
               <button onclick="event.stopPropagation();renameList(${l.id})" title="Edit list" style="background:none;border:none;cursor:pointer;padding:4px;opacity:0.35;transition:opacity 0.15s;font-size:0.75rem;color:var(--text-dim);" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.35'">✎</button>
@@ -6536,7 +6536,7 @@ function renderQuests() {
         <div class="cat-tabs">${catTabsHTML}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
           <button onclick="switchQuestCat('lists')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Lists</button>
-          <div style="width:24px;height:24px;border-radius:6px;background:${listColor};display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;color:#fff;">${currentList?.icon || '◆'}</div>
+          <span style="font-size:1rem;color:${listColor};width:18px;text-align:center;flex-shrink:0;line-height:1;">${currentList?.icon || '◆'}</span>
           <div style="font-size:0.88rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(currentList?.name || 'List')}</div>
           <div style="display:flex;align-items:center;gap:2px;color:var(--text-dim);">
             <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;opacity:0.7;">Sort:</span>
