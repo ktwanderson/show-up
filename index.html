@@ -6408,7 +6408,7 @@ function renderListsView() {
             const cnt = S.tasks.filter(t => !t.done && !t.parentId && t.listId === l.id).length;
             const icon = l.icon || '◆';
             return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.15s;" onclick="switchQuestCat('list_${l.id}')" onmouseover="this.style.borderColor='${l.color}'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="width:36px;height:36px;border-radius:8px;background:${l.color};display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;color:#fff;">${icon}</div>
+              <div style="width:24px;height:24px;border-radius:6px;background:${l.color};display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;color:#fff;">${icon}</div>
               <div style="flex:1;font-size:0.88rem;font-weight:500;color:var(--text);font-family:'DM Sans',sans-serif;">${escHtml(l.name)}</div>
               <div style="font-size:0.65rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${cnt > 0 ? `${cnt} active` : ''}</div>
               <button onclick="event.stopPropagation();renameList(${l.id})" title="Edit list" style="background:none;border:none;cursor:pointer;padding:4px;opacity:0.35;transition:opacity 0.15s;font-size:0.75rem;color:var(--text-dim);" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.35'">✎</button>
@@ -6536,7 +6536,7 @@ function renderQuests() {
         <div class="cat-tabs">${catTabsHTML}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
           <button onclick="switchQuestCat('lists')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Lists</button>
-          <div style="width:32px;height:32px;border-radius:8px;background:${listColor};display:flex;align-items:center;justify-content:center;font-size:0.95rem;flex-shrink:0;color:#fff;">${currentList?.icon || '◆'}</div>
+          <div style="width:24px;height:24px;border-radius:6px;background:${listColor};display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;color:#fff;">${currentList?.icon || '◆'}</div>
           <div style="font-size:0.88rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(currentList?.name || 'List')}</div>
           <div style="display:flex;align-items:center;gap:2px;color:var(--text-dim);">
             <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;opacity:0.7;">Sort:</span>
@@ -6959,6 +6959,7 @@ function openEditTask(id) { openEditTaskModal(id); }
 function openEditTaskModal(id) {
   const task = S.tasks.find(t => t.id === id);
   if (!task) return;
+  const isSubtask = !!task.parentId;
   const catOptions = Object.entries(CATS).map(([k, v]) =>
     `<option value="${k}" ${task.cat === k ? 'selected' : ''}>${v.label}</option>`
   ).join('');
@@ -6967,30 +6968,15 @@ function openEditTaskModal(id) {
   ).join('');
   document.getElementById('modal-inner').innerHTML = `
     <div style="text-align:left;">
-      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Edit task</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Edit ${isSubtask ? 'step' : 'task'}</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
         <input id="etm-text" type="text" value="${escHtml(task.text)}"
           style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;"
           onkeydown="if(event.key==='Enter')saveEditTaskModal(${id})">
         <div style="display:flex;gap:10px;">
           <div style="flex:1;">
-            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Category</div>
-            <select id="etm-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">${catOptions}</select>
-          </div>
-          <div>
             <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Effort</div>
-            <select id="etm-pts" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;cursor:pointer;width:50px;">${ptsOptions}</select>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;">
-          <div style="flex:1;">
-            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Repeat</div>
-            <select id="etm-recurrence" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
-              <option value="" ${!task.recurrence?'selected':''}>No repeat</option>
-              <option value="daily" ${task.recurrence==='daily'?'selected':''}>Daily</option>
-              <option value="weekly" ${task.recurrence==='weekly'?'selected':''}>Weekly</option>
-              <option value="monthly" ${task.recurrence==='monthly'?'selected':''}>Monthly</option>
-            </select>
+            <select id="etm-pts" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;cursor:pointer;width:100%;">${ptsOptions}</select>
           </div>
           <div style="flex:1;">
             <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Priority</div>
@@ -6999,6 +6985,22 @@ function openEditTaskModal(id) {
               <option value="1" ${task.priority===1?'selected':''}>! Low</option>
               <option value="2" ${task.priority===2?'selected':''}>!! Medium</option>
               <option value="3" ${task.priority===3?'selected':''}>!!! High</option>
+            </select>
+          </div>
+        </div>
+        ${!isSubtask ? `
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Category</div>
+            <select id="etm-cat" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">${catOptions}</select>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Repeat</div>
+            <select id="etm-recurrence" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+              <option value="" ${!task.recurrence?'selected':''}>No repeat</option>
+              <option value="daily" ${task.recurrence==='daily'?'selected':''}>Daily</option>
+              <option value="weekly" ${task.recurrence==='weekly'?'selected':''}>Weekly</option>
+              <option value="monthly" ${task.recurrence==='monthly'?'selected':''}>Monthly</option>
             </select>
           </div>
         </div>
@@ -7029,12 +7031,12 @@ function openEditTaskModal(id) {
             <button id="etm-area-btn-none" onclick="etmSelectArea('')" style="padding:3px 8px;border-radius:2px;border:1px solid var(--border);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${!task.lifeArea?'var(--amber)':'var(--surface2)'};color:${!task.lifeArea?'#fff':'var(--text-dim)'};">None</button>
             ${Object.entries(S.lifeAreas||{}).map(([k,a]) => { const ac=getAreaColor(k); return `<button id="etm-area-btn-${k}" onclick="etmSelectArea('${k}')" style="padding:3px 8px;border-radius:2px;border:1px solid ${task.lifeArea===k?ac:'var(--border)'};font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;background:${task.lifeArea===k?ac:'var(--surface2)'};color:${task.lifeArea===k?'var(--text-inverse)':'var(--text-dim)'};">${a.icon} ${a.label}</button>`; }).join('')}
           </div>
-        </div>
+        </div>` : ''}
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
+      ${!isSubtask ? `<div style="display:flex;gap:8px;margin-bottom:8px;">
         <button onclick="cloneTask(${id});closeModal()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.75rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Clone →</button>
         <button onclick="saveAsTemplate(${id});closeModal()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:0.75rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;white-space:nowrap;">Save template</button>
-      </div>
+      </div>` : ''}
       <div style="display:flex;gap:8px;">
         <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
         <button onclick="saveEditTaskModal(${id})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
