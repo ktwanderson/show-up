@@ -3704,7 +3704,7 @@ function ensureWeekPrompt() {
 
 function getThisWeekReflection() {
   const weekStart = getWeekStart();
-  return (S.weeklyReflections || []).find(r => r.weekStart === weekStart && !r.dismissed);
+  return (S.weeklyReflections || []).find(r => r.weekStart === weekStart);
 }
 
 function saveWeeklyReflection(answer) {
