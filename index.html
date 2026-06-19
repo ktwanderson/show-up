@@ -3195,6 +3195,7 @@ let networkOpenId = null;
 let networkStatusFilter = 'all';
 let networkSort = 'recent';
 let questsView = 'tasks';
+let currentListSort = 'default';
 let pipelineOpenId = null;
 let _pipelineTab = {}; // id → 'detail' | 'prep' | 'debrief'
 let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'digest'
@@ -6202,6 +6203,46 @@ function renderCapacityBar() {
 }
 
 // ── QUESTS TAB ───────────────────────────────────────────────
+// ── LIST/PROJECT SORT ─────────────────────────────────────────
+function sortTasksForList(tasks) {
+  const copy = [...tasks];
+  if (currentListSort === 'due') {
+    return copy.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate < b.dueDate ? -1 : 1;
+    });
+  }
+  if (currentListSort === 'priority') {
+    return copy.sort((a, b) => (b.priority || 0) - (a.priority || 0) || (b.points || 1) - (a.points || 1));
+  }
+  if (currentListSort === 'alpha') {
+    return copy.sort((a, b) => a.text.localeCompare(b.text));
+  }
+  if (currentListSort === 'progress') {
+    return copy.sort((a, b) => {
+      const aip = a.inProgress ? 1 : 0;
+      const bip = b.inProgress ? 1 : 0;
+      return bip - aip;
+    });
+  }
+  return copy; // default: creation order (unshift = newest first)
+}
+
+function sortControlHTML() {
+  const opts = [
+    { v: 'default',  l: 'Default'    },
+    { v: 'due',      l: 'Due date'   },
+    { v: 'priority', l: 'Priority'   },
+    { v: 'alpha',    l: 'A → Z'      },
+    { v: 'progress', l: 'In progress first' },
+  ];
+  return `<select onchange="currentListSort=this.value;renderQuests()" style="background:none;border:none;font-family:'Montserrat',sans-serif;font-size:0.62rem;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;padding:0;">
+    ${opts.map(o => `<option value="${o.v}" ${currentListSort===o.v?'selected':''}>${o.l}</option>`).join('')}
+  </select>`;
+}
+
 // ── DUE DATE HELPERS ─────────────────────────────────────────
 function dueDateBadge(task) {
   if (!task.dueDate || task.done) return '';
@@ -6479,7 +6520,8 @@ function renderQuests() {
   // ── List detail view ─────────────────────────────────────────
   if (isListDetail) {
     const listColor = currentList?.color || 'var(--teal)';
-    const activeTasks = S.tasks.filter(t => !t.done && !t.parentId && t.listId === currentListId);
+    const rawActive = S.tasks.filter(t => !t.done && !t.parentId && t.listId === currentListId);
+    const activeTasks = sortTasksForList(rawActive);
     const doneTasks   = S.tasks.filter(t =>  t.done && !t.parentId && t.listId === currentListId);
     const tasksHTML = activeTasks.length === 0
       ? `<div class="empty"><div class="empty-icon">◦</div>No tasks in this list yet.</div>`
@@ -6496,11 +6538,15 @@ function renderQuests() {
           <button onclick="switchQuestCat('lists')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Lists</button>
           <div style="width:32px;height:32px;border-radius:8px;background:${listColor};display:flex;align-items:center;justify-content:center;font-size:0.95rem;flex-shrink:0;color:#fff;">${currentList?.icon || '◆'}</div>
           <div style="font-size:0.88rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(currentList?.name || 'List')}</div>
+          <div style="display:flex;align-items:center;gap:2px;color:var(--text-dim);">
+            <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;opacity:0.7;">Sort:</span>
+            ${sortControlHTML()}
+          </div>
           <button onclick="renameList(${currentListId})" title="Edit list" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);opacity:0.4;transition:opacity 0.15s;padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">✎</button>
         </div>
         <div class="add-form">
           <input class="add-input" id="quest-input" placeholder="Add to ${escHtml(currentList?.name || 'list')}…" oninput="onNLInput('quest-input','quest-nl-preview')" onkeydown="if(event.key==='Enter')addQuestTask()">
-          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)">
+          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)" onkeydown="if(event.key==='Enter')addQuestTask()">
           <button class="add-btn" onclick="addQuestTask()">+</button>
         </div>
         <div id="quest-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin:-6px 0 8px;padding:2px 6px;background:var(--teal-lt);border-radius:2px;"></div>
@@ -6514,7 +6560,8 @@ function renderQuests() {
   if (isProjectDetail) {
     const projColor = currentProject?.color || 'var(--teal)';
     const today = todayLocal();
-    const activeTasks = S.tasks.filter(t => !t.done && !t.parentId && t.projectId === currentProjectId);
+    const rawActive = S.tasks.filter(t => !t.done && !t.parentId && t.projectId === currentProjectId);
+    const activeTasks = sortTasksForList(rawActive);
     const doneTasks   = S.tasks.filter(t =>  t.done && !t.parentId && t.projectId === currentProjectId);
     const allTasks = S.tasks.filter(t => !t.parentId && t.projectId === currentProjectId);
     const doneCnt = allTasks.filter(t => t.done).length;
@@ -6534,9 +6581,13 @@ function renderQuests() {
         <div class="cat-tabs">${catTabsHTML}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <button onclick="switchQuestCat('projects')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Projects</button>
-          <div style="width:8px;height:8px;border-radius:50%;background:${projColor};"></div>
+          <div style="width:10px;height:10px;border-radius:50%;background:${projColor};flex-shrink:0;"></div>
           <div style="font-size:0.85rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(currentProject?.name || 'Project')}</div>
           ${dueLbl ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:${dueColor};font-weight:600;">${dueLbl}</span>` : ''}
+          <div style="display:flex;align-items:center;gap:2px;color:var(--text-dim);">
+            <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.05em;text-transform:uppercase;opacity:0.7;">Sort:</span>
+            ${sortControlHTML()}
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
@@ -6546,7 +6597,7 @@ function renderQuests() {
         </div>
         <div class="add-form">
           <input class="add-input" id="quest-input" placeholder="Add task to ${escHtml(currentProject?.name || 'project')}…" oninput="onNLInput('quest-input','quest-nl-preview')" onkeydown="if(event.key==='Enter')addQuestTask()">
-          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)">
+          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)" onkeydown="if(event.key==='Enter')addQuestTask()">
           <button class="add-btn" onclick="addQuestTask()">+</button>
         </div>
         <div id="quest-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin:-6px 0 8px;padding:2px 6px;background:var(--teal-lt);border-radius:2px;"></div>
@@ -6903,29 +6954,7 @@ function addSubtask(parentId) {
   renderQuests();
 }
 
-function openEditTask(id) {
-  const task = S.tasks.find(t => t.id === id);
-  if (!task) return;
-  const row = document.getElementById('task-row-' + id);
-  if (!row) return;
-  const catOptions = Object.entries(CATS).map(([k, v]) =>
-    `<option value="${k}" ${task.cat === k ? 'selected' : ''}>${v.label}</option>`
-  ).join('');
-  row.innerHTML = `
-    <div style="display:flex;gap:6px;align-items:center;width:100%;flex-wrap:wrap;padding:4px 0;">
-      <input id="edit-task-text-${id}" type="text" value="${escHtml(task.text)}"
-        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.85rem;font-family:'Montserrat',sans-serif;"
-        onkeydown="if(event.key==='Enter')saveEditTask(${id});if(event.key==='Escape')renderQuests();" />
-      <select id="edit-task-cat-${id}"
-        style="padding:5px 6px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.8rem;font-family:'Montserrat',sans-serif;">
-        ${catOptions}
-      </select>
-      <button onclick="saveEditTask(${id})" style="padding:5px 10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Save</button>
-      <button onclick="renderQuests()" style="padding:5px 10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:2px;font-size:0.8rem;cursor:pointer;font-family:'Montserrat',sans-serif;">Cancel</button>
-    </div>`;
-  const inp = document.getElementById('edit-task-text-' + id);
-  if (inp) { inp.focus(); inp.select(); }
-}
+function openEditTask(id) { openEditTaskModal(id); }
 
 function openEditTaskModal(id) {
   const task = S.tasks.find(t => t.id === id);
