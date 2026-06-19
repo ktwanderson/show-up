@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.22',
+        release: 'show-up@0.23',
       });
     });
   </script>
@@ -1303,7 +1303,7 @@
 <div class="tabs-wrap">
   <button class="tab active" data-tab="today"    data-mode-required="full" onclick="switchTab('today')">Today</button>
   <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Focus</button>
-  <button class="tab"        data-tab="quests"   data-mode-required="full" onclick="switchTab('quests')">Tasks</button>
+  <button class="tab"        data-tab="quests"   data-mode-required="full" onclick="switchTab('quests')">Focus</button>
   <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
   <button class="tab" data-tab="briefing" data-mode-required="full" onclick="switchTab('briefing')">Briefing</button>
   <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
@@ -1711,7 +1711,7 @@ function normalizeStateArrays(s) {
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
     'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits',
-    'weeklyReflections','briefingSources'
+    'weeklyReflections','briefingSources','lists','projects'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -1767,8 +1767,19 @@ function migrateState(s) {
     });
   }
 
-  // ── add future migrations here ───────────────────────────────
-  // if (v < 3) { ... }
+  // v2 → v3: seed default lists and projects for existing users
+  if (v < 3) {
+    if (!s.lists || !Array.isArray(s.lists) || s.lists.length === 0) {
+      s.lists = [
+        { id: 1, name: 'Errands', color: '#4a6b8a' },
+        { id: 2, name: 'Online Shopping', color: '#7a5c8a' },
+        { id: 3, name: 'Healthcare', color: '#2d6347' },
+        { id: 4, name: 'Home', color: '#8a6540' },
+      ];
+      s.nextListId = 5;
+    }
+    if (!s.projects || !Array.isArray(s.projects)) { s.projects = []; s.nextProjectId = 1; }
+  }
 
   s.stateVersion = STATE_VERSION;
   return s;
@@ -2284,6 +2295,7 @@ const CATS = {
   admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 25, ph: 'Appointments, bills, forms, errands, logistics' },
   personal:  { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 35, ph: 'Health, family, home, anything life needs from you' },
   schedule:  { label: 'Scheduling', abbr: 'S', color: '#4a7a6d', xp: 20, ph: 'Appointments, interviews, calls to book or confirm' },
+  todo:      { label: 'To Do',      abbr: 'T', color: '#8c8880', xp: 15, ph: 'Add a task...' },
 };
 
 const HABIT_PRESETS = [
@@ -2636,7 +2648,7 @@ const SANDBOX_DEMO_STATE_FULL = {
 // ── VERSION & FEATURE FLAGS ───────────────────────────────────
 // Bump STATE_VERSION whenever DEFAULT_STATE has a breaking schema change.
 // Add a migration block in migrateState() for each version increment.
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 // Ship new features dark by setting the flag to false.
 // Flip to true when ready to enable for all users.
@@ -2653,6 +2665,16 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.23',
+    date: '2026-06-18',
+    items: [
+      'Focus tab — renamed from Tasks; now includes Lists, Projects, and due dates',
+      'Lists — create context-based task groups (Errands, Online Shopping, Healthcare, etc.) with 4 defaults pre-loaded',
+      'Projects — deadline-driven work with progress tracking; add tasks, track completion, mark done',
+      'Due dates — set due dates on any task; overdue and due-today tasks surface automatically on the Today tab',
+    ],
+  },
   {
     version: '0.22',
     date: '2026-06-16',
@@ -3143,6 +3165,15 @@ const DEFAULT_STATE = {
   onboardingComplete: false,
   lastSeenVersion: '',
   stateVersion: 0,
+  lists: [
+    { id: 1, name: 'Errands', color: '#4a6b8a' },
+    { id: 2, name: 'Online Shopping', color: '#7a5c8a' },
+    { id: 3, name: 'Healthcare', color: '#2d6347' },
+    { id: 4, name: 'Home', color: '#8a6540' },
+  ],
+  nextListId: 5,
+  projects: [],
+  nextProjectId: 1,
   skills: [],
   nextSkillId: 1,
   weeklyCapacity: 20,
@@ -4027,6 +4058,27 @@ function renderToday() {
             </div>`;
           }).join('')}
         </div>`}
+      </div>`;
+    })()}
+
+    ${(() => {
+      const todayStr = todayLocal();
+      const dueTodayItems = S.tasks.filter(t => !t.done && !t.parentId && t.dueDate === todayStr && !S.todayFocusIds.includes(t.id));
+      const overdueItems  = S.tasks.filter(t => !t.done && !t.parentId && t.dueDate && t.dueDate < todayStr && !S.todayFocusIds.includes(t.id));
+      const allDue = [...overdueItems, ...dueTodayItems];
+      if (!allDue.length || isRest) return '';
+      return `<div style="margin-top:14px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--destructive);margin-bottom:8px;">Due today${overdueItems.length ? ` · ${overdueItems.length} overdue` : ''}</div>
+        <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--destructive)33;border-radius:3px;overflow:hidden;">
+          ${allDue.map((t,i) => {
+            const isOverdue = t.dueDate < todayStr;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:${i<allDue.length-1?'1px solid var(--border)':'none'};background:var(--surface2);">
+              <span style="font-size:0.6rem;color:${isOverdue?'var(--destructive)':'var(--amber)'};flex-shrink:0;font-family:'Montserrat',sans-serif;font-weight:600;">${isOverdue?'OVERDUE':'TODAY'}</span>
+              <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
+              <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
+            </div>`;
+          }).join('')}
+        </div>
       </div>`;
     })()}
 
@@ -6150,6 +6202,169 @@ function renderCapacityBar() {
 }
 
 // ── QUESTS TAB ───────────────────────────────────────────────
+// ── DUE DATE HELPERS ─────────────────────────────────────────
+function dueDateBadge(task) {
+  if (!task.dueDate || task.done) return '';
+  const today = todayLocal();
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
+  let label, color;
+  if (task.dueDate < today)          { label = 'Overdue';   color = 'var(--destructive)'; }
+  else if (task.dueDate === today)   { label = 'Today';     color = 'var(--amber)'; }
+  else if (task.dueDate === tomorrowStr) { label = 'Tomorrow'; color = 'var(--teal)'; }
+  else {
+    const d = new Date(task.dueDate + 'T12:00:00');
+    label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    color = 'var(--text-dim)';
+  }
+  return `<button onclick="openEditTaskModal(${task.id})" title="Due date — click to edit" style="background:none;border:none;cursor:pointer;padding:0 3px;font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:${color};font-weight:600;flex-shrink:0;touch-action:manipulation;">${label}</button>`;
+}
+
+// ── LIST MANAGEMENT ───────────────────────────────────────────
+function addList() {
+  const inp = document.getElementById('new-list-input');
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  const colors = ['#4a6b8a','#7a5c8a','#2d6347','#8a6540','#9a4a5a','#4a7a6d','#a07c08'];
+  const color = colors[(S.lists.length) % colors.length];
+  const list = { id: S.nextListId++, name, color, createdAt: Date.now() };
+  S.lists.push(list);
+  save();
+  inp.value = '';
+  renderQuests();
+}
+
+function deleteList(id) {
+  if (!confirm('Delete this list? Tasks in it will move to All.')) return;
+  S.tasks.forEach(t => { if (t.listId === id) { delete t.listId; t.cat = t.cat || 'todo'; } });
+  S.lists = S.lists.filter(l => l.id !== id);
+  save();
+  currentQuestCat = 'lists';
+  renderQuests();
+}
+
+function renameList(id) {
+  const list = (S.lists || []).find(l => l.id === id);
+  if (!list) return;
+  const name = prompt('Rename list:', list.name);
+  if (!name || !name.trim()) return;
+  list.name = name.trim();
+  save();
+  renderQuests();
+}
+
+// ── PROJECT MANAGEMENT ────────────────────────────────────────
+function addProject() {
+  const nameEl = document.getElementById('new-project-name');
+  const dateEl = document.getElementById('new-project-date');
+  if (!nameEl) return;
+  const name = nameEl.value.trim();
+  if (!name) return;
+  const dueDate = dateEl?.value || null;
+  const colors = ['#4a6b8a','#2d6347','#7a5c8a','#a07c08','#9a4a5a','#4a7a6d'];
+  const color = colors[(S.projects.length) % colors.length];
+  const project = { id: S.nextProjectId++, name, dueDate, color, done: false, createdAt: Date.now() };
+  S.projects.push(project);
+  save();
+  nameEl.value = '';
+  if (dateEl) dateEl.value = '';
+  renderQuests();
+}
+
+function deleteProject(id) {
+  if (!confirm('Delete this project? Tasks in it will move to All.')) return;
+  S.tasks.forEach(t => { if (t.projectId === id) { delete t.projectId; t.cat = t.cat || 'todo'; } });
+  S.projects = S.projects.filter(p => p.id !== id);
+  save();
+  currentQuestCat = 'projects';
+  renderQuests();
+}
+
+function toggleProjectDone(id) {
+  const p = (S.projects || []).find(p => p.id === id);
+  if (!p) return;
+  p.done = !p.done;
+  if (p.done) p.completedAt = Date.now(); else delete p.completedAt;
+  save();
+  renderQuests();
+}
+
+function renderListsView() {
+  const lists = S.lists || [];
+  return `
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
+        <input id="new-list-input" class="add-input" placeholder="New list name…" style="flex:1;"
+          onkeydown="if(event.key==='Enter')addList()">
+        <button class="add-btn" onclick="addList()">+</button>
+      </div>
+      ${lists.length === 0 ? `<div class="empty"><div class="empty-icon">◦</div>No lists yet. Create one above.</div>` :
+        `<div style="display:flex;flex-direction:column;gap:8px;">
+          ${lists.map(l => {
+            const cnt = S.tasks.filter(t => !t.done && !t.parentId && t.listId === l.id).length;
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);cursor:pointer;" onclick="switchQuestCat('list_${l.id}')" onmouseover="this.style.borderColor='${l.color}'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="width:10px;height:10px;border-radius:50%;background:${l.color};flex-shrink:0;"></div>
+              <div style="flex:1;font-size:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;">${escHtml(l.name)}</div>
+              <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">${cnt} active</div>
+              <button onclick="event.stopPropagation();renameList(${l.id})" title="Rename" style="background:none;border:none;cursor:pointer;padding:0 3px;opacity:0.4;transition:opacity 0.15s;font-size:0.7rem;color:var(--text-dim);" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">✎</button>
+              <button onclick="event.stopPropagation();deleteList(${l.id})" title="Delete list" style="background:none;border:none;cursor:pointer;padding:0 3px;opacity:0.3;transition:opacity 0.15s;font-size:0.75rem;color:var(--text-dim);" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.3'">✕</button>
+            </div>`;
+          }).join('')}
+        </div>`}
+    </div>`;
+}
+
+function renderProjectsView() {
+  const projects = (S.projects || []).filter(p => !p.done);
+  const doneProjects = (S.projects || []).filter(p => p.done);
+  const today = todayLocal();
+
+  const projectCard = (p) => {
+    const tasks = S.tasks.filter(t => !t.parentId && t.projectId === p.id);
+    const doneCnt = tasks.filter(t => t.done).length;
+    const totalCnt = tasks.length;
+    const pct = totalCnt > 0 ? Math.round((doneCnt / totalCnt) * 100) : 0;
+    const isOverdue = p.dueDate && p.dueDate < today;
+    const dueLbl = p.dueDate ? (p.dueDate === today ? 'Due today' : isOverdue ? 'Overdue' : `Due ${new Date(p.dueDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`) : '';
+    const dueColor = isOverdue ? 'var(--destructive)' : p.dueDate === today ? 'var(--amber)' : 'var(--text-dim)';
+    return `<div style="padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
+        <div onclick="switchQuestCat('project_${p.id}')" style="flex:1;font-size:0.88rem;font-weight:500;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escHtml(p.name)}</div>
+        ${dueLbl ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:${dueColor};font-weight:600;">${dueLbl}</span>` : ''}
+        <button onclick="toggleProjectDone(${p.id})" title="Mark complete" style="background:none;border:none;cursor:pointer;padding:0 3px;opacity:0.35;font-size:0.75rem;color:var(--text-dim);transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.35'">✓</button>
+        <button onclick="deleteProject(${p.id})" title="Delete project" style="background:none;border:none;cursor:pointer;padding:0 3px;opacity:0.25;font-size:0.75rem;color:var(--text-dim);transition:opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.25'">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${pct===100?'var(--green)':p.color};border-radius:2px;transition:width 0.3s;"></div>
+        </div>
+        <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;white-space:nowrap;">${doneCnt}/${totalCnt} tasks</span>
+        <button onclick="switchQuestCat('project_${p.id}')" style="background:none;border:none;cursor:pointer;font-size:0.62rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;padding:0;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">open →</button>
+      </div>
+    </div>`;
+  };
+
+  return `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;">
+        <input id="new-project-name" class="add-input" placeholder="New project name…" style="flex:2;min-width:140px;"
+          onkeydown="if(event.key==='Enter')addProject()">
+        <input id="new-project-date" type="date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text-dim);padding:6px 0;outline:none;flex:1;min-width:110px;" placeholder="Due date">
+        <button class="add-btn" onclick="addProject()">+</button>
+      </div>
+      ${projects.length === 0 && doneProjects.length === 0
+        ? `<div class="empty"><div class="empty-icon">◦</div>No projects yet. Add one above.</div>`
+        : projects.map(p => projectCard(p)).join('')}
+      ${doneProjects.length > 0 ? `
+        <div style="margin-top:10px;">
+          <button class="done-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">▶ ${doneProjects.length} completed project${doneProjects.length!==1?'s':''}</button>
+          <div style="display:none;margin-top:6px;opacity:0.5;">${doneProjects.map(p => projectCard(p)).join('')}</div>
+        </div>` : ''}
+    </div>`;
+}
+
 function renderQuests() {
   const wrap = document.getElementById('quests-wrap');
   if (!wrap) return;
@@ -6157,15 +6372,28 @@ function renderQuests() {
   // Only count top-level tasks in tab badges (subtasks are nested under their parent)
   const active = S.tasks.filter(t => !t.done && !t.parentId);
   const urgentCount = active.filter(t => t.urgent).length;
-  const isCatView = !['thisweek', 'all', 'matrix'].includes(currentQuestCat);
+
+  const isListView    = currentQuestCat === 'lists';
+  const isListDetail  = currentQuestCat.startsWith('list_');
+  const isProjectView = currentQuestCat === 'projects';
+  const isProjectDetail = currentQuestCat.startsWith('project_');
+  const currentListId    = isListDetail    ? parseInt(currentQuestCat.slice(5))   : null;
+  const currentProjectId = isProjectDetail ? parseInt(currentQuestCat.slice(8))   : null;
+  const currentList    = currentListId    ? (S.lists    || []).find(l => l.id === currentListId)    : null;
+  const currentProject = currentProjectId ? (S.projects || []).find(p => p.id === currentProjectId) : null;
+
+  const isCatView = !['thisweek', 'all', 'matrix', 'lists', 'projects'].includes(currentQuestCat) && !isListDetail && !isProjectDetail;
   const activeCatLabel = isCatView ? (CATS[currentQuestCat]?.label || 'Category') : 'Category';
-  const catOptions = Object.entries(CATS).map(([k, v]) => {
-    const cnt = active.filter(t => t.cat === k).length;
+  const catOptions = Object.entries(CATS).filter(([k]) => k !== 'todo').map(([k, v]) => {
+    const cnt = active.filter(t => t.cat === k && !t.listId && !t.projectId).length;
     return `<option value="${k}" ${currentQuestCat===k?'selected':''}>${v.label}${cnt?' ('+cnt+')':''}</option>`;
   }).join('');
+
   const catTabsHTML = [
     `<button class="cat-tab ${currentQuestCat==='thisweek'?'active':''}" onclick="switchQuestCat('thisweek')">This Week <span class="ct-badge">${urgentCount}</span></button>`,
     `<button class="cat-tab ${currentQuestCat==='all'?'active':''}" onclick="switchQuestCat('all')">All <span class="ct-badge">${active.length}</span></button>`,
+    `<button class="cat-tab ${isListView||isListDetail?'active':''}" onclick="switchQuestCat('lists')">Lists</button>`,
+    `<button class="cat-tab ${isProjectView||isProjectDetail?'active':''}" onclick="switchQuestCat('projects')">Projects</button>`,
     `<button class="cat-tab ${currentQuestCat==='matrix'?'active':''}" onclick="switchQuestCat('matrix')">Matrix</button>`,
     `<div class="cat-tab ${isCatView?'active':''}" style="margin-left:auto;padding-bottom:10px;">
       <select onchange="if(this.value)switchQuestCat(this.value)" style="background:none;border:none;font-family:'Montserrat',sans-serif;font-size:var(--fs-ui);letter-spacing:var(--ls-caps);text-transform:uppercase;color:inherit;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;padding:0;font-weight:inherit;">
@@ -6174,6 +6402,95 @@ function renderQuests() {
       </select>
     </div>`,
   ].join('');
+
+  // ── Special views: Lists and Projects ────────────────────────
+  if (isListView) {
+    wrap.innerHTML = `<div id="questsContent"><div class="cat-tabs">${catTabsHTML}</div>${renderListsView()}</div>`;
+    return;
+  }
+  if (isProjectView) {
+    wrap.innerHTML = `<div id="questsContent"><div class="cat-tabs">${catTabsHTML}</div>${renderProjectsView()}</div>`;
+    return;
+  }
+
+  // ── List detail view ─────────────────────────────────────────
+  if (isListDetail) {
+    const listColor = currentList?.color || 'var(--teal)';
+    const activeTasks = S.tasks.filter(t => !t.done && !t.parentId && t.listId === currentListId);
+    const doneTasks   = S.tasks.filter(t =>  t.done && !t.parentId && t.listId === currentListId);
+    const tasksHTML = activeTasks.length === 0
+      ? `<div class="empty"><div class="empty-icon">◦</div>No tasks in this list yet.</div>`
+      : activeTasks.map(t => makeQuestTaskHTML(t, false)).join('');
+    const doneHTML = doneTasks.length > 0 ? `
+      <div style="margin-top:6px">
+        <button class="done-toggle" id="done-tog" onclick="toggleDoneList()">▶ Show ${doneTasks.length} completed</button>
+        <div id="done-list" style="display:none;margin-top:6px">${doneTasks.map(t => makeQuestTaskHTML(t, false)).join('')}</div>
+      </div>` : '';
+    wrap.innerHTML = `
+      <div id="questsContent">
+        <div class="cat-tabs">${catTabsHTML}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <button onclick="switchQuestCat('lists')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Lists</button>
+          <div style="width:8px;height:8px;border-radius:50%;background:${listColor};"></div>
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;">${escHtml(currentList?.name || 'List')}</div>
+        </div>
+        <div class="add-form">
+          <input class="add-input" id="quest-input" placeholder="Add to ${escHtml(currentList?.name || 'list')}…" oninput="onNLInput('quest-input','quest-nl-preview')" onkeydown="if(event.key==='Enter')addQuestTask()">
+          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)">
+          <button class="add-btn" onclick="addQuestTask()">+</button>
+        </div>
+        <div id="quest-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin:-6px 0 8px;padding:2px 6px;background:var(--teal-lt);border-radius:2px;"></div>
+        <div id="quest-list">${tasksHTML}</div>
+        ${doneHTML}
+      </div>`;
+    return;
+  }
+
+  // ── Project detail view ───────────────────────────────────────
+  if (isProjectDetail) {
+    const projColor = currentProject?.color || 'var(--teal)';
+    const today = todayLocal();
+    const activeTasks = S.tasks.filter(t => !t.done && !t.parentId && t.projectId === currentProjectId);
+    const doneTasks   = S.tasks.filter(t =>  t.done && !t.parentId && t.projectId === currentProjectId);
+    const allTasks = S.tasks.filter(t => !t.parentId && t.projectId === currentProjectId);
+    const doneCnt = allTasks.filter(t => t.done).length;
+    const pct = allTasks.length > 0 ? Math.round((doneCnt / allTasks.length) * 100) : 0;
+    const dueLbl = currentProject?.dueDate ? (currentProject.dueDate < today ? 'Overdue' : currentProject.dueDate === today ? 'Due today' : `Due ${new Date(currentProject.dueDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`) : '';
+    const dueColor = currentProject?.dueDate < today ? 'var(--destructive)' : currentProject?.dueDate === today ? 'var(--amber)' : 'var(--text-dim)';
+    const tasksHTML = activeTasks.length === 0
+      ? `<div class="empty"><div class="empty-icon">◦</div>No tasks in this project yet.</div>`
+      : activeTasks.map(t => makeQuestTaskHTML(t, false)).join('');
+    const doneHTML = doneTasks.length > 0 ? `
+      <div style="margin-top:6px">
+        <button class="done-toggle" id="done-tog" onclick="toggleDoneList()">▶ Show ${doneTasks.length} completed</button>
+        <div id="done-list" style="display:none;margin-top:6px">${doneTasks.map(t => makeQuestTaskHTML(t, false)).join('')}</div>
+      </div>` : '';
+    wrap.innerHTML = `
+      <div id="questsContent">
+        <div class="cat-tabs">${catTabsHTML}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <button onclick="switchQuestCat('projects')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">← Projects</button>
+          <div style="width:8px;height:8px;border-radius:50%;background:${projColor};"></div>
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;">${escHtml(currentProject?.name || 'Project')}</div>
+          ${dueLbl ? `<span style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:${dueColor};font-weight:600;">${dueLbl}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${pct===100?'var(--green)':projColor};border-radius:2px;transition:width 0.3s;"></div>
+          </div>
+          <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;white-space:nowrap;">${doneCnt}/${allTasks.length}</span>
+        </div>
+        <div class="add-form">
+          <input class="add-input" id="quest-input" placeholder="Add task to ${escHtml(currentProject?.name || 'project')}…" oninput="onNLInput('quest-input','quest-nl-preview')" onkeydown="if(event.key==='Enter')addQuestTask()">
+          <input type="date" id="quest-due-date" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-dim);padding:4px 0;outline:none;min-width:0;width:110px;flex-shrink:0;" title="Due date (optional)">
+          <button class="add-btn" onclick="addQuestTask()">+</button>
+        </div>
+        <div id="quest-nl-preview" style="display:none;font-size:0.65rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin:-6px 0 8px;padding:2px 6px;background:var(--teal-lt);border-radius:2px;"></div>
+        <div id="quest-list">${tasksHTML}</div>
+        ${doneHTML}
+      </div>`;
+    return;
+  }
 
   const rejHtml = currentQuestCat === 'apply' ? `
     <div class="rejection-bar">
@@ -6204,7 +6521,7 @@ function renderQuests() {
 
   const catSelectHTML = (currentQuestCat === 'all' || currentQuestCat === 'thisweek' || currentQuestCat === 'matrix') ? `
     <select class="add-select" id="quick-cat">
-      ${Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+      ${Object.entries(CATS).filter(([k]) => k !== 'todo').map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
     </select>` : '';
 
   const pointsSelectHTML = `<select id="task-points-sel" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:0.72rem;color:var(--text-dim);padding:4px 0;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;width:32px;text-align:center;">
@@ -6320,6 +6637,8 @@ function makeQuestTaskHTML(task, showCat) {
     ? `<span title="Repeats ${task.recurrence}" style="font-size:0.58rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.75;">↻</span>`
     : '';
 
+  const dueBadge = dueDateBadge(task);
+
   const priBadge = priorityBadge(task);
 
   const areaTag = (() => {
@@ -6360,6 +6679,7 @@ function makeQuestTaskHTML(task, showCat) {
           <div class="task-meta">
             ${showCat ? catDot(task.cat, '18px') : ''}
             ${areaTag}
+            ${dueBadge}
             ${urgentBtn}
             ${importantBtn}
             ${priBadge}
@@ -6410,6 +6730,7 @@ function makeQuestTaskHTML(task, showCat) {
           ${!task.done ? `<div class="xp-badge">+${cat.xp||15}</div>` : ''}
           ${showCat ? catDot(task.cat, '18px') : ''}
           ${areaTag}
+          ${dueBadge}
           ${urgentBtn}
           ${importantBtn}
           ${priBadge}
@@ -6588,6 +6909,26 @@ function openEditTaskModal(id) {
             </select>
           </div>
         </div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Due Date</div>
+            <input id="etm-due-date" type="date" value="${task.dueDate||''}" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">List</div>
+            <select id="etm-list" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+              <option value="">None</option>
+              ${(S.lists||[]).map(l => `<option value="${l.id}" ${task.listId===l.id?'selected':''}>${escHtml(l.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Project</div>
+          <select id="etm-project" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:5px 0;outline:none;width:100%;cursor:pointer;">
+            <option value="">None</option>
+            ${(S.projects||[]).filter(p=>!p.done).map(p => `<option value="${p.id}" ${task.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('')}
+          </select>
+        </div>
         <div>
           <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Life area</div>
           <input type="hidden" id="etm-area" value="${task.lifeArea||''}">
@@ -6618,7 +6959,10 @@ function saveEditTaskModal(id) {
   const pts        = parseInt((document.getElementById('etm-pts')||{}).value || '1');
   const recurrence = (document.getElementById('etm-recurrence')||{}).value || '';
   const priority   = parseInt((document.getElementById('etm-priority')||{}).value || '0');
-  const lifeArea = (document.getElementById('etm-area')||{}).value || null;
+  const lifeArea   = (document.getElementById('etm-area')||{}).value || null;
+  const dueDate    = (document.getElementById('etm-due-date')||{}).value || null;
+  const listId     = parseInt((document.getElementById('etm-list')||{}).value) || null;
+  const projectId  = parseInt((document.getElementById('etm-project')||{}).value) || null;
   if (!text) return;
   task.text = text;
   task.cat  = cat;
@@ -6626,6 +6970,9 @@ function saveEditTaskModal(id) {
   task.recurrence = recurrence || null;
   task.priority = priority || null;
   task.lifeArea = lifeArea || null;
+  task.dueDate  = dueDate  || null;
+  task.listId   = listId   || null;
+  task.projectId = projectId || null;
   save();
   closeModal();
   if (currentTab === 'today')  renderToday();
@@ -6685,8 +7032,16 @@ function addQuestTask() {
   if (!inp) return;
   const raw = inp.value.trim();
   if (!raw) return;
-  const cat = (currentQuestCat === 'all' || currentQuestCat === 'thisweek')
-    ? (document.getElementById('quick-cat')?.value || 'admin')
+
+  const isListDetail    = currentQuestCat.startsWith('list_');
+  const isProjectDetail = currentQuestCat.startsWith('project_');
+  const currentListId    = isListDetail    ? parseInt(currentQuestCat.slice(5))  : null;
+  const currentProjectId = isProjectDetail ? parseInt(currentQuestCat.slice(8))  : null;
+
+  const cat = (isListDetail || isProjectDetail)
+    ? 'todo'
+    : (currentQuestCat === 'all' || currentQuestCat === 'thisweek' || currentQuestCat === 'matrix')
+    ? (document.getElementById('quick-cat')?.value || 'todo')
     : currentQuestCat;
   const pointsSel = document.getElementById('task-points-sel');
   const pts = parseInt(pointsSel?.value || '1');
@@ -6696,6 +7051,10 @@ function addQuestTask() {
   const task = { id: newId, text: parsed.cleanText || raw, cat, done: false, createdAt: Date.now(), points: pts, urgent };
   if (parsed.scheduledDate) task.scheduledDate = parsed.scheduledDate;
   if (parsed.reminderTime) task.reminderTime = parsed.reminderTime;
+  if (currentListId)    task.listId    = currentListId;
+  if (currentProjectId) task.projectId = currentProjectId;
+  const dueDateEl = document.getElementById('quest-due-date');
+  if (dueDateEl?.value) task.dueDate = dueDateEl.value;
   S.tasks.unshift(task);
   S.totalAdded++;
   trackEvent('task_add', { cat, pts });
