@@ -1302,12 +1302,12 @@
 
 <div class="tabs-wrap">
   <button class="tab active" data-tab="today"    data-mode-required="full" onclick="switchTab('today')">Today</button>
-  <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Sessions</button>
   <button class="tab"        data-tab="quests"   data-mode-required="full" onclick="switchTab('quests')">Focus</button>
+  <button class="tab"        data-tab="focus"    onclick="switchTab('focus')">Coach</button>
   <button class="tab" data-tab="network" data-mode-required="full" onclick="switchTab('network')">Network</button>
-  <button class="tab" data-tab="briefing" data-mode-required="full" onclick="switchTab('briefing')">Briefing</button>
-  <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
+  <button class="tab" data-tab="briefing" data-mode-required="full" onclick="switchTab('briefing')">Read</button>
   <button class="tab" data-tab="journal" data-mode-required="full" onclick="switchTab('journal')">Journal</button>
+  <button class="tab"        data-tab="progress" onclick="switchTab('progress')">Progress</button>
   <button class="tab" data-tab="account" onclick="switchTab('account')" style="position:relative;">Account<span id="account-badge" style="display:none;position:absolute;top:6px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--amber);"></span></button>
 </div>
 </div>
@@ -3212,6 +3212,7 @@ let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'di
 let _pipelineCollapsed = {}; // section key → bool
 let networkView = 'people';
 let focusView = 'timer';
+let _focusWrapId = 'focus-wrap';
 let _pendingImportRows = null;
 let _emailDraftRetry = null; // stores last {type, channel, goal} for "Try again"
 let pendingReminderImport = null;
@@ -4981,28 +4982,21 @@ function clearScheduledDate(id) {
 
 // ── FOCUS TIMER ──────────────────────────────────────────────
 function renderFocusTimer() {
-  const wrap = document.getElementById('focus-wrap');
+  const wrap = document.getElementById(_focusWrapId);
   if (!wrap) return;
 
-  // Coach-only mode: skip toggle, go straight to skills
-  if (S.mode === 'coach') {
-    focusView = 'skills';
+  // Coach tab: always show Skills directly, no timer/history here
+  if (_focusWrapId === 'focus-wrap') {
     wrap.innerHTML = '<div></div>';
     renderSkills();
     return;
   }
 
+  // Focus tab timer view: show Timer and History sub-tabs
   const toggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
     <button class="view-toggle-btn ${focusView==='timer'?'active':''}" onclick="focusView='timer';renderFocusTimer()">Timer</button>
     <button class="view-toggle-btn ${focusView==='history'?'active':''}" onclick="focusView='history';renderFocusTimer()">History</button>
-    <button class="view-toggle-btn ${focusView==='skills'?'active':''}" onclick="focusView='skills';renderFocusTimer()">Skills</button>
   </div>`;
-
-  if (focusView === 'skills') {
-    wrap.innerHTML = `<div>${toggleHTML}</div>`;
-    renderSkills();
-    return;
-  }
 
   if (focusView === 'history') {
     wrap.innerHTML = `<div>${toggleHTML}</div>`;
@@ -5100,7 +5094,7 @@ function renderFocusTimer() {
 
 // ── FOCUS HISTORY ────────────────────────────────────────────
 function renderFocusHistory() {
-  const wrap = document.getElementById('focus-wrap');
+  const wrap = document.getElementById(_focusWrapId);
   if (!wrap) return;
   const container = wrap.querySelector('div');
   if (!container) return;
@@ -5182,7 +5176,7 @@ function renderFocusHistory() {
 
 // ── SKILLS ───────────────────────────────────────────────────
 function renderSkills() {
-  const wrap = document.getElementById('focus-wrap');
+  const wrap = document.getElementById(_focusWrapId);
   if (!wrap) return;
   const container = wrap.querySelector('div');
   if (!container) return;
@@ -6563,6 +6557,7 @@ function renderQuests() {
     `<button class="cat-tab ${isListView||isListDetail?'active':''}" onclick="switchQuestCat('lists')">Lists</button>`,
     `<button class="cat-tab ${isProjectView||isProjectDetail?'active':''}" onclick="switchQuestCat('projects')">Projects</button>`,
     `<button class="cat-tab ${currentQuestCat==='matrix'?'active':''}" onclick="switchQuestCat('matrix')">Matrix</button>`,
+    `<button class="cat-tab ${currentQuestCat==='timer'?'active':''}" onclick="switchQuestCat('timer')">Timer</button>`,
     `<div class="cat-tab ${isCatView?'active':''}" style="margin-left:auto;padding-bottom:10px;">
       <select onchange="if(this.value)switchQuestCat(this.value)" style="background:none;border:none;font-family:'Montserrat',sans-serif;font-size:var(--fs-ui);letter-spacing:var(--ls-caps);text-transform:uppercase;color:inherit;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;padding:0;font-weight:inherit;">
         <option value="" ${!isCatView?'selected':''} disabled>${activeCatLabel} ▾</option>
@@ -6578,6 +6573,14 @@ function renderQuests() {
   }
   if (isProjectView) {
     wrap.innerHTML = `<div id="questsContent"><div class="cat-tabs">${catTabsHTML}</div>${renderProjectsView()}</div>`;
+    return;
+  }
+
+  // ── Timer view ───────────────────────────────────────────────
+  if (currentQuestCat === 'timer') {
+    _focusWrapId = 'quests-wrap';
+    wrap.innerHTML = `<div id="questsContent"><div class="cat-tabs">${catTabsHTML}</div></div>`;
+    renderFocusTimer();
     return;
   }
 
@@ -7183,6 +7186,7 @@ function saveEditTask(id) {
 
 function switchQuestCat(cat) {
   currentQuestCat = cat;
+  if (cat !== 'timer') _focusWrapId = 'focus-wrap';
   renderQuests();
 }
 
@@ -10892,6 +10896,8 @@ function switchTab(tab) {
   // Guard: silently redirect hidden tabs to progress
   if (S.mode === 'coach' && JOBSEEKER_TABS.includes(tab)) tab = 'progress';
   currentTab = tab;
+  // Reset focus wrap when leaving the quests timer view
+  if (tab !== 'quests') _focusWrapId = 'focus-wrap';
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
