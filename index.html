@@ -2657,6 +2657,18 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.24',
+    date: '2026-06-19',
+    items: [
+      'Post-hire mode — accepting an offer on an application card triggers a celebration screen and shifts the app into a new chapter',
+      'Today tab reframes to 30/60/90-day onboarding guidance when hired',
+      'Progress tab shows your 90-day arc (Learn → Contribute → Lead) post-hire',
+      'Show Up Pro stub — Briefing and Coach surface a coming-soon Pro gate for post-hire users',
+      'Lists — icon tiles updated to bare geometric symbols (no background square); modal preview matches',
+      'Subtask edit modal simplified — shows only relevant fields (text, effort, priority) for steps',
+    ],
+  },
+  {
     version: '0.23',
     date: '2026-06-18',
     items: [
@@ -3175,6 +3187,13 @@ const DEFAULT_STATE = {
   focusLog: [],
   nextFocusLogId: 1,
   mode: 'full',  // 'full' (job seeker + coach) | 'coach' (coach only)
+  // post-hire
+  hired: false,
+  hiredAt: null,
+  hiredCompany: '',
+  hiredRole: '',
+  hiredAppId: null,
+  hiredProUnlocked: false,
 };
 
 let S = loadState();
@@ -3759,6 +3778,60 @@ function editWeeklyReflection(weekStart) {
 function renderToday() {
   const wrap = document.getElementById('today-wrap');
   if (!wrap) return;
+
+  if (S.hired) {
+    const name = S.userName ? S.userName.split(' ')[0] : '';
+    const company = S.hiredCompany || 'your new role';
+    const hiredDate = S.hiredAt ? new Date(S.hiredAt) : null;
+    const daysSince = hiredDate ? Math.floor((Date.now() - S.hiredAt) / 86400000) : 0;
+    const phase = daysSince < 31 ? '30-day' : daysSince < 61 ? '60-day' : '90-day';
+    const phaseLabel = daysSince < 31 ? 'First 30 days' : daysSince < 61 ? 'Days 31–60' : 'Days 61–90';
+    wrap.innerHTML = `
+      <div style="margin-bottom:20px;">
+        <div class="greeting-line">${name ? `Welcome to your next chapter, ${name}.` : 'Welcome to your next chapter.'}</div>
+        <div class="greeting-date">${company}</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:18px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">${phaseLabel} · Day ${daysSince + 1}</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${phase === '30-day' ? `
+            <div style="font-size:0.82rem;color:var(--text);line-height:1.6;">Your first priority is learning — the people, the culture, and how decisions actually get made. Listen more than you talk.</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Schedule 1:1s with your key stakeholders</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Identify one quick win you can deliver this month</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Build a map of who influences what</div>
+            </div>` : phase === '60-day' ? `
+            <div style="font-size:0.82rem;color:var(--text);line-height:1.6;">You know the landscape now. Start connecting dots — where can you contribute and add visible value?</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Share a first perspective or proposal</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Deepen two or three key relationships</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Identify gaps you're well-positioned to close</div>
+            </div>` : `
+            <div style="font-size:0.82rem;color:var(--text);line-height:1.6;">You're no longer new. Lead something, own an outcome, and set your sights on the next quarter.</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Define what success looks like in 6 months</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Ask for a check-in with your manager</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);">◦ Take on something that stretches you</div>
+            </div>`}
+        </div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border-hl,var(--amber));border-radius:8px;padding:14px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);">Show Up Pro</div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:2px 6px;">Coming soon</div>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text);margin-bottom:3px;">AI coaching, briefings, and skill tracking — built for your new role.</div>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;">Unlock unlimited access to Coach and Briefing as you grow in your career.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button onclick="switchTab('focus')" style="width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;">→ Open Focus &amp; Lists</button>
+        <button onclick="switchTab('briefing')" style="width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;">→ Read today's Briefing</button>
+      </div>
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+        <button onclick="exitHiredMode()" style="font-size:0.72rem;color:var(--text-dim);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;">Still in the search? Undo offer acceptance</button>
+      </div>`;
+    return;
+  }
 
   ensureWeekPrompt();
 
@@ -7471,6 +7544,8 @@ function renderPipelineEntry(e) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
         <button onclick="event.stopPropagation();openEmailDrafter(${e.id})" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">✦ Draft email</button>
         <button onclick="event.stopPropagation();openSalaryResearch(${e.id})" style="background:${e.stage==='offer'?'var(--amber)':'none'};border:1px solid ${e.stage==='offer'?'var(--amber)':'var(--border)'};border-radius:2px;padding:5px 10px;font-size:0.68rem;color:${e.stage==='offer'?'#fff':'var(--text-mid)'};cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✦ Salary intel</button>
+        ${e.stage==='offer' && !(S.hired && S.hiredAppId===e.id) ? `<button onclick="event.stopPropagation();acceptOffer(${e.id})" style="background:var(--green,#2d6347);border:1px solid var(--green,#2d6347);border-radius:2px;padding:5px 12px;font-size:0.68rem;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◆ Accept offer</button>` : ''}
+        ${S.hired && S.hiredAppId===e.id ? `<span style="font-size:0.68rem;color:var(--green,#2d6347);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:5px 0;font-weight:700;">◆ Offer accepted</span>` : ''}
         ${isInterviewStage ? `<button onclick="event.stopPropagation();openInterviewMode(${e.id})" style="background:var(--teal);border:1px solid var(--teal);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-inverse);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;font-weight:700;transition:all 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">◉ Live Mode</button>` : ''}
         ${isInterviewStage ? `<button onclick="event.stopPropagation();openLogMeeting('${(e.company||'Interview').replace(/'/g,"\\'")}${e.role?' — '+e.role.replace(/'/g,"\\'"):''}','')" style="background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Log follow-up</button>` : ''}
         ${isInterviewStage ? (() => {
@@ -8870,6 +8945,95 @@ function saveNewPipelineEntry() {
 }
 
 let _lastDeletedPipeline = null;
+function acceptOffer(appId) {
+  const entry = S.pipeline.find(e => e.id === appId);
+  if (!entry) return;
+  S.hired = true;
+  S.hiredAt = Date.now();
+  S.hiredCompany = entry.company || '';
+  S.hiredRole = entry.role || '';
+  S.hiredAppId = appId;
+  save();
+  showCelebration();
+}
+
+function exitHiredMode() {
+  S.hired = false;
+  S.hiredAt = null;
+  S.hiredCompany = '';
+  S.hiredRole = '';
+  S.hiredAppId = null;
+  S.hiredProUnlocked = false;
+  save();
+  document.getElementById('hired-overlay')?.remove();
+  renderToday();
+  renderNetwork();
+}
+
+function showCelebration() {
+  const existing = document.getElementById('hired-overlay');
+  if (existing) existing.remove();
+
+  const name = S.userName ? S.userName.split(' ')[0] : 'You';
+  const company = S.hiredCompany || 'your new role';
+  const role = S.hiredRole || '';
+
+  const el = document.createElement('div');
+  el.id = 'hired-overlay';
+  el.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;overflow-y:auto;';
+  el.innerHTML = `
+    <div style="max-width:420px;width:100%;">
+      <div style="font-size:2.4rem;margin-bottom:20px;letter-spacing:-0.02em;">◆</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;">You did it</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:8px;">${name}, this is the moment.</div>
+      ${role ? `<div style="font-size:1rem;color:var(--text-mid);margin-bottom:6px;">${role}</div>` : ''}
+      <div style="font-size:1rem;color:var(--amber);font-weight:600;margin-bottom:28px;">${company}</div>
+      <div style="font-size:0.88rem;color:var(--text-dim);line-height:1.7;margin-bottom:36px;">Every application, every follow-up, every day you showed up — it added up to this. The search is over. A new chapter starts now.</div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:24px;text-align:left;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">What's next with Show Up</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--amber);font-size:1rem;flex-shrink:0;margin-top:1px;">◎</span>
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">Stay sharp in your industry</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;">Your Briefing evolves with your new role — news, trends, and signals that matter where you're headed.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--amber);font-size:1rem;flex-shrink:0;margin-top:1px;">◇</span>
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">Coach for your new chapter</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;">30-60-90 day planning, skill building, and navigating a new environment — your coach shifts with you.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--amber);font-size:1rem;flex-shrink:0;margin-top:1px;">△</span>
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">Focus stays with you</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;">Lists, projects, and your daily rhythm carry over. The habits you built here will serve you there.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border-hl,var(--amber));border-radius:8px;padding:18px;margin-bottom:28px;text-align:left;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);">Show Up Pro</div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:2px 6px;">Coming soon</div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text);margin-bottom:4px;font-weight:600;">Keep the momentum going, post-hire.</div>
+        <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;">Unlimited AI coaching, industry briefings, and skill tracking — built for professionals who want to grow in their role, not just land it.</div>
+        <button onclick="document.getElementById('pro-notify-thanks')?.style && (document.getElementById('pro-notify-thanks').style.display='block') && (this.style.display='none')" style="margin-top:12px;width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:4px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;">Notify me when Pro launches</button>
+        <div id="pro-notify-thanks" style="display:none;margin-top:10px;font-size:0.76rem;color:var(--teal);text-align:center;">You're on the list. We'll reach out when Pro is ready.</div>
+      </div>
+
+      <button onclick="document.getElementById('hired-overlay').style.display='none';renderToday();switchTab('today')" style="width:100%;padding:14px;background:var(--text);color:var(--bg);border:none;border-radius:4px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:12px;">Begin your next chapter →</button>
+      <button onclick="exitHiredMode()" style="width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:4px;font-size:0.76rem;color:var(--text-dim);cursor:pointer;font-family:'DM Sans',sans-serif;">I'm still in the search — undo this</button>
+    </div>`;
+  document.body.appendChild(el);
+}
+
 function deletePipelineEntry(id) {
   const entry = S.pipeline.find(x => x.id === id);
   if (!entry) return;
@@ -9577,6 +9741,46 @@ function confirmRejection() {
 function renderProgress() {
   const wrap = document.getElementById('progress-wrap');
   if (!wrap) return;
+
+  if (S.hired) {
+    const hiredDate = S.hiredAt ? new Date(S.hiredAt) : null;
+    const daysSince = hiredDate ? Math.floor((Date.now() - S.hiredAt) / 86400000) : 0;
+    const company = S.hiredCompany || 'your new role';
+    const proGateHtml = !S.hiredProUnlocked ? `
+      <div style="background:var(--surface2);border:1px solid var(--border-hl,var(--amber));border-radius:8px;padding:16px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);">Show Up Pro · AI Coach</div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:2px 6px;">Coming soon</div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text);margin-bottom:4px;">Coaching built for your new chapter.</div>
+        <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;margin-bottom:12px;">Onboarding strategy, skill building, and navigating a new environment — your AI coach shifts with you post-hire.</div>
+        <button onclick="S.hiredProUnlocked=true;save();renderProgress()" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:4px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;">Preview Coach (free)</button>
+      </div>` : '';
+    wrap.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Post-hire · Day ${daysSince + 1}</div>
+        <div style="font-size:1.1rem;font-weight:600;color:var(--text);">${company}</div>
+      </div>
+      ${proGateHtml}
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:18px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Your 90-day arc</div>
+        ${[
+          { range: 'Days 1–30', label: 'Learn', desc: 'Listen, observe, build relationships. Resist the urge to fix things early.', done: daysSince >= 30 },
+          { range: 'Days 31–60', label: 'Contribute', desc: 'Share perspectives, identify quick wins, deepen key relationships.', done: daysSince >= 60 },
+          { range: 'Days 61–90', label: 'Lead', desc: 'Own an outcome. Define success for the next quarter.', done: daysSince >= 90 },
+        ].map(p => `
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.9rem;color:${p.done ? 'var(--green,#2d6347)' : daysSince < parseInt(p.range) ? 'var(--text-dim)' : 'var(--amber)'};flex-shrink:0;margin-top:1px;">${p.done ? '◆' : '◇'}</span>
+            <div>
+              <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;margin-bottom:2px;">${p.range}</div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:3px;">${p.label}</div>
+              <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.5;">${p.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <button onclick="exitHiredMode()" style="font-size:0.72rem;color:var(--text-dim);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;">Still in the search? Undo offer acceptance</button>`;
+    return;
+  }
 
   const lv = getLvl(S.xp);
   const today = new Date();
@@ -13514,6 +13718,28 @@ function renderBriefingSettings() {
 function renderBriefing() {
   const wrap = document.getElementById('briefing-wrap');
   if (!wrap) return;
+
+  if (S.hired && !S.hiredProUnlocked) {
+    wrap.innerHTML = `
+      <div style="padding:32px 0;text-align:center;">
+        <div style="font-size:1.4rem;margin-bottom:12px;">◇</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Briefing</div>
+        <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:8px;">Stay sharp in your new role.</div>
+        <div style="font-size:0.82rem;color:var(--text-dim);line-height:1.6;margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto;">Your industry briefing is now part of Show Up Pro — daily news and signals tuned to where your career is headed.</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px;text-align:left;max-width:360px;margin-left:auto;margin-right:auto;">
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:10px;">Show Up Pro · Coming soon</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:0.78rem;color:var(--text-dim);">◦ Daily briefing tailored to your industry and role</div>
+            <div style="font-size:0.78rem;color:var(--text-dim);">◦ AI-generated digest and key takeaways</div>
+            <div style="font-size:0.78rem;color:var(--text-dim);">◦ Unlimited AI coaching for your new chapter</div>
+            <div style="font-size:0.78rem;color:var(--text-dim);">◦ Skill tracking and growth planning</div>
+          </div>
+        </div>
+        <button onclick="S.hiredProUnlocked=true;save();renderBriefing()" style="padding:11px 28px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:4px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;display:block;width:100%;max-width:280px;margin-left:auto;margin-right:auto;">Preview Briefing (free)</button>
+        <div style="font-size:0.7rem;color:var(--text-dim);">Full Pro access coming soon.</div>
+      </div>`;
+    return;
+  }
 
   const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
   const hasApiKey = !!localStorage.getItem('showup_claude_api_key');
