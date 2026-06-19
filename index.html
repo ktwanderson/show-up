@@ -10815,9 +10815,9 @@ function updateTabVisibility() {
     btn.style.display = isCoach ? 'none' : '';
   });
 
-  // In full mode: focus tab = "Focus". In coach mode: "Skills"
+  // In full mode: focus tab = "Coach". In coach mode: "Skills"
   const focusBtn = document.querySelector('[data-tab="focus"]');
-  if (focusBtn) focusBtn.textContent = isCoach ? 'Skills' : 'Focus';
+  if (focusBtn) focusBtn.textContent = isCoach ? 'Skills' : 'Coach';
 
   // In coach mode lock focus tab to skills view
   if (isCoach) focusView = 'skills';
