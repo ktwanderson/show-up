@@ -6247,10 +6247,29 @@ function deleteList(id) {
 function renameList(id) {
   const list = (S.lists || []).find(l => l.id === id);
   if (!list) return;
-  const name = prompt('Rename list:', list.name);
-  if (!name || !name.trim()) return;
-  list.name = name.trim();
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:left;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Rename list</div>
+      <input id="rename-list-input" type="text" value="${escHtml(list.name)}"
+        style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;margin-bottom:18px;"
+        onkeydown="if(event.key==='Enter')saveRenameList(${id});if(event.key==='Escape')closeModal()">
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="saveRenameList(${id})" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
+      </div>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(() => { const inp = document.getElementById('rename-list-input'); if (inp) { inp.focus(); inp.select(); } }, 80);
+}
+
+function saveRenameList(id) {
+  const list = (S.lists || []).find(l => l.id === id);
+  if (!list) return;
+  const name = (document.getElementById('rename-list-input')?.value || '').trim();
+  if (!name) return;
+  list.name = name;
   save();
+  closeModal();
   renderQuests();
 }
 
