@@ -3228,9 +3228,15 @@ function pinIsEnabled() {
   return stored && stored !== 'disabled';
 }
 
-function initPin() {
-  const stored = localStorage.getItem(PIN_KEY);
+async function initPin() {
+  let stored = localStorage.getItem(PIN_KEY);
   const overlay = document.getElementById('pinOverlay');
+  // Migrate legacy plain-text 4-digit PIN to hashed version
+  if (stored && stored !== 'disabled' && /^\d{4}$/.test(stored)) {
+    const hash = await _hashPin(stored);
+    localStorage.setItem(PIN_KEY, hash);
+    stored = hash;
+  }
   if (!stored) {
     pinStage = 'setup';
     updatePinUI('Choose a 4-digit PIN to protect your app');
@@ -3286,16 +3292,23 @@ function pinBack() {
   document.getElementById('pinError').textContent = '';
 }
 
-function pinSubmit() {
+async function _hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function pinSubmit() {
   const stored = localStorage.getItem(PIN_KEY);
   if (pinStage === 'entry') {
-    if (pinInput === stored) {
+    const hash = await _hashPin(pinInput);
+    if (hash === stored) {
       document.getElementById('pinOverlay').classList.add('hidden');
     } else {
       pinError('Incorrect PIN');
     }
   } else if (pinStage === 'disable') {
-    if (pinInput === stored) {
+    const hash = await _hashPin(pinInput);
+    if (hash === stored) {
       localStorage.setItem(PIN_KEY, 'disabled');
       document.getElementById('pinOverlay').classList.add('hidden');
       showToast('PIN disabled — app will open without a lock screen');
@@ -3311,7 +3324,8 @@ function pinSubmit() {
     updatePinDots();
   } else if (pinStage === 'confirm') {
     if (pinInput === pinFirst) {
-      localStorage.setItem(PIN_KEY, pinInput);
+      const hash = await _hashPin(pinInput);
+      localStorage.setItem(PIN_KEY, hash);
       document.getElementById('pinOverlay').classList.add('hidden');
       if (typeof renderAccount === 'function') renderAccount();
     } else {
@@ -3432,14 +3446,18 @@ function searchWeatherLocation() {
       }
       resultsDiv.innerHTML = data.results.map((r, i) => {
         const label = `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}${r.country ? ', ' + r.country : ''}`;
-        return `<button onclick="selectWeatherLocation(${r.latitude},${r.longitude},'${label.replace(/'/g, "\\'")}')"
+        return `<button data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${escHtml(label)}" onclick="selectWeatherLocationFromBtn(this)"
           style="display:block;width:100%;text-align:left;padding:8px 0;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;color:var(--text-mid);cursor:pointer;font-family:'DM Sans',sans-serif;transition:color 0.15s;"
-          onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${label}</button>`;
+          onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(label)}</button>`;
       }).join('');
     })
     .catch(() => {
       resultsDiv.innerHTML = '<div style="font-size:0.72rem;color:var(--text-dim);">Search failed. Try again.</div>';
     });
+}
+
+function selectWeatherLocationFromBtn(btn) {
+  selectWeatherLocation(parseFloat(btn.dataset.lat), parseFloat(btn.dataset.lon), btn.dataset.name);
 }
 
 function selectWeatherLocation(lat, lon, name) {
@@ -4723,7 +4741,7 @@ function completeFocusTask(id, event) {
   setTimeout(() => {
     const toast = document.getElementById('toast');
     if (toast) {
-      const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
+      const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders(${task.id})" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
       toast.innerHTML = `Done ✓ · <span onclick="undoCompleteTask(${id},${xp})" style="text-decoration:underline;cursor:pointer">Undo</span>${remindersLink}`;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 4500);
@@ -5340,9 +5358,9 @@ function saveClaudeApiKey() {
   if (!input) return;
   const key = input.value.trim();
   if (key) {
-    localStorage.setItem('showup_claude_api_key', key);
+    sessionStorage.setItem('showup_claude_api_key', key);
   } else {
-    localStorage.removeItem('showup_claude_api_key');
+    sessionStorage.removeItem('showup_claude_api_key');
   }
 }
 
@@ -5353,7 +5371,7 @@ function toggleApiKeyVisibility() {
 }
 
 async function callClaude(prompt, options = {}) {
-  const apiKey = localStorage.getItem('showup_claude_api_key');
+  const apiKey = sessionStorage.getItem('showup_claude_api_key');
   if (!apiKey) {
     return { error: 'no_key', message: 'No API key configured. Add one in Account settings.' };
   }
@@ -5466,7 +5484,7 @@ async function openSkillAICoach(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill) return;
 
-  const apiKey = localStorage.getItem('showup_claude_api_key');
+  const apiKey = sessionStorage.getItem('showup_claude_api_key');
   if (!apiKey) {
     showModal(`
       <div style="text-align:left;">
@@ -7280,7 +7298,7 @@ function completeQuestTask(id, event) {
     const toast = document.getElementById('toast');
     if (toast) {
       const recurNote = task.recurrence ? ` · <span style="color:var(--teal);font-size:0.9em;">↻ ${task.recurrence}</span>` : '';
-      const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders('${escHtml(task.text).replace(/'/g, "\\'")}')" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
+      const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders(${task.id})" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
       toast.innerHTML = `Done ✓${recurNote} · <span onclick="undoCompleteTask(${id},${xp})" style="text-decoration:underline;cursor:pointer">Undo</span>${remindersLink}`;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 4500);
@@ -13525,7 +13543,7 @@ async function fetchBriefingArticles(force) {
 }
 
 async function generateBriefingDigest(articles) {
-  const apiKey = localStorage.getItem('showup_claude_api_key');
+  const apiKey = sessionStorage.getItem('showup_claude_api_key');
   if (!apiKey || articles.length === 0) return null;
 
   const signature = articles.slice(0, 20).map(a => a.title).join('|').slice(0, 500);
@@ -13675,7 +13693,7 @@ function refreshBriefing() {
     _briefingFetching = false;
     renderBriefing();
     const articles = S.briefingCache?.articles || [];
-    if (articles.length > 0 && localStorage.getItem('showup_claude_api_key')) {
+    if (articles.length > 0 && sessionStorage.getItem('showup_claude_api_key')) {
       _briefingDigestLoading = true;
       renderBriefing();
       generateBriefingDigest(articles).then(() => {
@@ -13748,7 +13766,7 @@ function renderBriefing() {
   }
 
   const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
-  const hasApiKey = !!localStorage.getItem('showup_claude_api_key');
+  const hasApiKey = !!sessionStorage.getItem('showup_claude_api_key');
   const articles = cache.articles || [];
 
   // Trigger initial fetch if no articles cached and not already fetching
@@ -13960,7 +13978,7 @@ function deleteAllData() {
 
 function _confirmDeleteAllData() {
   localStorage.removeItem('jhc3');
-  localStorage.removeItem('showup_claude_api_key');
+  sessionStorage.removeItem('showup_claude_api_key');
   localStorage.removeItem('showup_gcal_client_id');
   localStorage.removeItem('showup_gcal_connected');
   localStorage.removeItem('showup_gmail_inbox_connected');
@@ -14327,7 +14345,7 @@ function renderAccount() {
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
         <input type="password" id="claude-api-key-input" class="add-input"
-          value="${localStorage.getItem('showup_claude_api_key') || ''}"
+          value="${sessionStorage.getItem('showup_claude_api_key') || ''}"
           placeholder="sk-ant-..."
           style="width:100%;font-size:0.82rem;"
           onblur="saveClaudeApiKey()">
@@ -14543,8 +14561,10 @@ function pushToReminders(text) {
   window.location.href = `shortcuts://run-shortcut?name=Add%20to%20Reminders&input=${encodeURIComponent(text.trim())}`;
 }
 
-function completeInReminders(text) {
-  window.location.href = `shortcuts://run-shortcut?name=Complete%20in%20Reminders&input=${encodeURIComponent(text.trim())}`;
+function completeInReminders(taskId) {
+  const task = S.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  window.location.href = `shortcuts://run-shortcut?name=Complete%20in%20Reminders&input=${encodeURIComponent(task.text.trim())}`;
 }
 
 // ── GOOGLE CALENDAR OAUTH2 ────────────────────────────────────
