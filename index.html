@@ -13539,6 +13539,12 @@ let _briefingFetching = false;
 let _briefingFetchAttempted = false;
 let _briefingDigestLoading = false;
 let _briefingSettingsOpen = false;
+let _briefingSourceFilter = 'all';
+
+function setBriefingSourceFilter(sourceId) {
+  _briefingSourceFilter = sourceId;
+  renderBriefing();
+}
 
 function relativeTimeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -13855,6 +13861,31 @@ function renderBriefing() {
       <div style="margin-bottom:18px;font-size:0.76rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Sign in to get a synthesized digest of what's worth reading.</div>`;
   }
 
+  // Build source filter chips from sources actually present in fetched articles
+  let filterHtml = '';
+  if (articles.length > 0) {
+    const sourceCounts = new Map();
+    articles.forEach(a => {
+      const key = a.sourceId || a.sourceName;
+      if (!sourceCounts.has(key)) sourceCounts.set(key, { name: a.sourceName, count: 0 });
+      sourceCounts.get(key).count++;
+    });
+    if (sourceCounts.size > 1 && !sourceCounts.has(_briefingSourceFilter) && _briefingSourceFilter !== 'all') {
+      _briefingSourceFilter = 'all';
+    }
+    if (sourceCounts.size > 1) {
+      const chips = [`<button onclick="setBriefingSourceFilter('all')" style="padding:4px 10px;border:1px solid ${_briefingSourceFilter==='all'?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${_briefingSourceFilter==='all'?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">All (${articles.length})</button>`];
+      sourceCounts.forEach((v, key) => {
+        chips.push(`<button onclick="setBriefingSourceFilter('${escHtml(key).replace(/'/g,"\\'")}')" style="padding:4px 10px;border:1px solid ${_briefingSourceFilter===key?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${_briefingSourceFilter===key?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${escHtml(v.name)} (${v.count})</button>`);
+      });
+      filterHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${chips.join('')}</div>`;
+    }
+  }
+
+  const filteredArticles = _briefingSourceFilter === 'all'
+    ? articles
+    : articles.filter(a => (a.sourceId || a.sourceName) === _briefingSourceFilter);
+
   let listHtml = '';
   if (articles.length === 0) {
     if (_briefingFetching) {
@@ -13865,7 +13896,7 @@ function renderBriefing() {
       listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);line-height:1.7">Couldn't load any articles — check your sources in settings below.</div>`;
     }
   } else {
-    listHtml = articles.map(a => `
+    listHtml = filteredArticles.map(a => `
       <a href="${escHtml(a.link)}" target="_blank" rel="noopener" style="display:block;padding:12px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
         <div style="font-size:0.85rem;color:var(--text);line-height:1.45;font-family:'DM Sans',sans-serif;">${escHtml(a.title)}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -13876,7 +13907,7 @@ function renderBriefing() {
       </a>`).join('');
   }
 
-  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${listHtml}</div>`;
+  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${filterHtml}${listHtml}</div>`;
 }
 
 // ── JOURNAL ──────────────────────────────────────────────────
