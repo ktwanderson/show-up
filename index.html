@@ -5348,6 +5348,26 @@ function addSkillFromLibrary(key) {
 // API key is no longer client-managed — calls go through the callClaude Cloud Function using Firebase auth.
 
 const CLAUDE_FUNCTION_URL = 'https://callclaude-vexvxaop5q-uc.a.run.app';
+const FETCH_URL_FUNCTION = 'https://us-central1-show-up-33b6a.cloudfunctions.net/fetchUrl';
+
+// Server-side URL fetch proxy (replaces third-party CORS proxies like allorigins.win)
+async function fetchViaProxy(targetUrl, timeoutMs = 10000) {
+  if (!firebaseUser) throw new Error('Sign in required.');
+  const idToken = await firebaseUser.getIdToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(`${FETCH_URL_FUNCTION}?url=${encodeURIComponent(targetUrl)}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+      signal: controller.signal,
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
+    return data; // { ok, status, contents }
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function callClaude(prompt, options = {}) {
   if (!firebaseUser) {
@@ -8804,10 +8824,7 @@ async function extractJDFromUrl(id) {
   if (!url || !url.startsWith('http')) { showToast('Enter a valid URL first'); return; }
   showToast('Fetching job description…');
   try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) throw new Error('proxy error');
-    const data = await resp.json();
+    const data = await fetchViaProxy(url);
     const html = data.contents || '';
     // Strip tags and collapse whitespace
     const text = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
@@ -13514,18 +13531,9 @@ function _parseRSS(xmlText) {
 }
 
 async function _fetchRSS(url, count = 10) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxyUrl, { signal: controller.signal });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    const items = _parseRSS(data.contents || '');
-    return items.slice(0, count);
-  } finally {
-    clearTimeout(timer);
-  }
+  const data = await fetchViaProxy(url);
+  const items = _parseRSS(data.contents || '');
+  return items.slice(0, count);
 }
 let _briefingFetching = false;
 let _briefingFetchAttempted = false;
@@ -13630,14 +13638,9 @@ function addSuggestedSource(id) {
 async function discoverRSSFeed(siteUrl) {
   // Normalize URL
   if (!siteUrl.startsWith('http')) siteUrl = 'https://' + siteUrl;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(siteUrl)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    const resp = await fetch(proxyUrl, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!resp.ok) return null;
-    const data = await resp.json();
+    const data = await fetchViaProxy(siteUrl);
+    if (!data.ok) return null;
     const html = data.contents || '';
 
     // Try autodiscovery link tag
@@ -13654,18 +13657,14 @@ async function discoverRSSFeed(siteUrl) {
     const candidates = ['/feed', '/feed/', '/rss', '/rss.xml', '/feed.xml', '/index.xml'];
     for (const path of candidates) {
       try {
-        const testResp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(origin + path)}`, { signal: AbortSignal.timeout(5000) });
-        if (testResp.ok) {
-          const testData = await testResp.json();
-          if (testData.contents && testData.contents.includes('<rss') || testData.contents && testData.contents.includes('<feed')) {
-            return origin + path;
-          }
+        const testData = await fetchViaProxy(origin + path, 5000);
+        if (testData.ok && testData.contents && (testData.contents.includes('<rss') || testData.contents.includes('<feed'))) {
+          return origin + path;
         }
       } catch(e) { /* skip */ }
     }
     return null;
   } catch(e) {
-    clearTimeout(timer);
     return null;
   }
 }
