@@ -13721,11 +13721,16 @@ function refreshBriefing() {
     if (articles.length > 0 && firebaseUser) {
       _briefingDigestLoading = true;
       renderBriefing();
-      generateBriefingDigest(articles).then(() => {
+      generateBriefingDigest(articles).catch(() => {}).then(() => {
         _briefingDigestLoading = false;
         renderBriefing();
       });
     }
+  }).catch((e) => {
+    console.error('Briefing refresh failed:', e);
+    _briefingFetching = false;
+    renderBriefing();
+    showToast('Could not refresh briefing — try again.');
   });
 }
 
@@ -13803,11 +13808,15 @@ function renderBriefing() {
       if (fetched.length > 0 && hasApiKey) {
         _briefingDigestLoading = true;
         renderBriefing();
-        generateBriefingDigest(fetched).then(() => {
+        generateBriefingDigest(fetched).catch(() => {}).then(() => {
           _briefingDigestLoading = false;
           renderBriefing();
         });
       }
+    }).catch((e) => {
+      console.error('Briefing fetch failed:', e);
+      _briefingFetching = false;
+      renderBriefing();
     });
   }
 
