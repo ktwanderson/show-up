@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -6,7 +9,8 @@
       ".firebaserc",
       ".git/**",
       ".claude/**",
-      "node_modules/**"
+      "node_modules/**",
+      "functions/**"
     ],
     "headers": [
       {

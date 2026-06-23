@@ -1772,6 +1772,27 @@ function migrateState(s) {
     if (!s.projects || !Array.isArray(s.projects)) { s.projects = []; s.nextProjectId = 1; }
   }
 
+  // v3 → v4: route existing job-search tasks (apply/followup/network/research)
+  // into dedicated lists so they surface on Focus everywhere lists already do.
+  if (v < 4) {
+    if (!s.lists) s.lists = [];
+    if (s.nextListId == null) s.nextListId = 1;
+    const ensureList = (name, color, icon) => {
+      let l = s.lists.find(x => x.name === name);
+      if (!l) { l = { id: s.nextListId++, name, color, icon, createdAt: Date.now() }; s.lists.push(l); }
+      return l.id;
+    };
+    const applyListId    = ensureList('Apply',          '#2d6347', '→');
+    const outreachListId = ensureList('Outreach',       '#a07c08', '◉');
+    const prepListId     = ensureList('Prep & Debrief', '#7a5c8a', '◈');
+    (s.tasks || []).forEach(t => {
+      if (t.listId || t.projectId) return;
+      if (t.cat === 'apply') t.listId = applyListId;
+      else if (t.cat === 'followup' || t.cat === 'network') t.listId = outreachListId;
+      else if (t.cat === 'research' && !t.done) t.listId = prepListId;
+    });
+  }
+
   s.stateVersion = STATE_VERSION;
   return s;
 }
@@ -2289,6 +2310,28 @@ const CATS = {
   todo:      { label: 'To Do',      abbr: 'T', color: '#8c8880', xp: 15, ph: 'Add a task...' },
 };
 
+// Job-search categories auto-route into these lists so they surface on Focus
+// alongside every other list, not just the All/Today views.
+const JOB_SEARCH_LISTS = {
+  apply:    { name: 'Apply',          color: '#2d6347', icon: '→' },
+  followup: { name: 'Outreach',       color: '#a07c08', icon: '◉' },
+  network:  { name: 'Outreach',       color: '#a07c08', icon: '◉' },
+  research: { name: 'Prep & Debrief', color: '#7a5c8a', icon: '◈' },
+};
+
+// Finds (or creates) the list for a job-search category and returns its id.
+// Returns null for categories with no associated job-search list.
+function ensureJobSearchListId(cat) {
+  const def = JOB_SEARCH_LISTS[cat];
+  if (!def) return null;
+  let list = S.lists.find(l => l.name === def.name);
+  if (!list) {
+    list = { id: S.nextListId++, name: def.name, color: def.color, icon: def.icon, createdAt: Date.now() };
+    S.lists.push(list);
+  }
+  return list.id;
+}
+
 const HABIT_PRESETS = [
   { name: 'Meditate',          icon: '◎', goal: 1, goalPeriod: 'day'   },
   { name: 'Read',              icon: '◇', goal: 1, goalPeriod: 'day'   },
@@ -2639,7 +2682,7 @@ const SANDBOX_DEMO_STATE_FULL = {
 // ── VERSION & FEATURE FLAGS ───────────────────────────────────
 // Bump STATE_VERSION whenever DEFAULT_STATE has a breaking schema change.
 // Add a migration block in migrateState() for each version increment.
-const STATE_VERSION = 3;
+const STATE_VERSION = 4;
 
 // Ship new features dark by setting the flag to false.
 // Flip to true when ready to enable for all users.
@@ -3899,7 +3942,8 @@ function renderToday() {
   const isRest = S.todayEnergy === 'rest';
   const _focusIdSet = new Set(S.todayFocusIds);
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(Boolean)
-    .filter(t => !(t.parentId && _focusIdSet.has(t.parentId)));
+    .filter(t => !(t.parentId && _focusIdSet.has(t.parentId)))
+    .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
   const sessionDots = Array.from({ length: Math.max(4, S.focusBlocksToday + 1) }, (_, i) =>
     `<div class="sdot ${i < S.focusBlocksToday ? 'done' : ''}"></div>`
   ).join('');
@@ -4122,30 +4166,6 @@ function renderToday() {
     `}
 
     ${(() => {
-      if (isRest) return '';
-      const suggestions = getSmartSuggestions ? getSmartSuggestions() : [];
-      if (suggestions.length === 0) return '';
-      const suggestCollapsed = _todayCollapsed('suggest');
-      return `<div style="margin-top:14px;">
-        <div onclick="_todayToggle('suggest')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:${suggestCollapsed?'0':'8px'};">
-          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Suggested for today</span>
-          <span style="font-size:0.6rem;color:var(--text-dim);">${suggestCollapsed ? '▾' : '▴'}</span>
-        </div>
-        ${suggestCollapsed ? '' : `<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
-          ${suggestions.map((s,i) => {
-            const t = s.task;
-            const cat = CATS[t.cat] || {};
-            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:${i<suggestions.length-1?'1px solid var(--border)':'none'};background:var(--surface2);">
-              <span style="font-size:0.58rem;color:${s.color};font-family:'Montserrat',sans-serif;flex-shrink:0;white-space:nowrap;letter-spacing:0.02em;">${escHtml(s.reason)}</span>
-              <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
-              <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
-            </div>`;
-          }).join('')}
-        </div>`}
-      </div>`;
-    })()}
-
-    ${(() => {
       const todayStr = todayLocal();
       const dueTodayItems = S.tasks.filter(t => !t.done && !t.parentId && t.dueDate === todayStr && !S.todayFocusIds.includes(t.id));
       const overdueItems  = S.tasks.filter(t => !t.done && !t.parentId && t.dueDate && t.dueDate < todayStr && !S.todayFocusIds.includes(t.id));
@@ -4163,34 +4183,6 @@ function renderToday() {
             </div>`;
           }).join('')}
         </div>
-      </div>`;
-    })()}
-
-    ${(() => {
-      const backlogItems = S.tasks
-        .filter(t => !t.done && !t.parentId && !S.todayFocusIds.includes(t.id))
-        .sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0) || (b.points||1)-(a.points||1))
-        .slice(0, 8);
-      if (!backlogItems.length || isRest) return '';
-      const _blOpen = S._backlogPanelOpen !== false;
-      return `<div style="margin-top:14px;">
-        <button onclick="S._backlogPanelOpen=!(S._backlogPanelOpen!==false);save();renderToday()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:0;cursor:pointer;margin-bottom:${_blOpen?'8px':'0'};">
-          <span style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Backlog</span>
-          <span style="font-size:0.6rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${_blOpen ? '▴' : '▾'}</span>
-        </button>
-        ${_blOpen ? `<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;">
-          ${backlogItems.map((t,i) => {
-            const cat = CATS[t.cat] || {};
-            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:${i<backlogItems.length-1?'1px solid var(--border)':'none'};background:var(--surface2);">
-              ${t.urgent ? `<span style="color:var(--teal);font-size:0.6rem;flex-shrink:0;" title="This week">◆</span>` : `<span style="width:8px;flex-shrink:0;display:inline-block;"></span>`}
-              <span style="display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:2px;background:${(t.points||1)>=3?'var(--amber-lt)':'var(--bg)'};color:${(t.points||1)>=3?'var(--amber)':'var(--text-dim)'};font-size:0.58rem;font-weight:700;font-family:'Montserrat',sans-serif;flex-shrink:0;">${t.points||1}</span>
-              <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.text)}</span>
-              <span style="width:8px;height:8px;border-radius:50%;background:${cat.color||'var(--border)'};flex-shrink:0;opacity:0.7;"></span>
-              <button onclick="event.stopPropagation();pinToFocus(${t.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;font-size:0.62rem;color:var(--text-dim);padding:2px 7px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">→ Today</button>
-            </div>`;
-          }).join('')}
-        </div>
-        <button onclick="switchTab('quests')" style="margin-top:6px;background:none;border:none;font-size:0.68rem;color:var(--text-dim);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:2px 0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Full backlog →</button>` : ''}
       </div>`;
     })()}
 
@@ -5353,52 +5345,37 @@ function addSkillFromLibrary(key) {
 }
 
 // ── AI COACH (Claude Integration) ────────────────────────────
-function saveClaudeApiKey() {
-  const input = document.getElementById('claude-api-key-input');
-  if (!input) return;
-  const key = input.value.trim();
-  if (key) {
-    sessionStorage.setItem('showup_claude_api_key', key);
-  } else {
-    sessionStorage.removeItem('showup_claude_api_key');
-  }
-}
+// API key is no longer client-managed — calls go through the callClaude Cloud Function using Firebase auth.
 
-function toggleApiKeyVisibility() {
-  const input = document.getElementById('claude-api-key-input');
-  if (!input) return;
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
+const CLAUDE_FUNCTION_URL = 'https://callclaude-vexvxaop5q-uc.a.run.app';
 
 async function callClaude(prompt, options = {}) {
-  const apiKey = sessionStorage.getItem('showup_claude_api_key');
-  if (!apiKey) {
-    return { error: 'no_key', message: 'No API key configured. Add one in Account settings.' };
+  if (!firebaseUser) {
+    return { error: 'no_auth', message: 'Sign in to use AI features.' };
   }
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const idToken = await firebaseUser.getIdToken();
+    const resp = await fetch(CLAUDE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'Authorization': `Bearer ${idToken}`,
       },
       body: JSON.stringify({
         model: options.model || 'claude-sonnet-4-20250514',
-        max_tokens: options.maxTokens || 1024,
-        messages: [{ role: 'user', content: prompt }],
+        maxTokens: options.maxTokens || 1024,
+        prompt,
       }),
     });
+    const data = await resp.json();
     if (!resp.ok) {
       let friendlyMsg;
-      if (resp.status === 401) friendlyMsg = 'Your API key looks invalid or expired. Go to Account → AI Settings to update it.';
-      else if (resp.status === 429) friendlyMsg = 'Too many requests — the AI service is rate-limited right now. Wait a moment and try again.';
+      if (resp.status === 401) friendlyMsg = 'Your session expired — try signing in again.';
+      else if (resp.status === 429) friendlyMsg = data?.message || 'Daily AI request limit reached. Try again tomorrow.';
       else if (resp.status >= 500) friendlyMsg = 'The AI service is temporarily unavailable. Try again in a moment.';
-      else friendlyMsg = `Something went wrong with the AI service (${resp.status}). Try again or check your API key in Account settings.`;
+      else friendlyMsg = data?.message || `Something went wrong with the AI service (${resp.status}). Try again.`;
       return { error: 'api_error', message: friendlyMsg };
     }
-    const data = await resp.json();
     const text = data.content?.[0]?.text || '';
     // Try to parse JSON from the response
     const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
@@ -5484,13 +5461,11 @@ async function openSkillAICoach(skillId) {
   const skill = (S.skills || []).find(sk => sk.id === skillId);
   if (!skill) return;
 
-  const apiKey = sessionStorage.getItem('showup_claude_api_key');
-  if (!apiKey) {
+  if (!firebaseUser) {
     showModal(`
       <div style="text-align:left;">
-        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">API Key Required</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use The Coach, add your Claude API key in Account settings.</div>
-        <button onclick="closeModal();switchTab('account')" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Go to Account</button>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Sign In Required</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use The Coach, sign in with Google.</div>
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
     `);
@@ -7234,6 +7209,10 @@ function addQuestTask() {
   if (parsed.reminderTime) task.reminderTime = parsed.reminderTime;
   if (currentListId)    task.listId    = currentListId;
   if (currentProjectId) task.projectId = currentProjectId;
+  if (!task.listId && !task.projectId) {
+    const jobListId = ensureJobSearchListId(cat);
+    if (jobListId) task.listId = jobListId;
+  }
   const dueDateEl = document.getElementById('quest-due-date');
   if (dueDateEl?.value) task.dueDate = dueDateEl.value;
   S.tasks.unshift(task);
@@ -7654,6 +7633,14 @@ function renderPipelineEntry(e) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Fill this in within an hour while it's fresh. It compounds over multiple rounds.</div>
         <button id="digest-btn-${e.id}-debrief" onclick="event.stopPropagation();digestPipelineSection(${e.id},'debrief')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:0;">
+          <label style="${fL}">Interview notes</label>
+          <button onclick="event.stopPropagation();extractInterviewKeyDetails(${e.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:4px 9px;font-size:0.66rem;color:var(--amber);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Key details</button>
+        </div>
+        <textarea id="pe-interviewNotes-${e.id}" placeholder="Dump raw notes as you take them — priorities they mentioned, team details, concerns, anything said about next steps…" onblur="savePipelineField(${e.id},'interviewNotes')" style="${tA}">${escHtml(e.interviewNotes||'')}</textarea>
+        ${renderInterviewKeyDetails(e.interviewKeyDetails)}
       </div>
       ${(() => {
         const dV = (_pipelineDigestView[e.id] || {}).debrief || 'digest';
@@ -8881,6 +8868,41 @@ ${textForAnalysis}`;
   showToast('Key details saved ✓');
 }
 
+function renderInterviewKeyDetails(highlights) {
+  if (!highlights || !highlights.length) return '';
+  return `<div style="margin-top:8px;border:1px solid var(--amber-ring);border-radius:3px;padding:6px 10px;background:var(--amber-lt);">
+    <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.07em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;font-weight:600;">Interview Key Details</div>
+    ${highlights.map((h, i) => `<div style="display:flex;gap:8px;padding:5px 0;${i<highlights.length-1?'border-bottom:1px solid var(--border);':''}align-items:flex-start;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);min-width:90px;padding-top:2px;flex-shrink:0;">${escHtml(h.label||'Note')}</div>
+        <div style="font-size:0.78rem;color:var(--amber);line-height:1.4;flex:1;">${escHtml(h.text)}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+async function extractInterviewKeyDetails(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  const ta = document.getElementById(`pe-interviewNotes-${id}`);
+  const liveText = ta ? ta.value.trim() : '';
+  if (liveText && liveText !== (e.interviewNotes || '').trim()) { e.interviewNotes = liveText; save(); }
+  const text = [liveText, e.interviewNotes || ''].sort((a, b) => b.length - a.length)[0].trim();
+  if (!text) { showToast('Add some interview notes first'); return; }
+  showToast('Pulling out key details…');
+  const textForAnalysis = text.length > 8000 ? text.slice(0, 8000) : text;
+  const prompt = `Analyze these interview notes and pull out the details most worth remembering for follow-up and decision-making — things like stated priorities for the role, concerns or red flags, team/culture details, comp or logistics mentioned, and next steps or timeline. Return ONLY a JSON object with this shape:
+{ "highlights": [ { "label": "<short category, e.g. Priorities, Concern, Team, Logistics, Next steps, Other>", "text": "<the detail in plain language>" } ] }
+Include at most 6 highlights, most important first. Only include things explicitly stated or strongly implied in the notes — don't invent anything. If nothing notable is found, return { "highlights": [] }.
+
+Interview notes:
+${textForAnalysis}`;
+  const result = await callClaude(prompt, { maxTokens: 600 });
+  if (!result.ok || !result.json) { showToast('Extraction failed — try again'); return; }
+  e.interviewKeyDetails = result.json.highlights || [];
+  save();
+  renderNetwork();
+  showToast(e.interviewKeyDetails.length ? 'Key details saved ✓' : 'No standout details found');
+}
+
 function createPrepTask(pipelineId) {
   const e = S.pipeline.find(x => x.id === pipelineId);
   if (!e) return;
@@ -8888,6 +8910,8 @@ function createPrepTask(pipelineId) {
   const label = stageInfo.label || 'interview';
   const text = `Prep for ${e.company || 'interview'}${e.role ? ' — ' + e.role : ''} (${label})`;
   const task = { id: S.nextId++, text, cat: 'apply', done: false, createdAt: Date.now(), points: 3 };
+  const jobListId = ensureJobSearchListId(task.cat);
+  if (jobListId) task.listId = jobListId;
   S.tasks.unshift(task);
   S.totalAdded++;
   e.prepTaskId = task.id;
@@ -11379,6 +11403,8 @@ function _lmFinish() {
 
   selected.forEach(s => {
     const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
+    const jobListId = ensureJobSearchListId(task.cat);
+    if (jobListId) task.listId = jobListId;
     S.tasks.unshift(task);
     S.totalAdded++;
     if (taskDest === 'today' && !S.todayFocusIds.includes(task.id)) {
@@ -11493,7 +11519,10 @@ function addCalFollowUpTasks() {
   if (!selected.length) { showToast('Nothing selected'); return; }
 
   selected.forEach(s => {
-    S.tasks.unshift({ id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 });
+    const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
+    const jobListId = ensureJobSearchListId(task.cat);
+    if (jobListId) task.listId = jobListId;
+    S.tasks.unshift(task);
     S.totalAdded++;
   });
   save();
@@ -11787,7 +11816,16 @@ function openAddHabitModal() {
     <div style="margin-bottom:14px;line-height:2;">${presetOptions}</div>
     <div style="margin-bottom:10px;">
       <label style="${fL}">Name</label>
-      <input id="new-habit-name" type="text" placeholder="e.g. Protein" style="${iS}">
+      <input id="new-habit-name" type="text" placeholder="e.g. Drink water" style="${iS}">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="${fL}">Icon</label>
+      <input type="hidden" id="new-habit-icon" value="◇">
+      <div id="new-habit-icon-grid" style="display:flex;flex-wrap:wrap;gap:6px;">${LIST_ICONS.map(ic => `
+        <button id="nhi-icon-${ic}" type="button" onclick="event.preventDefault();selectNewHabitIcon('${ic}')"
+          style="width:32px;height:32px;border-radius:4px;border:2px solid ${ic==='◇'?'var(--amber)':'transparent'};background:${ic==='◇'?'var(--amber-lt)':'var(--surface2)'};font-size:0.9rem;cursor:pointer;transition:all 0.12s;display:flex;align-items:center;justify-content:center;color:${ic==='◇'?'var(--amber)':'var(--text)'};"
+          onmouseover="this.style.borderColor='var(--amber)'" onmouseout="if(document.getElementById('new-habit-icon').value!=='${ic}')this.style.borderColor='transparent'">${ic}</button>`).join('')}
+      </div>
     </div>
     <div style="margin-bottom:12px;">
       <label style="${fL}">Tracking type</label>
@@ -11837,14 +11875,28 @@ function prefillHabitForm(presetIdx) {
   if (nameEl) nameEl.value = p.name;
   if (goalEl) goalEl.value = p.goal;
   if (periodEl) periodEl.value = p.goalPeriod;
+  if (p.icon) selectNewHabitIcon(p.icon);
+}
+
+function selectNewHabitIcon(icon) {
+  const hiddenEl = document.getElementById('new-habit-icon');
+  if (!hiddenEl) return;
+  hiddenEl.value = icon;
+  LIST_ICONS.forEach(ic => {
+    const btn = document.getElementById(`nhi-icon-${ic}`);
+    if (!btn) return;
+    const active = ic === icon;
+    btn.style.borderColor = active ? 'var(--amber)' : 'transparent';
+    btn.style.background  = active ? 'var(--amber-lt)' : 'var(--surface2)';
+    btn.style.color       = active ? 'var(--amber)' : 'var(--text)';
+  });
 }
 
 function addCustomHabit() {
   const name = (document.getElementById('new-habit-name')?.value || '').trim();
   if (!name) { showToast('Enter a habit name'); return; }
   const trackingType = document.getElementById('new-habit-type')?.value || 'binary';
-  const preset = HABIT_PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
-  const icon = preset ? preset.icon : '◇';
+  const icon = document.getElementById('new-habit-icon')?.value || '◇';
   if (!S.customHabits) S.customHabits = [];
   if (trackingType === 'numeric') {
     const targetValue = parseFloat(document.getElementById('new-habit-target')?.value || '1') || 1;
@@ -11860,6 +11912,30 @@ function addCustomHabit() {
   if (currentTab === 'today') renderToday();
   if (currentTab === 'account') renderAccount();
   showToast(`"${name}" habit added ✓`);
+}
+
+function openHabitIconPicker(id) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  const grid = LIST_ICONS.map(ic => `
+    <button id="hip-icon-${ic}" onclick="setHabitIcon('${id}','${ic}')"
+      style="width:36px;height:36px;border-radius:4px;border:2px solid ${h.icon===ic?'var(--amber)':'transparent'};background:${h.icon===ic?'var(--amber-lt)':'var(--surface2)'};font-size:1rem;cursor:pointer;transition:all 0.12s;display:flex;align-items:center;justify-content:center;color:${h.icon===ic?'var(--amber)':'var(--text)'};"
+      onmouseover="this.style.borderColor='var(--amber)'" onmouseout="if('${h.icon}'!=='${ic}')this.style.borderColor='transparent'">${ic}</button>`).join('');
+  showModal(`<div style="text-align:left;">
+    <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;">Icon for "${escHtml(h.name)}"</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;">${grid}</div>
+    <button onclick="closeModal()" style="width:100%;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Close</button>
+  </div>`);
+}
+
+function setHabitIcon(id, icon) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  h.icon = icon;
+  save();
+  closeModal();
+  renderAccount();
+  if (currentTab === 'today') renderToday();
 }
 
 function deleteCustomHabit(id) {
@@ -12514,6 +12590,8 @@ function addContactToToday(contactId) {
   if (!c) return;
   const text = `Reach out to ${contactFullName(c)}`;
   const task = { id: S.nextId++, text, cat: 'network', done: false, createdAt: Date.now(), points: 1, contactId };
+  const jobListId = ensureJobSearchListId(task.cat);
+  if (jobListId) task.listId = jobListId;
   S.tasks.unshift(task);
   S.totalAdded++;
   if (!S.todayFocusIds.includes(task.id)) S.todayFocusIds.push(task.id);
@@ -12666,6 +12744,8 @@ function addFollowupTask(contactId, destination) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
   const task = { id: S.nextId++, text: `Follow up with ${contactFullName(c)}`, cat: 'followup', done: false, createdAt: Date.now(), points: 1, contactId };
+  const jobListId = ensureJobSearchListId(task.cat);
+  if (jobListId) task.listId = jobListId;
   S.tasks.unshift(task);
   S.totalAdded++;
   if (destination === 'today') {
@@ -12966,60 +13046,6 @@ function getSmartNudges() {
   // Sort: tier first, then most overdue relative to threshold
   nudges.sort((a, b) => a.tier - b.tier || (b.days - b.threshold) - (a.days - a.threshold));
   return nudges.slice(0, 3);
-}
-
-// Returns up to 5 task suggestions for Today based on three ranked rules:
-// 1. Recurring tasks scheduled for today (not in focus)
-// 2. Tasks in neglected life areas (0 done in 7d, have pending tagged)
-// 3. High-priority/urgent tasks idle for 7+ days
-function getSmartSuggestions() {
-  const today = todayLocal();
-  const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })();
-  const focusSet = new Set(S.todayFocusIds || []);
-  const seen = new Set();
-  const suggestions = [];
-
-  const eligible = (t) => !t.done && !t.parentId && !focusSet.has(t.id) && !seen.has(t.id);
-
-  // Rule 1: recurring tasks scheduled for today
-  S.tasks.forEach(t => {
-    if (!eligible(t)) return;
-    if (t.recurrence && t.scheduledDate === today) {
-      seen.add(t.id);
-      suggestions.push({ task: t, reason: '↻ due today', color: 'var(--teal)' });
-    }
-  });
-
-  // Rule 2: tasks in neglected life areas
-  const neglectedAreaKeys = Object.keys(S.lifeAreas || {}).filter(k => {
-    const tagged = S.tasks.filter(t => t.lifeArea === k);
-    const recentDone = tagged.filter(t => t.done && t.doneDate >= sevenDaysAgo).length;
-    return tagged.some(t => !t.done) && recentDone === 0;
-  });
-  if (neglectedAreaKeys.length > 0) {
-    S.tasks.forEach(t => {
-      if (!eligible(t) || suggestions.length >= 4) return;
-      if (t.lifeArea && neglectedAreaKeys.includes(t.lifeArea)) {
-        const a = S.lifeAreas[t.lifeArea];
-        seen.add(t.id);
-        suggestions.push({ task: t, reason: `${a.icon} ${a.label} — neglected`, color: getAreaColor(t.lifeArea) });
-      }
-    });
-  }
-
-  // Rule 3: urgent/important tasks idle 7+ days
-  S.tasks.forEach(t => {
-    if (!eligible(t) || suggestions.length >= 5) return;
-    if ((t.urgent || t.important || (t.priority || 0) >= 2)) {
-      const createdDaysAgo = t.createdAt ? Math.floor((Date.now() - t.createdAt) / 86400000) : 0;
-      if (createdDaysAgo >= 7) {
-        seen.add(t.id);
-        suggestions.push({ task: t, reason: t.urgent ? 'this-week flag' : t.important ? 'flagged important' : 'high priority', color: 'var(--amber)' });
-      }
-    }
-  });
-
-  return suggestions.slice(0, 5);
 }
 
 function _stickyNetBar() {
@@ -13543,8 +13569,7 @@ async function fetchBriefingArticles(force) {
 }
 
 async function generateBriefingDigest(articles) {
-  const apiKey = sessionStorage.getItem('showup_claude_api_key');
-  if (!apiKey || articles.length === 0) return null;
+  if (!firebaseUser || articles.length === 0) return null;
 
   const signature = articles.slice(0, 20).map(a => a.title).join('|').slice(0, 500);
   const existing = S.briefingDigest;
@@ -13693,7 +13718,7 @@ function refreshBriefing() {
     _briefingFetching = false;
     renderBriefing();
     const articles = S.briefingCache?.articles || [];
-    if (articles.length > 0 && sessionStorage.getItem('showup_claude_api_key')) {
+    if (articles.length > 0 && firebaseUser) {
       _briefingDigestLoading = true;
       renderBriefing();
       generateBriefingDigest(articles).then(() => {
@@ -13766,7 +13791,7 @@ function renderBriefing() {
   }
 
   const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
-  const hasApiKey = !!sessionStorage.getItem('showup_claude_api_key');
+  const hasApiKey = !!firebaseUser;
   const articles = cache.articles || [];
 
   // Trigger initial fetch if no articles cached and not already fetching
@@ -14229,7 +14254,7 @@ function renderAccount() {
         <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;font-weight:500;letter-spacing:0.04em;font-family:'Montserrat',sans-serif;">CUSTOM HABITS</div>
         ${(S.customHabits||[]).map(h => `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:1rem;">${h.icon}</span>
+          <button onclick="openHabitIconPicker('${h.id}')" title="Change icon" style="background:none;border:none;font-size:1rem;cursor:pointer;padding:2px;border-radius:2px;line-height:1;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">${h.icon}</button>
           <span style="flex:1;font-size:0.84rem;color:var(--text);">${escHtml(h.name)}</span>
           <span style="font-size:0.7rem;color:var(--text-dim);">${h.goal}× / ${h.goalPeriod}</span>
           <button onclick="deleteCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:2px 6px;border-radius:2px;" title="Remove habit">✕</button>
@@ -14337,21 +14362,7 @@ function renderAccount() {
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">The Coach</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <div style="flex:1">
-          <div style="font-size:0.84rem;color:var(--text);font-weight:500">Claude API key</div>
-          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">Powers personalized skill quizzes and learning resources.</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
-        <input type="password" id="claude-api-key-input" class="add-input"
-          value="${sessionStorage.getItem('showup_claude_api_key') || ''}"
-          placeholder="sk-ant-..."
-          style="width:100%;font-size:0.82rem;"
-          onblur="saveClaudeApiKey()">
-        <button onclick="toggleApiKeyVisibility()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Show</button>
-        <button onclick="saveClaudeApiKey();showToast('API key saved ✓')" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:6px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">Save</button>
-      </div>
+      <div style="font-size:0.72rem;color:var(--text-dim);">AI features are powered automatically while you're signed in — no API key needed. Limited to 50 AI requests per day.</div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:6px">User Guide</div>
