@@ -13528,6 +13528,7 @@ async function _fetchRSS(url, count = 10) {
   }
 }
 let _briefingFetching = false;
+let _briefingFetchAttempted = false;
 let _briefingDigestLoading = false;
 let _briefingSettingsOpen = false;
 
@@ -13799,8 +13800,9 @@ function renderBriefing() {
   const hasApiKey = !!firebaseUser;
   const articles = cache.articles || [];
 
-  // Trigger initial fetch if no articles cached and not already fetching
-  if (articles.length === 0 && !_briefingFetching) {
+  // Trigger initial fetch once per session if no articles cached and not already fetching
+  if (articles.length === 0 && !_briefingFetching && !_briefingFetchAttempted) {
+    _briefingFetchAttempted = true;
     _briefingFetching = true;
     fetchBriefingArticles().then(fetched => {
       _briefingFetching = false;
@@ -13850,7 +13852,7 @@ function renderBriefing() {
     }
   } else {
     digestHtml = `
-      <div style="margin-bottom:18px;font-size:0.76rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Add a Claude API key in Account → AI Settings to get a synthesized digest of what's worth reading.</div>`;
+      <div style="margin-bottom:18px;font-size:0.76rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Sign in to get a synthesized digest of what's worth reading.</div>`;
   }
 
   let listHtml = '';
