@@ -13540,9 +13540,15 @@ let _briefingFetchAttempted = false;
 let _briefingDigestLoading = false;
 let _briefingSettingsOpen = false;
 let _briefingSourceFilter = 'all';
+let _briefingTimeFilter = 'all'; // 'all' | 'day' | 'week'
 
 function setBriefingSourceFilter(sourceId) {
   _briefingSourceFilter = sourceId;
+  renderBriefing();
+}
+
+function setBriefingTimeFilter(value) {
+  _briefingTimeFilter = value;
   renderBriefing();
 }
 
@@ -13886,9 +13892,30 @@ function renderBriefing() {
     filterHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${chips.join('')}</div>`;
   }
 
-  const filteredArticles = _briefingSourceFilter === 'all'
-    ? articles
-    : articles.filter(a => (a.sourceId || a.sourceName) === _briefingSourceFilter);
+  // Recency filter
+  let timeFilterHtml = '';
+  if (articles.length > 0) {
+    const now = Date.now();
+    const dayCount = articles.filter(a => (now - new Date(a.pubDate).getTime()) < 24*60*60*1000).length;
+    const weekCount = articles.filter(a => (now - new Date(a.pubDate).getTime()) < 7*24*60*60*1000).length;
+    const timeOptions = [
+      ['all', `All`],
+      ['day', `Last 24h (${dayCount})`],
+      ['week', `Last 7 days (${weekCount})`],
+    ];
+    const timeChips = timeOptions.map(([key, label]) => {
+      const active = _briefingTimeFilter === key;
+      return `<button onclick="setBriefingTimeFilter('${key}')" style="padding:4px 10px;border:1px solid ${active?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${active?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+    });
+    timeFilterHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${timeChips.join('')}</div>`;
+  }
+
+  const timeThreshold = _briefingTimeFilter === 'day' ? 24*60*60*1000 : (_briefingTimeFilter === 'week' ? 7*24*60*60*1000 : null);
+  const filteredArticles = articles.filter(a => {
+    const matchesSource = _briefingSourceFilter === 'all' || (a.sourceId || a.sourceName) === _briefingSourceFilter;
+    const matchesTime = timeThreshold === null || (Date.now() - new Date(a.pubDate).getTime()) < timeThreshold;
+    return matchesSource && matchesTime;
+  });
 
   let listHtml = '';
   if (articles.length === 0) {
@@ -13899,6 +13926,8 @@ function renderBriefing() {
     } else {
       listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);line-height:1.7">Couldn't load any articles — check your sources in settings below.</div>`;
     }
+  } else if (filteredArticles.length === 0) {
+    listHtml = `<div style="padding:24px 0;font-size:0.82rem;color:var(--text-dim);">No articles match the current filters.</div>`;
   } else {
     listHtml = filteredArticles.map(a => `
       <a href="${escHtml(a.link)}" target="_blank" rel="noopener" style="display:block;padding:12px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
@@ -13911,7 +13940,7 @@ function renderBriefing() {
       </a>`).join('');
   }
 
-  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${filterHtml}${listHtml}</div>`;
+  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${filterHtml}${timeFilterHtml}${listHtml}</div>`;
 }
 
 // ── JOURNAL ──────────────────────────────────────────────────
