@@ -13544,9 +13544,10 @@ function relativeTimeAgo(dateStr) {
 
 async function fetchBriefingArticles(force) {
   const cache = S.briefingCache || { articles: [], fetchedAt: 0 };
+  const cachedArticles = cache.articles || [];
   const twoHours = 2 * 60 * 60 * 1000;
-  if (!force && cache.articles.length > 0 && (Date.now() - cache.fetchedAt) < twoHours) {
-    return cache.articles;
+  if (!force && cachedArticles.length > 0 && (Date.now() - cache.fetchedAt) < twoHours) {
+    return cachedArticles;
   }
 
   const sources = (S.briefingSources || []).filter(s => s.enabled);
