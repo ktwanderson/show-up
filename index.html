@@ -13861,25 +13861,29 @@ function renderBriefing() {
       <div style="margin-bottom:18px;font-size:0.76rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Sign in to get a synthesized digest of what's worth reading.</div>`;
   }
 
-  // Build source filter chips from sources actually present in fetched articles
+  // Build source filter chips from all enabled sources — including ones that returned 0 articles,
+  // so it's clear a source was attempted (and failed) rather than silently missing.
   let filterHtml = '';
-  if (articles.length > 0) {
-    const sourceCounts = new Map();
+  const enabledSources = (S.briefingSources || []).filter(s => s.enabled);
+  if (enabledSources.length > 1 && articles.length > 0) {
+    const failedSourceNames = cache.failedSources || [];
+    const countsBySourceId = new Map();
     articles.forEach(a => {
       const key = a.sourceId || a.sourceName;
-      if (!sourceCounts.has(key)) sourceCounts.set(key, { name: a.sourceName, count: 0 });
-      sourceCounts.get(key).count++;
+      countsBySourceId.set(key, (countsBySourceId.get(key) || 0) + 1);
     });
-    if (sourceCounts.size > 1 && !sourceCounts.has(_briefingSourceFilter) && _briefingSourceFilter !== 'all') {
+    if (_briefingSourceFilter !== 'all' && !enabledSources.some(s => s.id === _briefingSourceFilter)) {
       _briefingSourceFilter = 'all';
     }
-    if (sourceCounts.size > 1) {
-      const chips = [`<button onclick="setBriefingSourceFilter('all')" style="padding:4px 10px;border:1px solid ${_briefingSourceFilter==='all'?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${_briefingSourceFilter==='all'?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">All (${articles.length})</button>`];
-      sourceCounts.forEach((v, key) => {
-        chips.push(`<button onclick="setBriefingSourceFilter('${escHtml(key).replace(/'/g,"\\'")}')" style="padding:4px 10px;border:1px solid ${_briefingSourceFilter===key?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${_briefingSourceFilter===key?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${escHtml(v.name)} (${v.count})</button>`);
-      });
-      filterHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${chips.join('')}</div>`;
-    }
+    const chips = [`<button onclick="setBriefingSourceFilter('all')" style="padding:4px 10px;border:1px solid ${_briefingSourceFilter==='all'?'var(--teal)':'var(--border)'};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${_briefingSourceFilter==='all'?'var(--teal)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">All (${articles.length})</button>`];
+    enabledSources.forEach(s => {
+      const count = countsBySourceId.get(s.id) || 0;
+      const failed = failedSourceNames.includes(s.name);
+      const active = _briefingSourceFilter === s.id;
+      const label = failed ? `${escHtml(s.name)} ⚠` : `${escHtml(s.name)} (${count})`;
+      chips.push(`<button onclick="setBriefingSourceFilter('${s.id}')" title="${failed ? 'Failed to load — try Refresh' : ''}" style="padding:4px 10px;border:1px solid ${active?'var(--teal)':(failed?'var(--red)':'var(--border)')};border-radius:12px;background:none;font-size:0.68rem;font-family:'Montserrat',sans-serif;color:${active?'var(--teal)':(failed?'var(--red)':'var(--text-dim)')};cursor:pointer;white-space:nowrap;opacity:${count===0&&!failed?'0.5':'1'};">${label}</button>`);
+    });
+    filterHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${chips.join('')}</div>`;
   }
 
   const filteredArticles = _briefingSourceFilter === 'all'
