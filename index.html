@@ -11,6 +11,10 @@
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
         release: 'show-up@0.23',
+        ignoreErrors: [
+          // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
+          'Attempt to get records from database without an in-progress transaction',
+        ],
       });
     });
   </script>
@@ -57,7 +61,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer onload="initGCalClient()"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="if(typeof initGCalClient==='function')initGCalClient()"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1461,6 +1465,11 @@ async function loadFromFirebase() {
         }
         resolve();
       }
+    }, (err) => {
+      console.error('Firebase load failed:', err);
+      render();
+      checkDayReset();
+      resolve();
     });
   });
 }
@@ -1664,6 +1673,10 @@ function syncFromCloud() {
     updateTabVisibility();
     showToast('Synced \u2713');
     if (btn) btn.textContent = 'Sync now';
+  }, (err) => {
+    console.error('Firebase sync failed:', err);
+    showToast('Sync failed \u2014 try again');
+    if (btn) btn.textContent = 'Sync now';
   });
 }
 
@@ -1690,6 +1703,10 @@ function startFirebaseSync() {
       _syncPaused = false;
       render();
     }
+  }, (err) => {
+    // Transient permission errors can occur during auth token refresh (common on iPad after backgrounding).
+    // Log and ignore — the listener will recover automatically once the token refreshes.
+    console.error('Firebase realtime sync error:', err);
   });
 }
 
@@ -7026,7 +7043,7 @@ function addSubtask(parentId) {
   if (!text) return;
   const parent = S.tasks.find(t => t.id === parentId);
   if (!parent) return;
-  S.tasks.push({ id: S.nextId++, text, cat: parent.cat, done: false, createdAt: Date.now(), points: 1, parentId });
+  S.tasks.push({ id: S.nextId++, text, cat: parent.cat || 'personal', done: false, createdAt: Date.now(), points: 1, parentId });
   S.totalAdded++;
   _expandedProjects.add(parentId);
   trackEvent('subtask_add', { cat: parent.cat });
@@ -11419,7 +11436,7 @@ function _lmFinish() {
   (_lm.customTasks || []).forEach(ct => selected.push(ct));
 
   selected.forEach(s => {
-    const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
+    const task = { id: S.nextId++, text: s.text, cat: s.cat || 'personal', done: false, createdAt: Date.now(), points: 1 };
     const jobListId = ensureJobSearchListId(task.cat);
     if (jobListId) task.listId = jobListId;
     S.tasks.unshift(task);
@@ -11536,7 +11553,7 @@ function addCalFollowUpTasks() {
   if (!selected.length) { showToast('Nothing selected'); return; }
 
   selected.forEach(s => {
-    const task = { id: S.nextId++, text: s.text, cat: s.cat, done: false, createdAt: Date.now(), points: 1 };
+    const task = { id: S.nextId++, text: s.text, cat: s.cat || 'personal', done: false, createdAt: Date.now(), points: 1 };
     const jobListId = ensureJobSearchListId(task.cat);
     if (jobListId) task.listId = jobListId;
     S.tasks.unshift(task);
