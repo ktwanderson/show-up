@@ -1549,9 +1549,12 @@ function saveHabitGoals() {
   const goalKeys = { workout: 'workoutGoal', journal: 'journalGoal', outside: 'outsideGoal' };
   const periodKeys = { workout: 'workoutGoalPeriod', journal: 'journalGoalPeriod', outside: 'outsideGoalPeriod' };
   const defaults = { workout: 3, journal: 3, outside: 5 };
+  if (!S.habitLifeAreas) S.habitLifeAreas = {};
   ['workout', 'journal', 'outside'].forEach(h => {
     S[goalKeys[h]] = parseInt(document.getElementById(`acct-${h}-target`)?.value) || defaults[h];
     S[periodKeys[h]] = document.getElementById(`acct-${h}-period`)?.value || 'week';
+    const areaEl = document.getElementById(`acct-${h}-area`);
+    S.habitLifeAreas[h] = areaEl?.value || null;
   });
 
   save();
@@ -3224,6 +3227,7 @@ const DEFAULT_STATE = {
   outsideGoalPeriod: 'week',
   trackedHabits: ['workout', 'journal', 'outside'],
   customHabits: [],
+  habitLifeAreas: { workout: null, journal: null, outside: null },
   lifeAreas: {
     health:        { label: 'Health',        icon: '◑', intention: '' },
     finance:       { label: 'Finance',       icon: '◒', intention: '' },
@@ -10365,6 +10369,94 @@ function renderProgress() {
     ${recsHTML}
     ${marketContextHTML}
 
+    ${(function() {
+      const areas = S.lifeAreas || {};
+      const habitLifeAreas = S.habitLifeAreas || {};
+      const customHabits = S.customHabits || [];
+
+      // Build a map: areaKey → list of habits with this-period progress
+      const now = new Date();
+      const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+      const monday = new Date(now); monday.setDate(now.getDate() - daysFromMon); monday.setHours(0,0,0,0);
+      const monthPrefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+      function countLog(log, period) {
+        if (!log || !log.length) return 0;
+        if (period === 'day') return log.includes(todayLocal()) ? 1 : 0;
+        if (period === 'month') return log.filter(d => d.startsWith(monthPrefix)).length;
+        return log.filter(d => new Date(d + 'T00:00:00') >= monday).length;
+      }
+
+      const builtIn = [
+        { key: 'workout', name: 'Working out',    icon: '◑', log: S.workoutLog||[], goal: S.workoutGoal||3,   period: S.workoutGoalPeriod||'week' },
+        { key: 'journal', name: 'Journaling',     icon: '◒', log: S.journalLog||[], goal: S.journalGoal||3,   period: S.journalGoalPeriod||'week' },
+        { key: 'outside', name: 'Getting outside',icon: '▷', log: S.outsideLog||[], goal: S.outsideGoal||5,   period: S.outsideGoalPeriod||'week' },
+      ].filter(h => (S.trackedHabits||[]).includes(h.key));
+
+      // Group habits by life area
+      const grouped = {};
+      builtIn.forEach(h => {
+        const areaKey = habitLifeAreas[h.key];
+        if (!areaKey) return;
+        if (!grouped[areaKey]) grouped[areaKey] = [];
+        grouped[areaKey].push({ ...h, count: countLog(h.log, h.period) });
+      });
+      customHabits.forEach(h => {
+        if (!h.lifeAreaKey) return;
+        if (!grouped[h.lifeAreaKey]) grouped[h.lifeAreaKey] = [];
+        const count = h.trackingType === 'numeric'
+          ? ((h.numericLog||[]).find(e => new Date(e.date+'T00:00:00') >= monday)?.value || 0)
+          : countLog(h.log||[], h.goalPeriod||'week');
+        const goal = h.trackingType === 'numeric' ? (h.targetValue||1) : (h.goal||1);
+        grouped[h.lifeAreaKey].push({ key: h.id, name: h.name, icon: h.icon, count, goal, period: h.goalPeriod||'week' });
+      });
+
+      const areaKeys = Object.keys(areas);
+      const anyTagged = areaKeys.some(k => grouped[k]?.length > 0);
+      const anyIntention = areaKeys.some(k => areas[k].intention);
+      if (!anyTagged && !anyIntention) return '';
+
+      const areaRows = areaKeys.map(k => {
+        const a = areas[k];
+        const habits = grouped[k] || [];
+        const aColor = getAreaColor(k);
+        const onTrack = habits.filter(h => h.count >= h.goal).length;
+        const statusColor = habits.length === 0 ? 'var(--text-dim)' : onTrack === habits.length ? 'var(--green,#2d6347)' : onTrack > 0 ? 'var(--amber)' : 'var(--text-dim)';
+        const statusLabel = habits.length === 0 ? '' : `${onTrack}/${habits.length} on track`;
+
+        return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${habits.length||a.intention?'6':'0'}px;">
+            <span style="font-size:1rem;color:${aColor};flex-shrink:0;">${a.icon}</span>
+            <span style="font-size:0.82rem;font-weight:600;color:var(--text);flex:1;">${a.label}</span>
+            ${statusLabel ? `<span style="font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;color:${statusColor};">${statusLabel}</span>` : ''}
+          </div>
+          ${a.intention ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:${habits.length?'8':'0'}px;padding-left:24px;font-style:italic;">"${escHtml(a.intention)}"</div>` : ''}
+          ${habits.map(h => {
+            const pct = Math.min(100, Math.round((h.count / h.goal) * 100));
+            const done = h.count >= h.goal;
+            return `<div style="display:flex;align-items:center;gap:8px;padding-left:24px;margin-bottom:6px;">
+              <span style="font-size:0.78rem;color:var(--text-mid);flex-shrink:0;">${h.icon}</span>
+              <span style="font-size:0.76rem;color:var(--text-mid);flex:1;min-width:0;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(h.name)}</span>
+              <div style="width:48px;height:3px;background:var(--surface2);border-radius:2px;flex-shrink:0;">
+                <div style="height:100%;width:${pct}%;background:${done?'var(--green,#2d6347)':'var(--amber)'};border-radius:2px;transition:width 0.3s;"></div>
+              </div>
+              <span style="font-size:0.65rem;font-family:'Montserrat',sans-serif;color:${done?'var(--green,#2d6347)':'var(--text-dim)'};flex-shrink:0;min-width:28px;text-align:right;">${h.count}/${h.goal}</span>
+            </div>`;
+          }).join('')}
+          ${habits.length === 0 ? `<div style="padding-left:24px;font-size:0.7rem;color:var(--text-dim);">No habits linked — tag a habit to this area in Account.</div>` : ''}
+        </div>`;
+      }).join('');
+
+      return `<div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div class="card-label">Life areas</div>
+          <button onclick="switchTab('account')" style="background:none;border:none;font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-dim);cursor:pointer;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Edit →</button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:8px;">This week's habit completion by life area.</div>
+        ${areaRows}
+      </div>`;
+    })()}
+
     <div class="card">
       <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
       <div style="display:flex;gap:4px;align-items:flex-end;padding-bottom:4px;">${weekBars}</div>
@@ -11920,6 +12012,13 @@ function openAddHabitModal() {
         <input id="new-habit-unit" type="text" placeholder="g, ml, mins…" style="${iS}">
       </div>
     </div>
+    <div style="margin-bottom:16px;">
+      <label style="${fL}">Life area (optional)</label>
+      <select id="new-habit-area" style="${iS}cursor:pointer;">
+        <option value="">— none —</option>
+        ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `<option value="${k}">${a.icon} ${a.label}</option>`).join('')}
+      </select>
+    </div>
     <div style="display:flex;gap:8px;">
       <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
       <button onclick="addCustomHabit()" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Add habit</button>
@@ -11960,14 +12059,15 @@ function addCustomHabit() {
   const trackingType = document.getElementById('new-habit-type')?.value || 'binary';
   const icon = document.getElementById('new-habit-icon')?.value || '◇';
   if (!S.customHabits) S.customHabits = [];
+  const lifeAreaKey = document.getElementById('new-habit-area')?.value || null;
   if (trackingType === 'numeric') {
     const targetValue = parseFloat(document.getElementById('new-habit-target')?.value || '1') || 1;
     const unit = (document.getElementById('new-habit-unit')?.value || '').trim();
-    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'numeric', goal: 1, goalPeriod: 'day', targetValue, unit, log: [], numericLog: [], doneToday: false });
+    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'numeric', goal: 1, goalPeriod: 'day', targetValue, unit, log: [], numericLog: [], doneToday: false, lifeAreaKey: lifeAreaKey || undefined });
   } else {
     const goal = parseInt(document.getElementById('new-habit-goal')?.value || '1');
     const goalPeriod = document.getElementById('new-habit-period')?.value || 'day';
-    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'binary', goal, goalPeriod, log: [], doneToday: false });
+    S.customHabits.push({ id: 'ch_' + Date.now(), name, icon, trackingType: 'binary', goal, goalPeriod, log: [], doneToday: false, lifeAreaKey: lifeAreaKey || undefined });
   }
   save();
   closeModal();
@@ -12022,6 +12122,13 @@ function openEditCustomHabit(id) {
         </select>
       </div>
     </div>`}
+    <div style="margin-bottom:16px;">
+      <label style="${fL}">Life area (optional)</label>
+      <select id="edit-habit-area" style="${iS}cursor:pointer;">
+        <option value="">— none —</option>
+        ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `<option value="${k}" ${h.lifeAreaKey===k?'selected':''}>${a.icon} ${a.label}</option>`).join('')}
+      </select>
+    </div>
     <div style="display:flex;gap:8px;">
       <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
       <button onclick="saveEditCustomHabit('${id}')" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save changes</button>
@@ -12058,6 +12165,8 @@ function saveEditCustomHabit(id) {
     h.goal = parseInt(document.getElementById('edit-habit-goal')?.value || '1');
     h.goalPeriod = document.getElementById('edit-habit-period')?.value || 'day';
   }
+  const areaVal = document.getElementById('edit-habit-area')?.value;
+  h.lifeAreaKey = areaVal || undefined;
   save();
   closeModal();
   if (currentTab === 'today') renderToday();
@@ -14444,16 +14553,25 @@ function renderAccount() {
             <input type="checkbox" id="acct-${h}" ${checked?'checked':''} onchange="acctToggleHabit('${h}')" style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;">
             <span style="font-size:0.84rem;font-weight:500;color:var(--text);">${labels[h]}</span>
           </label>
-          <div id="acct-${h}-goal" style="padding-left:25px;display:${checked?'flex':'none'};align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:0.72rem;color:var(--text-mid);">Goal:</span>
-            <input type="number" id="acct-${h}-target" value="${goal}" min="1" max="31"
-              style="width:46px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
-            <span style="font-size:0.72rem;color:var(--text-mid);">times per</span>
-            <select id="acct-${h}-period"
-              style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
-              <option value="week" ${period==='week'?'selected':''}>week</option>
-              <option value="month" ${period==='month'?'selected':''}>month</option>
-            </select>
+          <div id="acct-${h}-goal" style="padding-left:25px;display:${checked?'flex':'none'};flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:0.72rem;color:var(--text-mid);">Goal:</span>
+              <input type="number" id="acct-${h}-target" value="${goal}" min="1" max="31"
+                style="width:46px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;text-align:center;">
+              <span style="font-size:0.72rem;color:var(--text-mid);">times per</span>
+              <select id="acct-${h}-period"
+                style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.84rem;color:var(--text);padding:4px 0;outline:none;cursor:pointer;">
+                <option value="week" ${period==='week'?'selected':''}>week</option>
+                <option value="month" ${period==='month'?'selected':''}>month</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:0.72rem;color:var(--text-dim);">Life area:</span>
+              <select id="acct-${h}-area" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--text-mid);padding:3px 0;outline:none;cursor:pointer;">
+                <option value="">— none —</option>
+                ${Object.entries(S.lifeAreas||{}).map(([k,a]) => `<option value="${k}" ${(S.habitLifeAreas||{})[h]===k?'selected':''}>${a.icon} ${a.label}</option>`).join('')}
+              </select>
+            </div>
           </div>
         </div>`;
       }).join('')}
@@ -14464,7 +14582,10 @@ function renderAccount() {
         ${(S.customHabits||[]).map(h => `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <button onclick="openHabitIconPicker('${h.id}')" title="Change icon" style="background:none;border:none;font-size:1rem;cursor:pointer;padding:2px;border-radius:2px;line-height:1;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">${h.icon}</button>
-          <span style="flex:1;font-size:0.84rem;color:var(--text);">${escHtml(h.name)}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.84rem;color:var(--text);">${escHtml(h.name)}</div>
+            ${h.lifeAreaKey && (S.lifeAreas||{})[h.lifeAreaKey] ? `<div style="font-size:0.65rem;color:${getAreaColor(h.lifeAreaKey)};font-family:'Montserrat',sans-serif;letter-spacing:0.03em;margin-top:1px;">${(S.lifeAreas||{})[h.lifeAreaKey].icon} ${(S.lifeAreas||{})[h.lifeAreaKey].label}</div>` : ''}
+          </div>
           <span style="font-size:0.7rem;color:var(--text-dim);">${h.goal}× / ${h.goalPeriod}</span>
           <button onclick="openEditCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;padding:2px 6px;border-radius:2px;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'" title="Edit habit">Edit</button>
           <button onclick="deleteCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:2px 6px;border-radius:2px;" title="Remove habit">✕</button>
