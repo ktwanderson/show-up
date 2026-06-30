@@ -1733,6 +1733,13 @@ function normalizeStateArrays(s) {
       if (!c.interactions) c.interactions = [];
     });
   }
+  // Normalize goals array inside each weekly plan (Firebase serializes arrays as objects on round-trip)
+  if (Array.isArray(s.weeklyPlans)) {
+    s.weeklyPlans.forEach(p => {
+      if (p.goals && !Array.isArray(p.goals)) p.goals = Object.values(p.goals);
+      if (!p.goals) p.goals = [];
+    });
+  }
   // Normalize log arrays inside each custom habit
   if (Array.isArray(s.customHabits)) {
     s.customHabits.forEach(h => {
@@ -4161,7 +4168,7 @@ function renderToday() {
         <div id="focus-list">
           ${focusTasks.length > 0
             ? focusTasks.map(t => makeFocusItemHTML(t)).join('')
-            : `<div class="empty" style="padding:14px 0"><div class="empty-icon">🎯</div>Pull 1–${S.todayEnergy === 'light' ? 2 : 3} things from your backlog below.</div>`
+            : `<div class="empty" style="padding:14px 0"><div class="empty-icon">◎</div>Pull 1–${S.todayEnergy === 'light' ? 2 : 3} things from your backlog below.</div>`
           }
         </div>
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
@@ -4523,6 +4530,22 @@ function renderToday() {
       return `<div class="card" style="border-top:1px solid var(--border);padding:16px 0 4px;">${headerRow}${emptyMsg}${emailRows}</div>`;
     })()}
 
+    ${(function() {
+      const dismissed = localStorage.getItem('showup_coach_nudge_dismissed');
+      if (dismissed === todayStr) return '';
+      const lastCoachVisit = localStorage.getItem('showup_coach_last_visit') || '';
+      if (lastCoachVisit === todayStr) return '';
+      return `<div style="margin-top:24px;border:1px solid var(--border);border-radius:4px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.1rem;flex-shrink:0;color:var(--amber);">◎</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.8rem;font-weight:600;color:var(--text);margin-bottom:2px;">Check in with The Coach</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.4;">Work on a skill or get coaching on what's on your mind today.</div>
+        </div>
+        <button onclick="localStorage.setItem('showup_coach_last_visit',${JSON.stringify(todayStr)});switchTab('focus')" style="flex-shrink:0;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;padding:6px 12px;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Go →</button>
+        <button onclick="localStorage.setItem('showup_coach_nudge_dismissed',${JSON.stringify(todayStr)});renderToday()" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;padding:2px 4px;line-height:1;" title="Dismiss for today">✕</button>
+      </div>`;
+    })()}
+
     <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">
       ${S.todaySealed
         ? `<div style="display:flex;align-items:center;gap:10px">
@@ -4564,7 +4587,7 @@ function makeFocusItemHTML(task) {
   const projectContext = hasChildren ? `
     <div style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
       <span style="opacity:0.6;">↳</span>
-      <span style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(task.text)}</span>
+      <span onclick="event.stopPropagation();openEditTaskModal(${task.id})" style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;cursor:pointer;text-decoration:underline;text-decoration-color:var(--border);" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color=''">${escHtml(task.text)}</span>
       ${totalChildCount > 0 ? `<span style="flex-shrink:0;background:var(--surface2);border-radius:2px;padding:1px 5px;font-size:0.6rem;">${doneChildCount}/${totalChildCount}</span>` : ''}
     </div>` : '';
 
@@ -6919,10 +6942,11 @@ function makeQuestTaskHTML(task, showCat) {
           ${expandedChildren ? `<div class="subtask-list" style="margin-left:0;border-left:2px solid var(--border);padding-left:10px;">${expandedChildren}</div>` : ''}
         </div>
         ${!task.done ? `<div id="subtask-add-${task.id}" class="subtask-add-form" style="padding-left:28px;">
-          <div style="display:flex;gap:6px;align-items:center;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
             <input type="text" id="subtask-input-${task.id}" class="add-input"
-              placeholder="Add a step..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
+              placeholder="Add a step..." style="flex:1;min-width:120px;font-size:0.8rem;padding:5px 8px;"
               onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
+            <input type="date" id="subtask-due-${task.id}" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--text-dim);padding:4px 2px;outline:none;cursor:pointer;" title="Due date (optional)">
             <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
             <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
           </div>
@@ -6960,10 +6984,11 @@ function makeQuestTaskHTML(task, showCat) {
       ${linkedGoalTag}
       ${goalPicker}
       <div id="subtask-add-${task.id}" class="subtask-add-form">
-        <div style="display:flex;gap:6px;align-items:center;">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <input type="text" id="subtask-input-${task.id}" class="add-input"
-            placeholder="Add a step..." style="flex:1;font-size:0.8rem;padding:5px 8px;"
+            placeholder="Add a step..." style="flex:1;min-width:120px;font-size:0.8rem;padding:5px 8px;"
             onkeydown="if(event.key==='Enter')addSubtask(${task.id});if(event.key==='Escape')cancelAddSubtask(${task.id})">
+          <input type="date" id="subtask-due-${task.id}" style="border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--text-dim);padding:4px 2px;outline:none;cursor:pointer;" title="Due date (optional)">
           <button onclick="addSubtask(${task.id})" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.68rem;padding:5px 10px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Add</button>
           <button onclick="cancelAddSubtask(${task.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-dim);font-size:0.82rem;padding:3px 4px;cursor:pointer;line-height:1;">✕</button>
         </div>
@@ -7043,7 +7068,10 @@ function addSubtask(parentId) {
   if (!text) return;
   const parent = S.tasks.find(t => t.id === parentId);
   if (!parent) return;
-  S.tasks.push({ id: S.nextId++, text, cat: parent.cat || 'personal', done: false, createdAt: Date.now(), points: 1, parentId });
+  const dueDate = document.getElementById('subtask-due-' + parentId)?.value || undefined;
+  const subtask = { id: S.nextId++, text, cat: parent.cat || 'personal', done: false, createdAt: Date.now(), points: 1, parentId };
+  if (dueDate) subtask.dueDate = dueDate;
+  S.tasks.push(subtask);
   S.totalAdded++;
   _expandedProjects.add(parentId);
   trackEvent('subtask_add', { cat: parent.cat });
@@ -11948,6 +11976,95 @@ function addCustomHabit() {
   showToast(`"${name}" habit added ✓`);
 }
 
+function openEditCustomHabit(id) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  const fL = 'font-size:0.6rem;font-family:\'Montserrat\',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;display:block;';
+  const iS = 'border:none;border-bottom:1px solid var(--border);background:transparent;font-family:\'DM Sans\',sans-serif;font-size:0.85rem;color:var(--text);padding:6px 0;outline:none;width:100%;';
+  const isNumeric = h.trackingType === 'numeric';
+  showModal(`<div style="text-align:left;">
+    <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:14px;font-family:'Montserrat',sans-serif;">Edit habit</div>
+    <div style="margin-bottom:10px;">
+      <label style="${fL}">Name</label>
+      <input id="edit-habit-name" type="text" value="${escHtml(h.name)}" style="${iS}">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="${fL}">Icon</label>
+      <input type="hidden" id="edit-habit-icon" value="${h.icon}">
+      <div id="edit-habit-icon-grid" style="display:flex;flex-wrap:wrap;gap:6px;">${LIST_ICONS.map(ic => `
+        <button id="ehi-icon-${ic}" type="button" onclick="event.preventDefault();selectEditHabitIcon('${ic}')"
+          style="width:32px;height:32px;border-radius:4px;border:2px solid ${ic===h.icon?'var(--amber)':'transparent'};background:${ic===h.icon?'var(--amber-lt)':'var(--surface2)'};font-size:0.9rem;cursor:pointer;transition:all 0.12s;display:flex;align-items:center;justify-content:center;color:${ic===h.icon?'var(--amber)':'var(--text)'};"
+          onmouseover="this.style.borderColor='var(--amber)'" onmouseout="if(document.getElementById('edit-habit-icon').value!=='${ic}')this.style.borderColor='transparent'">${ic}</button>`).join('')}
+      </div>
+    </div>
+    ${isNumeric ? `
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div style="flex:2;">
+        <label style="${fL}">Daily target</label>
+        <input id="edit-habit-target" type="number" value="${h.targetValue || 1}" min="1" style="${iS}">
+      </div>
+      <div style="flex:1;">
+        <label style="${fL}">Unit</label>
+        <input id="edit-habit-unit" type="text" value="${escHtml(h.unit || '')}" placeholder="g, ml, mins…" style="${iS}">
+      </div>
+    </div>` : `
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div style="flex:1;">
+        <label style="${fL}">Goal</label>
+        <input id="edit-habit-goal" type="number" value="${h.goal || 1}" min="1" max="31" style="${iS}">
+      </div>
+      <div style="flex:1;">
+        <label style="${fL}">Per</label>
+        <select id="edit-habit-period" style="${iS}cursor:pointer;">
+          <option value="day" ${h.goalPeriod==='day'?'selected':''}>day</option>
+          <option value="week" ${h.goalPeriod==='week'?'selected':''}>week</option>
+          <option value="month" ${h.goalPeriod==='month'?'selected':''}>month</option>
+        </select>
+      </div>
+    </div>`}
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeModal()" style="flex:1;padding:10px;border:none;background:var(--surface2);border-radius:2px;font-size:0.82rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Cancel</button>
+      <button onclick="saveEditCustomHabit('${id}')" style="flex:2;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save changes</button>
+    </div>
+  </div>`);
+  setTimeout(() => document.getElementById('edit-habit-name')?.focus(), 80);
+}
+
+function selectEditHabitIcon(icon) {
+  const hiddenEl = document.getElementById('edit-habit-icon');
+  if (!hiddenEl) return;
+  hiddenEl.value = icon;
+  LIST_ICONS.forEach(ic => {
+    const btn = document.getElementById(`ehi-icon-${ic}`);
+    if (!btn) return;
+    const active = ic === icon;
+    btn.style.borderColor = active ? 'var(--amber)' : 'transparent';
+    btn.style.background  = active ? 'var(--amber-lt)' : 'var(--surface2)';
+    btn.style.color       = active ? 'var(--amber)' : 'var(--text)';
+  });
+}
+
+function saveEditCustomHabit(id) {
+  const h = (S.customHabits || []).find(x => x.id === id);
+  if (!h) return;
+  const name = (document.getElementById('edit-habit-name')?.value || '').trim();
+  if (!name) { showToast('Enter a habit name'); return; }
+  h.name = name;
+  h.icon = document.getElementById('edit-habit-icon')?.value || h.icon;
+  if (h.trackingType === 'numeric') {
+    h.targetValue = parseFloat(document.getElementById('edit-habit-target')?.value || '1') || 1;
+    h.unit = (document.getElementById('edit-habit-unit')?.value || '').trim();
+  } else {
+    h.goal = parseInt(document.getElementById('edit-habit-goal')?.value || '1');
+    h.goalPeriod = document.getElementById('edit-habit-period')?.value || 'day';
+  }
+  save();
+  closeModal();
+  if (currentTab === 'today') renderToday();
+  if (currentTab === 'account') renderAccount();
+  showToast(`"${name}" updated ✓`);
+}
+
 function openHabitIconPicker(id) {
   const h = (S.customHabits || []).find(x => x.id === id);
   if (!h) return;
@@ -14349,6 +14466,7 @@ function renderAccount() {
           <button onclick="openHabitIconPicker('${h.id}')" title="Change icon" style="background:none;border:none;font-size:1rem;cursor:pointer;padding:2px;border-radius:2px;line-height:1;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">${h.icon}</button>
           <span style="flex:1;font-size:0.84rem;color:var(--text);">${escHtml(h.name)}</span>
           <span style="font-size:0.7rem;color:var(--text-dim);">${h.goal}× / ${h.goalPeriod}</span>
+          <button onclick="openEditCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;padding:2px 6px;border-radius:2px;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'" title="Edit habit">Edit</button>
           <button onclick="deleteCustomHabit('${h.id}')" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:2px 6px;border-radius:2px;" title="Remove habit">✕</button>
         </div>`).join('')}
       </div>` : ''}
@@ -14843,7 +14961,7 @@ async function _doFetchJobEmails() {
   const fetchBtn = document.getElementById('job-inbox-fetch-btn');
   if (fetchBtn) { fetchBtn.textContent = 'Fetching…'; fetchBtn.style.pointerEvents = 'none'; }
 
-  const query = encodeURIComponent('(interview OR recruiter OR "job opportunity" OR "open position" OR LinkedIn OR "your application") newer_than:14d');
+  const query = encodeURIComponent('(interview OR recruiter OR recruiting OR "job opportunity" OR "open position" OR "new opportunity" OR "open role" OR linkedin.com OR "your application" OR "we reviewed your" OR "application received" OR "phone screen" OR "next steps" OR "offer") newer_than:30d');
   try {
     const listResp = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=15`,
