@@ -10,10 +10,12 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.23',
+        release: 'show-up@0.25',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
+          // Transient Firebase auth token refresh on iPad/mobile backgrounding — not a real permission failure
+          'PERMISSION_DENIED: Permission denied',
         ],
       });
     });
@@ -2726,6 +2728,19 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.25',
+    date: '2026-06-30',
+    items: [
+      'Coach — type any topic to add it to your curriculum; AI validates industry relevance and normalizes the name (e.g. CTV → Connected TV)',
+      'Habits — connect built-in and custom habits to Life Areas; Progress tab shows per-area habit tracking',
+      'Habits — edit custom habits after creation (change goal, icon, life area without losing history)',
+      'Today tab — coach nudge card surfaces when you haven\'t visited The Coach today',
+      'Today tab — click into parent task from a subtask\'s context line',
+      'Subtasks — optional due date field when adding a subtask',
+      'Job inbox — broader email search (more keywords, 30-day window)',
+    ],
+  },
   {
     version: '0.24',
     date: '2026-06-19',
