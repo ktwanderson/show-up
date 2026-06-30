@@ -5547,7 +5547,7 @@ async function callClaude(prompt, options = {}) {
         'Authorization': `Bearer ${idToken}`,
       },
       body: JSON.stringify({
-        model: options.model || 'claude-sonnet-4-20250514',
+        model: options.model || 'claude-sonnet-4-5',
         maxTokens: options.maxTokens || 1024,
         prompt,
       }),
