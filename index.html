@@ -5359,8 +5359,20 @@ function openSkillLibrary() {
     <div style="text-align:left;">
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Add a skill</div>
       <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:var(--ls-ui);text-transform:uppercase;margin-bottom:12px;">Choose skills to track</div>
-      <div style="max-height:60vh;overflow-y:auto;">${grouped}</div>
-      <button onclick="closeModal()" style="margin-top:20px;width:100%;padding:10px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+      <div style="max-height:45vh;overflow-y:auto;">${grouped}</div>
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Don't see your topic?</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="custom-skill-input" type="text" placeholder="e.g. CTV, retail media, identity…" maxlength="60"
+            style="flex:1;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.83rem;color:var(--text);padding:6px 2px;outline:none;"
+            onkeydown="if(event.key==='Enter')suggestCustomSkill()">
+          <button onclick="suggestCustomSkill()" id="suggest-skill-btn"
+            style="background:none;border:1px solid var(--border);border-radius:2px;font-size:0.65rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-dim);padding:6px 12px;cursor:pointer;white-space:nowrap;transition:all 0.15s;"
+            onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Suggest →</button>
+        </div>
+        <div id="custom-skill-feedback" style="font-size:0.78rem;line-height:1.5;margin-top:8px;min-height:18px;"></div>
+      </div>
+      <button onclick="closeModal()" style="margin-top:16px;width:100%;padding:10px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
     </div>
   `);
 }
@@ -5386,6 +5398,115 @@ function addSkillFromLibrary(key) {
   checkAchievements();
   showToast(`${libEntry.name} added ✓`);
   openSkillLibrary(); // re-open so user can add more
+}
+
+async function suggestCustomSkill() {
+  const input = document.getElementById('custom-skill-input');
+  const btn = document.getElementById('suggest-skill-btn');
+  const feedback = document.getElementById('custom-skill-feedback');
+  if (!input || !feedback) return;
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  if (!firebaseUser) {
+    feedback.style.color = 'var(--text-dim)';
+    feedback.textContent = 'Sign in to add custom topics.';
+    return;
+  }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  feedback.style.color = 'var(--text-dim)';
+  feedback.textContent = 'Checking…';
+
+  // Build industry context from existing skills and resume
+  const existingSkillNames = (S.skills || []).filter(sk => sk.active).map(sk => sk.name).join(', ');
+  const resumeSnippet = (S.resume || '').slice(0, 600);
+  const industryContext = existingSkillNames
+    ? `The user's active learning skills include: ${existingSkillNames}.`
+    : resumeSnippet
+      ? `The user's resume: ${resumeSnippet}`
+      : 'The user is in the digital advertising / ad tech industry (programmatic, DSPs, SSPs, media buying, identity, etc.).';
+
+  const prompt = `You are a learning curriculum validator for a professional job-search app used by people in digital advertising, ad tech, media, and related fields.
+
+${industryContext}
+
+The user wants to add "${raw}" as a learning topic to their curriculum.
+
+Your tasks:
+1. Determine if this topic is relevant to their professional field (digital advertising, programmatic, media, data, marketing tech, or closely adjacent fields like product management, analytics, sales strategy, or general business skills). Reject topics that are clearly unrelated hobbies or personal interests with no professional relevance (e.g., woodworking, cooking, knitting).
+2. Normalize the topic name to its clearest, most professional form (e.g., "CTV" → "Connected TV", "ctv advertising" → "Connected TV", "rtb" → "Real-Time Bidding", "DSP" → "Demand-Side Platform", "GA4" → "Google Analytics 4"). Use title case.
+3. Pick the best-fit category from: adtech, data_code, product, platforms. If none fit well, use "adtech".
+
+Respond with JSON only, no explanation:
+{
+  "approved": true/false,
+  "normalizedName": "Title Case Name",
+  "category": "adtech|data_code|product|platforms",
+  "rejectReason": "one friendly sentence explaining why if rejected, otherwise null"
+}`;
+
+  try {
+    const raw_resp = await callClaude(prompt, { maxTokens: 200 });
+    let result;
+    try {
+      const jsonMatch = raw_resp.match(/\{[\s\S]*\}/);
+      result = JSON.parse(jsonMatch ? jsonMatch[0] : raw_resp);
+    } catch {
+      throw new Error('Unexpected response format');
+    }
+
+    if (!result.approved) {
+      feedback.style.color = 'var(--text-dim)';
+      feedback.textContent = result.rejectReason || 'That topic doesn\'t fit your professional curriculum. Try something more related to your field.';
+      btn.textContent = 'Suggest →';
+      btn.disabled = false;
+      return;
+    }
+
+    const normalizedName = result.normalizedName || raw;
+    const category = result.category || 'adtech';
+
+    // Check for duplicates
+    if (!S.skills) S.skills = [];
+    if (!S.nextSkillId) S.nextSkillId = 1;
+    const duplicate = S.skills.find(sk => sk.name.toLowerCase() === normalizedName.toLowerCase() && sk.active);
+    if (duplicate) {
+      feedback.style.color = 'var(--text-dim)';
+      feedback.textContent = `"${normalizedName}" is already in your curriculum.`;
+      btn.textContent = 'Suggest →';
+      btn.disabled = false;
+      return;
+    }
+
+    const customKey = 'custom_' + Date.now();
+    S.skills.push({
+      id: S.nextSkillId++,
+      key: customKey,
+      name: normalizedName,
+      category,
+      level: 0,
+      sessionsTotal: 0,
+      sessionLog: [],
+      learningHistory: [],
+      active: true,
+    });
+    save();
+    checkAchievements();
+
+    feedback.style.color = 'var(--green)';
+    feedback.textContent = `"${normalizedName}" added to your curriculum ✓`;
+    input.value = '';
+    btn.textContent = 'Suggest →';
+    btn.disabled = false;
+  } catch (err) {
+    console.error('suggestCustomSkill error:', err);
+    feedback.style.color = 'var(--text-dim)';
+    feedback.textContent = 'Something went wrong — try again.';
+    btn.textContent = 'Suggest →';
+    btn.disabled = false;
+  }
 }
 
 // ── AI COACH (Claude Integration) ────────────────────────────
