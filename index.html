@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.25',
+        release: 'show-up@0.26',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2704,8 +2704,16 @@ const SANDBOX_DEMO_STATE_FULL = {
   journalLog:[], journaledToday:false, journalGoal:3, journalGoalPeriod:'week',
   outsideLog:[], outsideGoal:5, outsideGoalPeriod:'week',
   weeklyCapacity:25, lastModified:0, resume:'', dailySnapshots:[], rolledOverTasks:[],
-  carryOverIds:[], todayCalEvents:[], onboardingComplete:true,
+  carryOverIds:[], onboardingComplete:true,
   todaySealed:false, postSealCompletions:0, triageDoneThisWeek:'',
+  todayCalEvents: [
+    { time:'8:00 AM',  title:'Morning workout — bootcamp class',                                 link:null, description:'', attendees:[] },
+    { time:'9:30 AM',  title:'Phone screen — Streamline Media (Sarah Chen)',                      link:null, description:'45-min screen with Sarah Chen, Senior Recruiter. Focus: yield background, SSP relationships.', attendees:['Sarah Chen'] },
+    { time:'11:00 AM', title:'Coffee chat — Jordan Park (Vantage DSP)',                           link:null, description:'Catch-up on the Vantage DSP publisher dev opening.', attendees:['Jordan Park'] },
+    { time:'1:00 PM',  title:'Dentist appointment',                                               link:null, description:'', attendees:[] },
+    { time:'3:00 PM',  title:'Loop interview — Clarity Digital (Marcus Webb)',                     link:null, description:'Final loop: present publisher monetization case study.', attendees:['Marcus Webb'] },
+    { time:'6:30 PM',  title:'Dinner with Jamie',                                                  link:null, description:'', attendees:[] },
+  ],
 };
 
 // ── VERSION & FEATURE FLAGS ───────────────────────────────────
@@ -2728,6 +2736,14 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.26',
+    date: '2026-07-03',
+    items: [
+      'Today tab — fixed a bug where the coach nudge card could crash the whole tab',
+      'Preview mode — demo calendar populated with sample appointments; calendar sync is disabled while previewing',
+    ],
+  },
   {
     version: '0.25',
     date: '2026-06-30',
@@ -4550,6 +4566,7 @@ function renderToday() {
     })()}
 
     ${(function() {
+      const todayStr = todayLocal();
       const dismissed = localStorage.getItem('showup_coach_nudge_dismissed');
       if (dismissed === todayStr) return '';
       const lastCoachVisit = localStorage.getItem('showup_coach_last_visit') || '';
@@ -15273,6 +15290,7 @@ function initGCalClient() {
 }
 
 function connectGCal() {
+  if (_inSandbox) { showToast('Demo mode — calendar sync is illustrative only'); return; }
   const clientId = localStorage.getItem('showup_gcal_client_id');
   if (!clientId) { showToast('Paste your Google Client ID in Account first'); return; }
   if (!window.google?.accounts?.oauth2) { showToast('Google API loading — try again in a moment'); return; }
@@ -15314,6 +15332,7 @@ function toggleGCalCalendar(id) {
 }
 
 async function fetchGCalEvents() {
+  if (_inSandbox) return;
   if (!_gCalAccessToken || Date.now() > _gCalTokenExpiry) { connectGCal(); return; }
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
