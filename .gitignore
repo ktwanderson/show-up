@@ -15,3 +15,6 @@ Icon?
 
 # Local overrides
 *.local
+
+# Firebase CLI
+.firebase/
