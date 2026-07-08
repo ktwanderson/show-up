@@ -58,7 +58,7 @@ function isUrlSafe(urlStr) {
   return true;
 }
 
-exports.callClaude = onRequest({ secrets: [ANTHROPIC_API_KEY], cors: true }, async (req, res) => {
+exports.callClaude = onRequest({ secrets: [ANTHROPIC_API_KEY], cors: true, invoker: 'public' }, async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return; }
@@ -84,7 +84,7 @@ exports.callClaude = onRequest({ secrets: [ANTHROPIC_API_KEY], cors: true }, asy
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: model || 'claude-sonnet-4-20250514',
+        model: model || 'claude-sonnet-4-5',
         max_tokens: maxTokens || 1024,
         messages: [{ role: 'user', content: prompt }],
       }),
