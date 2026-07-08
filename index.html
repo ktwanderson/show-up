@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.26',
+        release: 'show-up@0.27',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2008,6 +2008,14 @@ const BUILTIN_TEMPLATES = [
     'Submit application',
     'Log in pipeline',
   ]},
+  { name: 'New job onboarding', text: 'Onboarding checklist', cat: 'onboarding', points: 3, subtasks: [
+    'Complete paperwork (tax forms, direct deposit, benefits enrollment)',
+    'Set up accounts & tools (email, Slack, VPN, laptop)',
+    'Meet manager 1:1 — expectations & priorities',
+    'Meet immediate team / key stakeholders',
+    'Review team docs, wiki, and current projects',
+    'Set 30-60-90 day goals',
+  ]},
 ];
 
 function openTemplatesPicker() {
@@ -2336,16 +2344,18 @@ const CATS = {
   admin:    { label: 'Admin',      abbr: 'X', color: '#8a6540', xp: 25, ph: 'Appointments, bills, forms, errands, logistics' },
   personal:  { label: 'Personal',   abbr: 'P', color: '#9a4a5a', xp: 35, ph: 'Health, family, home, anything life needs from you' },
   schedule:  { label: 'Scheduling', abbr: 'S', color: '#4a7a6d', xp: 20, ph: 'Appointments, interviews, calls to book or confirm' },
+  onboarding:{ label: 'Onboarding',  abbr: 'O', color: '#a0632d', xp: 30, ph: 'Paperwork, IT setup, meetings — new job tasks' },
   todo:      { label: 'To Do',      abbr: 'T', color: '#8c8880', xp: 15, ph: 'Add a task...' },
 };
 
-// Job-search categories auto-route into these lists so they surface on Focus
+// Categories that auto-route into a dedicated list so they surface on Focus
 // alongside every other list, not just the All/Today views.
 const JOB_SEARCH_LISTS = {
-  apply:    { name: 'Apply',          color: '#2d6347', icon: '→' },
-  followup: { name: 'Outreach',       color: '#a07c08', icon: '◉' },
-  network:  { name: 'Outreach',       color: '#a07c08', icon: '◉' },
-  research: { name: 'Prep & Debrief', color: '#7a5c8a', icon: '◈' },
+  apply:      { name: 'Apply',          color: '#2d6347', icon: '→' },
+  followup:   { name: 'Outreach',       color: '#a07c08', icon: '◉' },
+  network:    { name: 'Outreach',       color: '#a07c08', icon: '◉' },
+  research:   { name: 'Prep & Debrief', color: '#7a5c8a', icon: '◈' },
+  onboarding: { name: 'Onboarding',     color: '#a0632d', icon: '◇' },
 };
 
 // Finds (or creates) the list for a job-search category and returns its id.
@@ -2736,6 +2746,15 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.27',
+    date: '2026-07-03',
+    items: [
+      'Onboarding — new task category for post-hire tasks (paperwork, IT setup, meeting the team); auto-routes into a dedicated Onboarding list',
+      'Templates — "New job onboarding" starter checklist with common first-week tasks',
+      'Post-hire mode — Today tab now links straight to your Onboarding checklist',
+    ],
+  },
   {
     version: '0.26',
     date: '2026-07-03',
@@ -3189,7 +3208,7 @@ const DEFAULT_STATE = {
   nextId: 1,
   totalAdded: 0,
   totalDone: 0,
-  doneBy: { apply:0, followup:0, network:0, research:0, admin:0, personal:0 },
+  doneBy: { apply:0, followup:0, network:0, research:0, admin:0, personal:0, onboarding:0 },
   rejections: 0,
   rejectionLog: [],
   nextRejectionId: 1,
@@ -3600,7 +3619,7 @@ function loadState() {
         nextId: p.nextId || 1,
         totalAdded: p.totalAdded || 0,
         totalDone:  p.totalDone  || 0,
-        doneBy: Object.assign({ apply:0, followup:0, network:0, research:0, admin:0, personal:0 }, p.doneBy || {}),
+        doneBy: Object.assign({ apply:0, followup:0, network:0, research:0, admin:0, personal:0, onboarding:0 }, p.doneBy || {}),
         rejections: p.rejections || 0,
         xp: p.xp || 0,
         earned: p.earned || [],
@@ -3945,6 +3964,7 @@ function renderToday() {
         <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;">Unlock unlimited access to Coach and Briefing as you grow in your career.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
+        <button onclick="openOnboardingList()" style="width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;">→ Open onboarding checklist</button>
         <button onclick="switchTab('focus')" style="width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;">→ Open Focus &amp; Lists</button>
         <button onclick="switchTab('briefing')" style="width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;">→ Read today's Briefing</button>
       </div>
@@ -7405,6 +7425,13 @@ function switchQuestCat(cat) {
   renderQuests();
 }
 
+function openOnboardingList() {
+  const id = ensureJobSearchListId('onboarding');
+  save();
+  switchTab('quests');
+  setTimeout(() => switchQuestCat('list_' + id), 50);
+}
+
 function addQuestTask() {
   const inp = document.getElementById('quest-input');
   if (!inp) return;
@@ -10140,6 +10167,7 @@ function renderProgress() {
       { key:'research', label:'Research',   color:'var(--text-mid)',val:db.research||0 },
       { key:'admin',    label:'Admin',      color:'var(--border)',  val: db.admin||0 },
       { key:'personal', label:'Personal',   color:'#9a4a5a',       val: db.personal||0 },
+      { key:'onboarding',label:'Onboarding', color:'#a0632d',       val: db.onboarding||0 },
     ].filter(c => c.val > 0);
     if (cats.length === 0) return '';
     const total = cats.reduce((s,c) => s+c.val, 0);
