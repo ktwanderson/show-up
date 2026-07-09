@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.27',
+        release: 'show-up@0.28',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2746,6 +2746,13 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.28',
+    date: '2026-07-09',
+    items: [
+      'Preview mode — fixed a race condition where a real Google Calendar sync in flight when you entered preview could silently overwrite the demo calendar with your real (often empty) schedule',
+    ],
+  },
   {
     version: '0.27',
     date: '2026-07-03',
@@ -15401,6 +15408,7 @@ async function fetchGCalEvents() {
     }
     // Sort merged events by time
     allEvents.sort((a, b) => a.time.localeCompare(b.time));
+    if (_inSandbox) return; // entered preview mode while this fetch was in flight — don't clobber demo data
     S.todayCalEvents = allEvents;
     // Fetch calendar list in background so Account UI can show picker
     if (!localStorage.getItem('showup_gcal_calendars')) fetchGCalCalendars();
