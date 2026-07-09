@@ -1,6 +1,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
+const dns = require('dns').promises;
 
 admin.initializeApp();
 
@@ -45,16 +46,43 @@ async function checkRateLimit(uid, bucket, limit, res) {
   return true;
 }
 
-function isUrlSafe(urlStr) {
+function isPrivateIPv4(ip) {
+  if (ip === '0.0.0.0') return true;
+  if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(ip)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) return true;
+  return false;
+}
+
+function isPrivateIPv6(ip) {
+  const lower = ip.toLowerCase();
+  if (lower === '::1' || lower === '::') return true;
+  if (/^fe[89ab][0-9a-f]:/.test(lower)) return true; // link-local fe80::/10
+  if (/^f[cd][0-9a-f]{2}:/.test(lower)) return true; // unique local fc00::/7
+  const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivateIPv4(mapped[1]);
+  return false;
+}
+
+// Async: resolves the hostname and validates the actual IP(s) it points to,
+// not just the literal hostname string — closes a DNS-rebinding gap where a
+// public-looking domain resolves to an internal address at fetch time.
+async function isUrlSafe(urlStr) {
   let parsed;
   try { parsed = new URL(urlStr); } catch (e) { return false; }
   if (!['http:', 'https:'].includes(parsed.protocol)) return false;
   const host = parsed.hostname.toLowerCase();
-  if (host === 'localhost' || host === '0.0.0.0' || host === '::1') return false;
-  // Block private/internal IP ranges
-  if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(host)) return false;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
-  if (host.endsWith('.local') || host.endsWith('.internal')) return false;
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return false;
+  if (isPrivateIPv4(host) || isPrivateIPv6(host)) return false;
+  let addresses;
+  try {
+    addresses = await dns.lookup(host, { all: true, verbatim: true });
+  } catch (e) {
+    return false;
+  }
+  for (const { address, family } of addresses) {
+    if (family === 4 && isPrivateIPv4(address)) return false;
+    if (family === 6 && isPrivateIPv6(address)) return false;
+  }
   return true;
 }
 
@@ -115,7 +143,7 @@ exports.fetchUrl = onRequest({ cors: true }, async (req, res) => {
     res.status(400).json({ error: 'bad_request', message: 'Missing url parameter.' });
     return;
   }
-  if (!isUrlSafe(targetUrl)) {
+  if (!(await isUrlSafe(targetUrl))) {
     res.status(400).json({ error: 'bad_request', message: 'URL not allowed.' });
     return;
   }
