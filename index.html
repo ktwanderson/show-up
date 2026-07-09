@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.29',
+        release: 'show-up@0.30',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2408,7 +2408,7 @@ const COMPANY_STATUSES = [
 const ENERGY = {
   light:   { icon: '○', label: 'Light day',   sub: '1–2 focus items', xp: 5  },
   regular: { icon: '◎', label: 'Regular day', sub: '2–3 focus items', xp: 10 },
-  full:    { icon: '●', label: 'Full send',   sub: '3–5 focus items', xp: 15 },
+  full:    { icon: '●', label: 'All in',      sub: '3–5 focus items', xp: 15 },
   rest:    { icon: '–', label: 'Rest day',    sub: 'Rest is valid',   xp: 10 },
 };
 
@@ -2448,8 +2448,8 @@ const SANDBOX_DEMO_STATE = {
   totalRestDays: 1,
   doneBy: { apply:0, followup:0, network:0, research:12, admin:0, personal:0 },
   tasks: [
-    { id:1, text:'The Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
-    { id:2, text:'The Coach: Header Bidding Deep Dive — Intermediate', cat:'research', done:true, doneAt:Date.now()-172800000, createdAt:Date.now()-172800000, points:1 },
+    { id:1, text:'Your Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
+    { id:2, text:'Your Coach: Header Bidding Deep Dive — Intermediate', cat:'research', done:true, doneAt:Date.now()-172800000, createdAt:Date.now()-172800000, points:1 },
     { id:3, text:'Review focus areas from last session', cat:'research', done:false, createdAt:Date.now(), points:1 },
   ],
   nextId: 10,
@@ -2459,9 +2459,9 @@ const SANDBOX_DEMO_STATE = {
       id:1, key:'programmatic-advertising', name:'Programmatic Advertising', category:'adtech',
       level:2, sessionsTotal:3, active:true,
       sessionLog:[
-        { date:'2026-04-10', notes:'The Coach: Beginner — Start with auction mechanics' },
-        { date:'2026-04-13', notes:'The Coach: Intermediate — Improve on floor pricing' },
-        { date:'2026-04-15', notes:'The Coach: Advanced — Strong on RTB, review deal types' },
+        { date:'2026-04-10', notes:'Your Coach: Beginner — Start with auction mechanics' },
+        { date:'2026-04-13', notes:'Your Coach: Intermediate — Improve on floor pricing' },
+        { date:'2026-04-15', notes:'Your Coach: Advanced — Strong on RTB, review deal types' },
       ],
       learningHistory:[
         { date:'2026-04-10', score:'1/3', analysis:{ level:'Beginner',    focusAreas:[{topic:'Auction mechanics'},{topic:'RTB basics'}],          nextStep:'Study the open auction flow end-to-end.' } },
@@ -2473,8 +2473,8 @@ const SANDBOX_DEMO_STATE = {
       id:2, key:'header-bidding', name:'Header Bidding', category:'adtech',
       level:1, sessionsTotal:2, active:true,
       sessionLog:[
-        { date:'2026-04-11', notes:'The Coach: Beginner — Understand wrapper setup' },
-        { date:'2026-04-14', notes:'The Coach: Intermediate — Focus on timeout tuning' },
+        { date:'2026-04-11', notes:'Your Coach: Beginner — Understand wrapper setup' },
+        { date:'2026-04-14', notes:'Your Coach: Intermediate — Focus on timeout tuning' },
       ],
       learningHistory:[
         { date:'2026-04-11', score:'1/3', analysis:{ level:'Beginner',     focusAreas:[{topic:'Wrapper setup'},{topic:'Prebid.js basics'}],         nextStep:'Get hands-on with a Prebid config.' } },
@@ -2485,7 +2485,7 @@ const SANDBOX_DEMO_STATE = {
       id:3, key:'data-clean-rooms', name:'Data Clean Rooms', category:'adtech',
       level:0, sessionsTotal:1, active:true,
       sessionLog:[
-        { date:'2026-04-16', notes:'The Coach: Beginner — Core privacy concepts' },
+        { date:'2026-04-16', notes:'Your Coach: Beginner — Core privacy concepts' },
       ],
       learningHistory:[
         { date:'2026-04-16', score:'0/3', analysis:{ level:'Beginner', focusAreas:[{topic:'Privacy-safe measurement'},{topic:'Identity resolution'},{topic:'AWS Clean Rooms basics'}], nextStep:'Read up on how clean rooms handle user-level matching without exposing raw data.' } },
@@ -2510,7 +2510,7 @@ const SANDBOX_DEMO_STATE = {
   todayFocusIds: [3],
   focusBlocksToday: 2,
   contacts:[], pipeline:[], companies:[], tasks:[
-    { id:1, text:'The Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
+    { id:1, text:'Your Coach: Programmatic Advertising — Advanced', cat:'research', done:true, doneAt:Date.now()-86400000, createdAt:Date.now()-86400000, points:1 },
     { id:2, text:'Review focus areas: bid shading & deal IDs', cat:'research', done:false, createdAt:Date.now(), points:1 },
   ],
   nextId:10, weeklyPlans:[], nextWeeklyId:1, rejections:0, rejectionLog:[], nextRejectionId:1,
@@ -2645,7 +2645,7 @@ const SANDBOX_DEMO_STATE_FULL = {
     { id:4, text:'Update Jordan Park on Clarity Digital process', cat:'network', done:false, createdAt:Date.now()-259200000, points:1, contactId:3, urgent:false },
     { id:5, text:'Research Priya Nair\'s background before Streamline HM round', cat:'research', done:false, createdAt:Date.now(), points:1, urgent:true },
     { id:6, text:'Apply to OpenX Sr. Programmatic Manager role', cat:'apply', done:true, doneAt:Date.now()-259200000, createdAt:Date.now()-345600000, points:2 },
-    { id:7, text:'The Coach: Supply Path Optimization — Intermediate', cat:'research', done:true, doneAt:Date.now()-432000000, createdAt:Date.now()-432000000, points:1 },
+    { id:7, text:'Your Coach: Supply Path Optimization — Intermediate', cat:'research', done:true, doneAt:Date.now()-432000000, createdAt:Date.now()-432000000, points:1 },
     { id:8, text:'Follow up with Orbit DSP recruiter (2-week mark)', cat:'followup', done:true, doneAt:Date.now()-518400000, createdAt:Date.now()-604800000, points:1 },
   ],
   nextId: 20,
@@ -2654,9 +2654,9 @@ const SANDBOX_DEMO_STATE_FULL = {
       id:1, key:'programmatic-advertising', name:'Programmatic Advertising', category:'adtech',
       level:2, sessionsTotal:3, active:true,
       sessionLog:[
-        { date:'2026-04-10', notes:'The Coach: Beginner — Start with auction mechanics' },
-        { date:'2026-04-13', notes:'The Coach: Intermediate — Improve on floor pricing' },
-        { date:'2026-04-15', notes:'The Coach: Advanced — Strong on RTB, review deal types' },
+        { date:'2026-04-10', notes:'Your Coach: Beginner — Start with auction mechanics' },
+        { date:'2026-04-13', notes:'Your Coach: Intermediate — Improve on floor pricing' },
+        { date:'2026-04-15', notes:'Your Coach: Advanced — Strong on RTB, review deal types' },
       ],
       learningHistory:[
         { date:'2026-04-10', score:'1/3', analysis:{ level:'Beginner',     focusAreas:[{topic:'Auction mechanics'},{topic:'RTB basics'}],           nextStep:'Study the open auction flow end-to-end.' } },
@@ -2668,8 +2668,8 @@ const SANDBOX_DEMO_STATE_FULL = {
       id:2, key:'header-bidding', name:'Header Bidding', category:'adtech',
       level:1, sessionsTotal:2, active:true,
       sessionLog:[
-        { date:'2026-04-11', notes:'The Coach: Beginner — Understand wrapper setup' },
-        { date:'2026-04-14', notes:'The Coach: Intermediate — Focus on timeout tuning' },
+        { date:'2026-04-11', notes:'Your Coach: Beginner — Understand wrapper setup' },
+        { date:'2026-04-14', notes:'Your Coach: Intermediate — Focus on timeout tuning' },
       ],
       learningHistory:[
         { date:'2026-04-11', score:'1/3', analysis:{ level:'Beginner',     focusAreas:[{topic:'Wrapper setup'},{topic:'Prebid.js basics'}],          nextStep:'Get hands-on with a Prebid config.' } },
@@ -2677,11 +2677,11 @@ const SANDBOX_DEMO_STATE_FULL = {
       ],
     },
     { id:3, key:'supply-path-optimization', name:'Supply Path Optimization', category:'adtech', level:1, sessionsTotal:1, active:true,
-      sessionLog:[{ date:'2026-04-18', notes:'The Coach: Intermediate — Buyer-side SPO signals' }],
+      sessionLog:[{ date:'2026-04-18', notes:'Your Coach: Intermediate — Buyer-side SPO signals' }],
       learningHistory:[{ date:'2026-04-18', score:'2/3', analysis:{ level:'Intermediate', focusAreas:[{topic:'Buyer-side SPO'},{topic:'Preferred deals'}], nextStep:'Study how DSPs implement preferred paths.' } }],
     },
     { id:4, key:'data-clean-rooms', name:'Data Clean Rooms', category:'adtech', level:0, sessionsTotal:1, active:true,
-      sessionLog:[{ date:'2026-04-16', notes:'The Coach: Beginner — Core privacy concepts' }],
+      sessionLog:[{ date:'2026-04-16', notes:'Your Coach: Beginner — Core privacy concepts' }],
       learningHistory:[{ date:'2026-04-16', score:'0/3', analysis:{ level:'Beginner', focusAreas:[{topic:'Privacy-safe measurement'},{topic:'Identity resolution'}], nextStep:'Read up on how clean rooms handle user-level matching.' } }],
     },
   ],
@@ -2746,6 +2746,14 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.30',
+    date: '2026-07-09',
+    items: [
+      '"The Coach" renamed to "Your Coach" throughout the app — a small personality tweak',
+      'Daily check-in — "Full Send" renamed to "All In" (clearer, less jargon-y)',
+    ],
+  },
   {
     version: '0.29',
     date: '2026-07-09',
@@ -4022,7 +4030,7 @@ function renderToday() {
         </button>
         <button class="energy-btn" onclick="setEnergy('full')">
           <span class="e-icon">●</span>
-          <div class="e-label">Full send</div>
+          <div class="e-label">All in</div>
           <div class="e-sub">all of it —<br>let's go</div>
         </button>
       </div>
@@ -4610,7 +4618,7 @@ function renderToday() {
       return `<div style="margin-top:24px;border:1px solid var(--border);border-radius:4px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:1.1rem;flex-shrink:0;color:var(--amber);">◎</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:0.8rem;font-weight:600;color:var(--text);margin-bottom:2px;">Check in with The Coach</div>
+          <div style="font-size:0.8rem;font-weight:600;color:var(--text);margin-bottom:2px;">Check in with Your Coach</div>
           <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.4;">Work on a skill or get coaching on what's on your mind today.</div>
         </div>
         <button onclick="localStorage.setItem('showup_coach_last_visit',${JSON.stringify(todayStr)});switchTab('focus')" style="flex-shrink:0;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;padding:6px 12px;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Go →</button>
@@ -5332,7 +5340,7 @@ function renderSkills() {
             ${progress.next ? `${progress.needed} session${progress.needed!==1?'s':''} to Level ${progress.next}` : '✦ Max level reached'}
           </div>
           <div style="display:flex;gap:8px;">
-            <button onclick="openSkillAICoach(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">The Coach →</button>
+            <button onclick="openSkillAICoach(${sk.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">Your Coach →</button>
             <button onclick="logSkillSession(${sk.id})" style="background:var(--surface2);border:none;border-radius:2px;padding:5px 12px;font-size:0.72rem;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.03em;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">Log session</button>
           </div>
         </div>
@@ -5718,7 +5726,7 @@ async function openSkillAICoach(skillId) {
     showModal(`
       <div style="text-align:left;">
         <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Montserrat',sans-serif;">Sign In Required</div>
-        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use The Coach, sign in with Google.</div>
+        <div style="font-size:0.82rem;color:var(--text-mid);line-height:1.6;margin-bottom:20px;">To use Your Coach, sign in with Google.</div>
         <button onclick="closeModal()" style="width:100%;padding:8px;background:none;border:none;color:var(--text-dim);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
     `);
@@ -5748,7 +5756,7 @@ function displayContinuationFlow(skillId) {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${sessionCount} session${sessionCount !== 1 ? 's' : ''}</div>
       </div>
       <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back 👋</div>
@@ -5760,7 +5768,7 @@ function displayContinuationFlow(skillId) {
         ${last.analysis?.nextStep ? `<div style="font-size:0.78rem;color:var(--amber);margin-top:6px;font-style:italic;">"${escHtml(last.analysis.nextStep)}"</div>` : ''}
       </div>` : ''}
 
-      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;line-height:1.6;">Ready to continue? The Coach will pick up from where you left off with harder questions based on your prior results.</div>
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;line-height:1.6;">Ready to continue? Your Coach will pick up from where you left off with harder questions based on your prior results.</div>
 
       <div style="display:flex;gap:8px;flex-direction:column;">
         <button onclick="startContinuationSession(${skillId})" style="width:100%;padding:11px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Continue learning →</button>
@@ -5778,7 +5786,7 @@ async function startContinuationSession(skillId) {
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Your Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Building on your progress...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">Generating harder questions</div>
@@ -5843,7 +5851,7 @@ function displayIntroQuestion(skillId) {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">1 / 5</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:${context ? '12px' : '20px'};justify-content:center;">
@@ -5880,7 +5888,7 @@ function displayConfidenceQuestion(skillId) {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">2 / 5</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">
@@ -5907,7 +5915,7 @@ async function generateDiagnosticQuestions(skillId, introText, level) {
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Your Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Calibrating questions...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">This takes a few seconds</div>
@@ -6006,7 +6014,7 @@ function displayDiagnosticQuestion() {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${currentWithIntro + 1} / ${totalWithIntro}</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:20px;justify-content:center;">${progressDots}</div>
@@ -6059,7 +6067,7 @@ function displayAnswerReview() {
   showModal(`
     <div style="text-align:left;max-height:70vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · ${escHtml(skill.name)}</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <span style="font-size:1.1rem;font-weight:700;color:${scoreColor};font-family:'Montserrat',sans-serif;">${correct} / ${questions.length}</span>
       </div>
       <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden;">
@@ -6078,7 +6086,7 @@ async function submitDiagnosticAnswers() {
 
   showModal(`
     <div style="text-align:center;padding:40px 0;">
-      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">The Coach</div>
+      <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Your Coach</div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:20px;">${escHtml(skill.name)}</div>
       <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:8px;">Analyzing your answers...</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">Generating personalized recommendations</div>
@@ -6161,7 +6169,7 @@ function displayAnalysisResults() {
   showModal(`
     <div style="text-align:left;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">The Coach · Results</div>
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · Results</div>
         <span style="font-size:0.58rem;font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--surface2);color:${lvColor};">${escHtml(analysis.levelAssessment)}</span>
       </div>
       <div style="font-size:1.1rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:6px;">${escHtml(skill.name)}</div>
@@ -6218,13 +6226,13 @@ function logAICoachSession() {
   // Increment session
   skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
   if (!skill.sessionLog) skill.sessionLog = [];
-  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `The Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
+  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `Your Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
 
   const oldLevel = skill.level;
   skill.level = calcSkillLevel(skill.sessionsTotal);
 
   // Create task record
-  const taskText = `The Coach: ${skill.name} — ${analysis.levelAssessment}`;
+  const taskText = `Your Coach: ${skill.name} — ${analysis.levelAssessment}`;
   const newTask = { id: S.nextId++, text: taskText, cat: 'research', done: true, doneAt: Date.now(), createdAt: Date.now(), points: 1 };
   S.tasks.unshift(newTask);
   S.totalAdded++;
@@ -10662,7 +10670,7 @@ function renderProgress() {
       <div style="display:flex;gap:10px;font-size:0.64rem;color:var(--text-dim);margin-top:6px;flex-wrap:wrap">
         <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(58,86,73,0.25);vertical-align:middle"></span> Light &nbsp;
         <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(154,124,28,0.3);vertical-align:middle"></span> Regular &nbsp;
-        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(26,26,26,0.2);vertical-align:middle"></span> Full send &nbsp;
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(26,26,26,0.2);vertical-align:middle"></span> All in &nbsp;
         <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(154,124,28,0.15);vertical-align:middle"></span> Rest
       </div>
     </div>
@@ -14649,8 +14657,8 @@ function renderAccount() {
       <div style="display:flex;flex-direction:column;gap:10px;">
         ${[
           { val: 'full',  label: 'Job Seeker + Coach',
-            desc: 'Full app — daily tracking, tasks, pipeline, network, and The Coach.' },
-          { val: 'coach', label: 'The Coach only',
+            desc: 'Full app — daily tracking, tasks, pipeline, network, and Your Coach.' },
+          { val: 'coach', label: 'Your Coach only',
             desc: 'Skills, learning sessions, and progress. Job-search tools hidden.' },
         ].map(opt => `
           <label style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid ${S.mode===opt.val?'var(--amber)':'var(--border)'};border-radius:3px;cursor:pointer;transition:border-color 0.15s;" onclick="saveMode('${opt.val}')">
@@ -14883,7 +14891,7 @@ function renderAccount() {
       ` : ''}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
-      <div class="card-label" style="margin-bottom:16px">The Coach</div>
+      <div class="card-label" style="margin-bottom:16px">Your Coach</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">AI features are powered automatically while you're signed in — no API key needed. Limited to 50 AI requests per day.</div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
@@ -14896,7 +14904,7 @@ function renderAccount() {
           <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
             <div style="margin-bottom:10px;font-weight:600;color:var(--text);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;font-size:0.7rem;text-transform:uppercase;">Every day in 5 steps</div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">1.</span> <strong>Check in</strong> on the Today tab — set your energy level (Light, Regular, Full Send, or Rest Day) to calibrate your day.</div>
+              <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">1.</span> <strong>Check in</strong> on the Today tab — set your energy level (Light, Regular, All In, or Rest Day) to calibrate your day.</div>
               <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">2.</span> <strong>Pin focus tasks</strong> — tap the star on any task to move it into Today's Focus. Aim for 1–3.</div>
               <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">3.</span> <strong>Work your list</strong> — check tasks off as you go. Use the focus timer for deep work sessions.</div>
               <div><span style="display:inline-block;min-width:20px;font-weight:700;color:var(--amber);">4.</span> <strong>Log habits</strong> — workout, journaling, time outside — from the habit row in Today.</div>
@@ -14976,12 +14984,12 @@ function renderAccount() {
       </details>
 
       <details style="margin-bottom:8px;">
-        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">The Coach ▾</summary>
+        <summary style="font-size:0.75rem;color:var(--text-mid);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;list-style:none;padding:4px 0;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-mid)'">Your Coach ▾</summary>
         <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:3px;border:1px solid var(--border);">
           <div style="font-size:0.72rem;color:var(--text-mid);line-height:1.8;">
             <div style="display:flex;flex-direction:column;gap:6px;">
-              <div>The Coach runs adaptive skill sessions on ad tech, programmatic, and digital media topics. Sign in with Google to enable it.</div>
-              <div><strong>First session:</strong> describe what you already know. The Coach calibrates its starting difficulty to your level.</div>
+              <div>Your Coach runs adaptive skill sessions on ad tech, programmatic, and digital media topics. Sign in with Google to enable it.</div>
+              <div><strong>First session:</strong> describe what you already know. Your Coach calibrates its starting difficulty to your level.</div>
               <div><strong>Return sessions:</strong> harder questions targeting your weak spots from last time. Each session logs your score, level assessment, and recommended next focus.</div>
               <div>Session history is visible before you start — so you can see your score trend and pick up exactly where you left off.</div>
             </div>

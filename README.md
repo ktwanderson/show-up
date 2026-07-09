@@ -2,7 +2,7 @@
 
 **Show Up is the personal operating system for ad tech professionals on the move** — whether you're actively job searching or leveling up where you are, it combines daily accountability tools, a full pipeline and network tracker, and an AI-powered skill coach that builds your ad tech expertise session by session, getting harder as you improve.
 
-Built for the people who already know the industry and want to get sharper: track your search from prospect to offer, stay consistent through the slow grind, and use The Coach to close the knowledge gaps — programmatic, header bidding, clean rooms, SPO, attention metrics — that actually come up in interviews and on the job.
+Built for the people who already know the industry and want to get sharper: track your search from prospect to offer, stay consistent through the slow grind, and use Your Coach to close the knowledge gaps — programmatic, header bidding, clean rooms, SPO, attention metrics — that actually come up in interviews and on the job.
 
 Runs entirely in the browser with no install and no build step. AI features and the Read tab's article fetching go through a small Firebase Cloud Functions backend; everything else works offline against local storage.
 
@@ -11,7 +11,7 @@ Runs entirely in the browser with no install and no build step. AI features and 
 ## Features
 
 ### Daily rhythm
-- **Daily check-in** — Set your energy level each morning (Light / Regular / Full Send / Rest Day) to calibrate what you aim for
+- **Daily check-in** — Set your energy level each morning (Light / Regular / All In / Rest Day) to calibrate what you aim for
 - **Today's Focus** — Pin 1–3 tasks from your backlog into a focused daily list; projects show the next actionable step
 - **Interview day mode** — When Google Calendar detects an interview or phone screen, a prominent encouragement card appears at the top of Today
 - **Google Calendar sync** — Pull today's events into the Today tab via OAuth2 to see how busy the day really is; events are clickable back to Google Calendar
@@ -56,9 +56,9 @@ Runs entirely in the browser with no install and no build step. AI features and 
 - **AI digest** — Optional Claude-generated summary of what matters across today's articles
 - **Filtering** — Filter by source and by recency (today / this week / all)
 
-### The Coach (AI)
+### Your Coach (AI)
 - **Skill assessments** — Diagnostic quizzes on ad tech, digital media, and product topics powered by the Claude API, including built-in skills and your own free-form topic suggestions
-- **Adaptive difficulty** — On your first session with a skill, you describe what you know and get calibrated questions. On return sessions, The Coach picks up where you left off with harder questions targeting your weak spots
+- **Adaptive difficulty** — On your first session with a skill, you describe what you know and get calibrated questions. On return sessions, Your Coach picks up where you left off with harder questions targeting your weak spots
 - **Session history** — Every session logs your score, level assessment, focus areas, and recommended next step — all visible before your next session
 - **Session analytics** — Track your score and level progression across sessions per skill
 
@@ -77,7 +77,7 @@ Runs entirely in the browser with no install and no build step. AI features and 
 2. Open `index.html` in any modern browser
 3. On iOS/iPadOS: **Share → Add to Home Screen** for a full-screen PWA experience
 
-All data is stored locally in `localStorage` by default — nothing leaves your device unless you sign in. AI features (The Coach, Briefing digest, prep notes import) and RSS article fetching require signing in with Google, since they go through the app's Firebase Cloud Functions backend.
+All data is stored locally in `localStorage` by default — nothing leaves your device unless you sign in. AI features (Your Coach, Briefing digest, prep notes import) and RSS article fetching require signing in with Google, since they go through the app's Firebase Cloud Functions backend.
 
 ---
 
@@ -87,7 +87,7 @@ All data is stored locally in `localStorage` by default — nothing leaves your 
 Sign in with Google in the Account tab to sync your data across devices via Firebase Realtime Database. The app ships with a configured Firebase project — just sign in.
 
 ### AI features (Claude API)
-Powers The Coach skill assessments, prep notes import, company headline fetching, the JD analyzer, and the Briefing digest. Calls are proxied through a Firebase Cloud Function with a shared server-side key — no API key setup needed, just sign in with Google in the Account tab. Each signed-in user gets a daily rate limit on AI calls and on Briefing article fetches.
+Powers Your Coach skill assessments, prep notes import, company headline fetching, the JD analyzer, and the Briefing digest. Calls are proxied through a Firebase Cloud Function with a shared server-side key — no API key setup needed, just sign in with Google in the Account tab. Each signed-in user gets a daily rate limit on AI calls and on Briefing article fetches.
 
 ### Google Calendar
 Pull today's events into the Today tab so you can see your schedule at a glance. Events are clickable back to Google Calendar. The app also detects interview keywords and surfaces an encouragement card when one is found.
