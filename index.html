@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.30',
+        release: 'show-up@0.31',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2747,6 +2747,13 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.31',
+    date: '2026-07-14',
+    items: [
+      'Weekly Goals — added a "+ Set weekly goals" link on the Today tab so you can set goals any day, not just Monday/Tuesday; previously missing that window meant no way to set them until the following week',
+    ],
+  },
+  {
     version: '0.30',
     date: '2026-07-09',
     items: [
@@ -4072,18 +4079,23 @@ function renderToday() {
     ? renderWeekPlannerHTML()
     : (_hasPlan && !shouldShowWeekReview() ? renderWeekPlanViewHTML() : '');
   const weekReviewHtml = shouldShowWeekReview() ? renderWeekReviewHTML() : '';
+  // Manual entry point for weeks where the plan wasn't set on Monday/Tuesday and there's
+  // nothing else to show — otherwise there's no way back in until next week.
+  const weekGoalsPromptHtml = (!weekPlannerHtml && !weekReviewHtml && !_hasPlan)
+    ? `<div style="padding:2px 0 4px;"><button onclick="editWeekPlan()" style="background:none;border:none;color:var(--text-dim);font-size:0.78rem;font-family:'DM Sans',sans-serif;cursor:pointer;padding:0;text-align:left;transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">+ Set weekly goals</button></div>`
+    : '';
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
   const calContactNudges = getCalendarContactNudges();
   const todayIso = new Date().toISOString().slice(0,10);
 
   wrap.innerHTML = `
-    ${(weekPlannerHtml || weekReviewHtml) ? (() => {
+    ${(weekPlannerHtml || weekReviewHtml || weekGoalsPromptHtml) ? (() => {
       const collapsed = _todayCollapsed('weekgoals');
       const hdr = '<div onclick="_todayToggle(\'weekgoals\')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 0;margin-bottom:8px;">'
         + '<span style="font-size:0.6rem;font-family:\'Montserrat\',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);">Weekly Goals</span>'
         + '<span style="font-size:0.6rem;color:var(--text-dim);">' + (collapsed ? '▾' : '▴') + '</span>'
         + '</div>';
-      return hdr + (collapsed ? '' : weekPlannerHtml + weekReviewHtml);
+      return hdr + (collapsed ? '' : weekPlannerHtml + weekReviewHtml + weekGoalsPromptHtml);
     })() : ''}
     ${(function() {
       const hasEvents = S.todayCalEvents && S.todayCalEvents.length > 0;
