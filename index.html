@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.31',
+        release: 'show-up@0.32',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -1738,6 +1738,13 @@ function normalizeStateArrays(s) {
       if (!c.interactions) c.interactions = [];
     });
   }
+  // Normalize invoices array inside each pipeline entry (Firebase serializes arrays as objects on round-trip)
+  if (Array.isArray(s.pipeline)) {
+    s.pipeline.forEach(e => {
+      if (e.invoices && !Array.isArray(e.invoices)) e.invoices = Object.values(e.invoices);
+      if (!e.invoices) e.invoices = [];
+    });
+  }
   // Normalize goals array inside each weekly plan (Firebase serializes arrays as objects on round-trip)
   if (Array.isArray(s.weeklyPlans)) {
     s.weeklyPlans.forEach(p => {
@@ -2746,6 +2753,17 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
 
 const RELEASE_NOTES = [
+  {
+    version: '0.32',
+    date: '2026-07-15',
+    items: [
+      'Fixed a bug where the weekly journal prompt could reappear as "new" on one device even after you\'d already answered it on another — the underlying date math is now consistent across timezones',
+      'Journal prompts now adapt over time, drawing on what you\'ve written in past weeks instead of a fixed rotation',
+      'AI-drafted outreach and interview thank-you notes now pick up a bit of your own voice from your journal entries',
+      'Repeating tasks can now be set to "Last day of month" or "Last business day of month", not just daily/weekly/monthly',
+      'New Invoicing tab on pipeline opportunities (once at Offer stage) for sole-proprietor billing — track a monthly rate and generate each month\'s invoice as a Gmail draft',
+    ],
+  },
   {
     version: '0.31',
     date: '2026-07-14',
@@ -3879,9 +3897,38 @@ function ensureWeekPrompt() {
   if (S.lastPromptWeek !== weekStart) {
     S.lastPromptWeek = weekStart;
     S.lastPromptIndex = ((S.lastPromptIndex == null ? -1 : S.lastPromptIndex) + 1) % WEEKLY_PROMPTS.length;
+    S.lastPromptText = null; // clear last week's personalized prompt; falls back to the static rotation until a new one arrives
     if (S._todayCollapsed) delete S._todayCollapsed['weekprompt'];
     save();
+    maybeGeneratePersonalizedPrompt(weekStart);
   }
+}
+
+// Tailors the weekly journal prompt to the user over time by handing their recent
+// answers back to Claude and asking for a question that follows naturally from them.
+// Falls back silently to the static WEEKLY_PROMPTS rotation (already set by the
+// caller) until there's enough journal history or if the request fails.
+async function maybeGeneratePersonalizedPrompt(weekStart) {
+  if (!firebaseUser) return;
+  const answered = (S.weeklyReflections || []).filter(r => r.answer && r.answer.trim()).slice(-8);
+  if (answered.length < 2) return;
+  const context = answered.map(r => `Week of ${r.weekStart}: "${r.promptText}" → ${r.answer.trim()}`).join('\n\n');
+  const prompt = `You write a single short weekly journaling prompt for someone's ongoing reflection habit. Here are their last few weeks of prompts and answers, most recent last:
+
+${context}
+
+Write ONE new, different reflective question for this week that follows naturally from what they've been writing about — pick up a thread, notice a pattern, or gently push on something they've mentioned. Keep it warm, specific, and one sentence. Return ONLY the question text, no preamble, no quotes.`;
+  const result = await callClaude(prompt, { maxTokens: 100 });
+  if (result.error || !result.text) return;
+  // The week may have already moved on again by the time this resolves — don't apply a stale prompt
+  if (S.lastPromptWeek !== weekStart) return;
+  S.lastPromptText = result.text.trim().replace(/^["']|["']$/g, '');
+  save();
+  if (currentTab === 'today') renderToday();
+}
+
+function currentWeekPromptText() {
+  return S.lastPromptText || WEEKLY_PROMPTS[S.lastPromptIndex >= 0 ? S.lastPromptIndex : 0];
 }
 
 function getThisWeekReflection() {
@@ -3901,7 +3948,7 @@ function saveWeeklyReflection(answer) {
     S.weeklyReflections.push({
       id: Date.now(),
       promptIndex: S.lastPromptIndex,
-      promptText: WEEKLY_PROMPTS[S.lastPromptIndex],
+      promptText: currentWeekPromptText(),
       answer,
       weekStart,
       createdAt: Date.now(),
@@ -3925,7 +3972,7 @@ function dismissWeekReflection() {
     S.weeklyReflections.push({
       id: Date.now(),
       promptIndex: S.lastPromptIndex,
-      promptText: WEEKLY_PROMPTS[S.lastPromptIndex],
+      promptText: currentWeekPromptText(),
       answer: '',
       weekStart,
       createdAt: Date.now(),
@@ -4181,7 +4228,7 @@ function renderToday() {
       const dismissed = weekReflection && weekReflection.dismissed;
       if (dismissed) return '';
 
-      const prompt = WEEKLY_PROMPTS[S.lastPromptIndex >= 0 ? S.lastPromptIndex : 0];
+      const prompt = currentWeekPromptText();
       const collapsed = _todayCollapsed('weekprompt');
       const existingAnswer = weekReflection?.answer || '';
 
@@ -5665,6 +5712,21 @@ async function callClaude(prompt, options = {}) {
   }
 }
 
+// Pulls a few recent journal reflections as a sample of how the user actually writes,
+// so AI-drafted outreach/thank-you notes can be nudged toward their own voice instead of
+// a generic tone. Returns '' when there isn't enough journal history yet.
+function buildVoiceSample() {
+  const answered = (S.weeklyReflections || []).filter(r => r.answer && r.answer.trim().length > 40);
+  if (!answered.length) return '';
+  return answered.slice(-3).map(r => r.answer.trim()).join('\n---\n').slice(0, 1200);
+}
+
+function voicePromptBlock() {
+  const sample = buildVoiceSample();
+  if (!sample) return '';
+  return `\nHere are a few excerpts of how this person writes in their own words, from personal journal reflections — use these only to calibrate tone, vocabulary, and rhythm, not content:\n"""\n${sample}\n"""\n`;
+}
+
 let _aiCoachState = {};    // tracks current quiz state
 let _calFollowUpSuggestions = []; // calendar follow-up wizard state
 let _coachIntroText = '';  // persists intro answer through the coach wizard steps
@@ -7073,7 +7135,7 @@ function makeQuestTaskHTML(task, showCat) {
   })() : '';
 
   const recurBadge = task.recurrence && !task.done
-    ? `<span title="Repeats ${task.recurrence}" style="font-size:0.58rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.75;">↻</span>`
+    ? `<span title="Repeats ${RECURRENCE_LABELS[task.recurrence] || task.recurrence}" style="font-size:0.58rem;color:var(--teal);font-family:'Montserrat',sans-serif;letter-spacing:0.03em;flex-shrink:0;opacity:0.75;">↻</span>`
     : '';
 
   const dueBadge = dueDateBadge(task);
@@ -7330,6 +7392,8 @@ function openEditTaskModal(id) {
               <option value="daily" ${task.recurrence==='daily'?'selected':''}>Daily</option>
               <option value="weekly" ${task.recurrence==='weekly'?'selected':''}>Weekly</option>
               <option value="monthly" ${task.recurrence==='monthly'?'selected':''}>Monthly</option>
+              <option value="lastDayOfMonth" ${task.recurrence==='lastDayOfMonth'?'selected':''}>Last day of month</option>
+              <option value="lastBusinessDay" ${task.recurrence==='lastBusinessDay'?'selected':''}>Last business day of month</option>
             </select>
           </div>
         </div>
@@ -7527,7 +7591,9 @@ function completeQuestTask(id, event) {
     if (task.recurrence === 'daily')   nextDate.setDate(today.getDate() + 1);
     else if (task.recurrence === 'weekly')  nextDate.setDate(today.getDate() + 7);
     else if (task.recurrence === 'monthly') nextDate.setMonth(today.getMonth() + 1);
-    const nextDateStr = nextDate.toISOString().slice(0, 10);
+    else if (task.recurrence === 'lastDayOfMonth')  nextDate.setTime(lastDayOfMonth(today.getFullYear(), today.getMonth() + 1).getTime());
+    else if (task.recurrence === 'lastBusinessDay') nextDate.setTime(lastBusinessDayOfMonth(today.getFullYear(), today.getMonth() + 1).getTime());
+    const nextDateStr = localDateStr(nextDate);
     const nextTask = {
       id: S.nextId++,
       text: task.text,
@@ -7552,7 +7618,7 @@ function completeQuestTask(id, event) {
   setTimeout(() => {
     const toast = document.getElementById('toast');
     if (toast) {
-      const recurNote = task.recurrence ? ` · <span style="color:var(--teal);font-size:0.9em;">↻ ${task.recurrence}</span>` : '';
+      const recurNote = task.recurrence ? ` · <span style="color:var(--teal);font-size:0.9em;">↻ ${RECURRENCE_LABELS[task.recurrence] || task.recurrence}</span>` : '';
       const remindersLink = task.fromReminders ? ` · <span onclick="completeInReminders(${task.id})" style="text-decoration:underline;cursor:pointer">Sync Reminders</span>` : '';
       toast.innerHTML = `Done ✓${recurNote} · <span onclick="undoCompleteTask(${id},${xp})" style="text-decoration:underline;cursor:pointer">Undo</span>${remindersLink}`;
       toast.classList.add('show');
@@ -7904,6 +7970,42 @@ function renderPipelineEntry(e) {
       })()}
     </div>`;
 
+  const inv = e.invoicing || null;
+  const hasInvoicing = !!(inv && inv.enabled);
+  const showInvoicingTab = e.stage === 'offer' || hasInvoicing;
+  const invoicingTab = !hasInvoicing ? `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.6;">If you're a sole proprietor billing this client on a recurring basis, track your rate here and Show Up will help you draft each month's invoice as a Gmail draft.</div>
+      <button onclick="event.stopPropagation();enableInvoicing(${e.id})" style="align-self:flex-start;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;padding:8px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Set up invoicing</button>
+    </div>` : `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><label style="${fL}">Monthly amount (USD)</label><input type="number" min="0" step="0.01" id="inv-monthlyAmount-${e.id}" value="${inv.monthlyAmount||''}" onblur="saveInvoicingField(${e.id},'monthlyAmount')" style="${iI}"></div>
+        <div><label style="${fL}">Invoice prefix</label><input id="inv-invoicePrefix-${e.id}" value="${escHtml(inv.invoicePrefix||'INV')}" onblur="saveInvoicingField(${e.id},'invoicePrefix')" style="${iI}"></div>
+      </div>
+      <div><label style="${fL}">Bill to (email)</label><input id="inv-billTo-${e.id}" value="${escHtml(inv.billTo||'')}" placeholder="accounting@client.com" onblur="saveInvoicingField(${e.id},'billTo')" style="${iI}"></div>
+      <div><label style="${fL}">CC (optional)</label><input id="inv-billCc-${e.id}" value="${escHtml(inv.billCc||'')}" onblur="saveInvoicingField(${e.id},'billCc')" style="${iI}"></div>
+      <div><label style="${fL}">Service description</label><input id="inv-serviceDesc-${e.id}" value="${escHtml(inv.serviceDesc||'')}" placeholder="Consulting services" onblur="saveInvoicingField(${e.id},'serviceDesc')" style="${iI}"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div style="flex:1;"><label style="${fL}">Next invoice #</label><input type="number" min="1" id="inv-nextInvoiceNum-${e.id}" value="${inv.nextInvoiceNum||1}" onblur="saveInvoicingField(${e.id},'nextInvoiceNum')" style="${iI}"></div>
+        <button onclick="event.stopPropagation();openInvoiceDrafter(${e.id})" style="flex-shrink:0;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;padding:8px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">✦ Generate this month's invoice</button>
+      </div>
+      ${(e.invoices && e.invoices.length) ? `
+      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:12px;">
+        <div style="${fL}margin-bottom:8px;">Invoice history</div>
+        ${e.invoices.slice().reverse().map(iv => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.78rem;">
+            <div style="color:var(--text-mid);">${escHtml(iv.number)} · ${escHtml(iv.servicePeriod)} · $${Number(iv.amount||0).toLocaleString('en-US')}</div>
+            <select onchange="event.stopPropagation();updateInvoiceStatus(${e.id},${iv.id},this.value)" onclick="event.stopPropagation()" style="font-size:0.68rem;font-family:'Montserrat',sans-serif;background:transparent;border:1px solid var(--border);border-radius:2px;padding:2px 4px;color:var(--text-dim);cursor:pointer;">
+              <option value="draft" ${iv.status==='draft'?'selected':''}>Draft</option>
+              <option value="sent" ${iv.status==='sent'?'selected':''}>Sent</option>
+              <option value="paid" ${iv.status==='paid'?'selected':''}>Paid</option>
+            </select>
+          </div>`).join('')}
+      </div>` : ''}
+      <button onclick="event.stopPropagation();disableInvoicing(${e.id})" style="background:none;border:none;color:var(--text-dim);font-size:0.68rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;align-self:flex-start;">Turn off invoicing for this opportunity</button>
+    </div>`;
+
   const debriefTab = `
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -7995,9 +8097,10 @@ function renderPipelineEntry(e) {
         ${tabBtn('detail','Details',false)}
         ${tabBtn('prep','Prep',hasPrep)}
         ${tabBtn('debrief','Debrief',hasDebrief)}
+        ${showInvoicingTab ? tabBtn('invoicing','Invoicing',hasInvoicing) : ''}
       </div>
       <div style="padding:0 0 16px 17px;">
-        ${activeTab === 'detail' ? detailTab : activeTab === 'prep' ? prepTab : debriefTab}
+        ${activeTab === 'detail' ? detailTab : activeTab === 'prep' ? prepTab : activeTab === 'invoicing' && showInvoicingTab ? invoicingTab : debriefTab}
       </div>
     </div>` : ''}
   </div>`;
@@ -8385,6 +8488,7 @@ async function generateEmailDraft(id) {
     ? '2–3 paragraphs. Reference the application stage and something specific about the role or company. End with a clear next-step ask. Under 150 words.'
     : '2–3 paragraphs, confident and direct. No filler openers.';
   const prompt = `You are helping a job seeker in ad tech and digital media write a concise, effective outreach message. Write in first person with a warm, direct, professional tone — not corporate, not stiff, not overly enthusiastic. Be specific, not generic. Sound like a real person.
+${voicePromptBlock()}
 Context:
 ${context}
 Type: ${typeLabels[type] || type}
@@ -9022,6 +9126,91 @@ function savePipelineField(id, field) {
   const el = document.getElementById(elId);
   if (!el) return;
   e[field] = el.value;
+  save();
+}
+
+// ── INVOICING (sole-proprietor billing tied to a pipeline opportunity) ────
+function enableInvoicing(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e) return;
+  e.invoicing = { enabled: true, monthlyAmount: 0, billTo: '', billCc: '', serviceDesc: 'Consulting services', invoicePrefix: 'INV', nextInvoiceNum: 1 };
+  if (!e.invoices) e.invoices = [];
+  save();
+  renderNetwork();
+}
+
+function disableInvoicing(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e || !e.invoicing) return;
+  e.invoicing.enabled = false;
+  save();
+  renderNetwork();
+}
+
+function saveInvoicingField(id, field) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e || !e.invoicing) return;
+  const el = document.getElementById(`inv-${field}-${id}`);
+  if (!el) return;
+  if (field === 'monthlyAmount') e.invoicing.monthlyAmount = parseFloat(el.value) || 0;
+  else if (field === 'nextInvoiceNum') e.invoicing.nextInvoiceNum = parseInt(el.value) || 1;
+  else e.invoicing[field] = el.value;
+  save();
+}
+
+function openInvoiceDrafter(id) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e || !e.invoicing) return;
+  const inv = e.invoicing;
+  const today = getEffectiveDate();
+  const number = `${inv.invoicePrefix || 'INV'}-${String(inv.nextInvoiceNum || 1).padStart(3, '0')}`;
+  const period = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const dateStr = localDateStr(today);
+  const amount = Number(inv.monthlyAmount || 0);
+  const subject = `Invoice ${number} — ${e.company || 'Client'} — ${period}`;
+  const lines = [`Invoice ${number}`, `Date: ${dateStr}`, `Service period: ${period}`];
+  if (inv.billTo) lines.push(`Bill to: ${inv.billTo}`);
+  lines.push('', `${inv.serviceDesc || 'Consulting services'} — $${amount.toLocaleString('en-US')}`, '', `Total due: $${amount.toLocaleString('en-US')}`);
+  const body = lines.join('\n');
+
+  showModal(`
+    <div style="text-align:left;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:2px;font-family:'Montserrat',sans-serif;">✦ Draft Invoice</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">${escHtml(number)} · ${escHtml(e.company||'')}</div>
+      <input id="invd-subject" value="${escHtml(subject)}" style="width:100%;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--text);padding:6px 0;outline:none;margin-bottom:10px;box-sizing:border-box;">
+      <textarea id="invd-body" style="background:var(--surface2);border:none;border-radius:2px;padding:12px;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:160px;line-height:1.6;">${escHtml(body)}</textarea>
+      <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px;">Edit freely before sending — this creates a Gmail draft, not a sent email.</div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="closeModal()" style="flex:1;padding:9px;border:none;border-bottom:1px solid var(--border);background:none;font-size:0.78rem;cursor:pointer;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="(()=>{const t=document.getElementById('invd-body');if(t){navigator.clipboard?.writeText(t.value).then(()=>showToast('Copied to clipboard')).catch(()=>showToast('Select and copy manually'));}})();" style="flex:1;padding:9px;border:none;background:var(--surface2);border-radius:2px;font-size:0.78rem;cursor:pointer;color:var(--text-mid);font-family:'DM Sans',sans-serif;">Copy</button>
+        <button onclick="confirmInvoiceDraft(${id},'${number}','${period}',${amount})" style="flex:1;padding:9px;background:var(--text);color:var(--surface);border:none;border-radius:2px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Create Gmail draft</button>
+      </div>
+    </div>
+  `);
+}
+
+async function confirmInvoiceDraft(id, number, period, amount) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e || !e.invoicing) return;
+  const subjectEl = document.getElementById('invd-subject');
+  const bodyEl = document.getElementById('invd-body');
+  const subject = subjectEl ? subjectEl.value.trim() : '';
+  const body = bodyEl ? bodyEl.value.trim() : '';
+  if (!e.invoices) e.invoices = [];
+  e.invoices.push({ id: Date.now(), number, servicePeriod: period, amount, date: localDateStr(getEffectiveDate()), status: 'draft', createdAt: Date.now() });
+  e.invoicing.nextInvoiceNum = (e.invoicing.nextInvoiceNum || 1) + 1;
+  save();
+  closeModal();
+  renderNetwork();
+  await saveToGmailDraft(subject, body);
+}
+
+function updateInvoiceStatus(id, invoiceId, status) {
+  const e = S.pipeline.find(x => x.id === id);
+  if (!e || !e.invoices) return;
+  const iv = e.invoices.find(i => i.id === invoiceId);
+  if (!iv) return;
+  iv.status = status;
   save();
 }
 
@@ -10859,9 +11048,37 @@ function getWeekStart(date) {
   const d = date ? new Date(date) : getEffectiveDate();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const mon = new Date(d.setDate(diff));
-  return mon.toISOString().slice(0,10);
+  d.setDate(diff);
+  return localDateStr(d);
 }
+
+// Local-timezone YYYY-MM-DD, unlike toISOString() which converts to UTC and
+// can shift the calendar date depending on time-of-day and timezone offset
+// (this caused the weekly journal prompt to reset as "new" across devices).
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// month is 0-indexed; passing 12 (etc.) rolls into the following year, matching Date's own overflow behavior
+function lastDayOfMonth(year, month) {
+  return new Date(year, month + 1, 0);
+}
+function lastBusinessDayOfMonth(year, month) {
+  const d = lastDayOfMonth(year, month);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+const RECURRENCE_LABELS = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  lastDayOfMonth: 'last day of month',
+  lastBusinessDay: 'last business day',
+};
 
 function getCurrentWeekPlan() {
   const ws = getWeekStart();
@@ -13930,7 +14147,7 @@ async function generateOutreachDraft(contactId) {
   ].filter(Boolean).join('\n');
 
   const prompt = `You are helping a job seeker in the ad tech industry write a brief, genuine outreach message.
-
+${voicePromptBlock()}
 Contact context:
 ${context}
 
