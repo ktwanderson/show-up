@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.33',
+        release: 'show-up@0.34',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2753,6 +2753,14 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog';
 
 const RELEASE_NOTES = [
+  {
+    version: '0.34',
+    date: '2026-07-16',
+    items: [
+      'Fixed Your Coach\'s full analysis sometimes failing to load after a diagnostic quiz — the AI response was getting cut off before it finished',
+      'Your Coach\'s "Welcome back" screen now uses the app\'s icon style instead of an emoji',
+    ],
+  },
   {
     version: '0.33',
     date: '2026-07-15',
@@ -5842,7 +5850,7 @@ function displayContinuationFlow(skillId) {
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Your Coach · ${escHtml(skill.name)}</div>
         <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;">${sessionCount} session${sessionCount !== 1 ? 's' : ''}</div>
       </div>
-      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back 👋</div>
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);font-family:'Montserrat',sans-serif;margin-bottom:14px;">Welcome back <span style="color:var(--amber);">✦</span></div>
 
       ${last ? `<div style="background:var(--surface2);border-radius:3px;padding:12px 14px;margin-bottom:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Last session · ${escHtml(lastDate)}</div>
@@ -6203,7 +6211,7 @@ Based on these answers, provide a personalized learning assessment. Return ONLY 
   "encouragement": "A brief motivational note acknowledging what they already know"
 }`;
 
-  const result = await callClaude(prompt);
+  const result = await callClaude(prompt, { maxTokens: 2000 });
 
   if (result.error) {
     showModal(`
