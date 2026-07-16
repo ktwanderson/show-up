@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.34',
+        release: 'show-up@0.35',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -63,6 +63,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer onload="if(typeof initGCalClient==='function')initGCalClient()"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1356,6 +1357,10 @@ const FIREBASE_CONFIG = {
   appId: "1:631975241080:web:483fce00a0ee5563c4d48d"
 };
 
+// Web Push certificate key pair — generate in Firebase Console → Project Settings →
+// Cloud Messaging → Web Push certificates, then replace this placeholder.
+const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
+
 let firebaseApp = null;
 let firebaseAuth = null;
 let firebaseDb = null;
@@ -1373,6 +1378,7 @@ function initFirebase() {
     firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
     firebaseAuth = firebase.auth();
     firebaseDb = firebase.database();
+    initMessaging();
 
     firebaseAuth.getRedirectResult().catch((err) => {
       console.error('Redirect result error:', err);
@@ -1396,6 +1402,33 @@ function initFirebase() {
     hideSignInScreen();
     render();
   }
+}
+
+// Registers the service worker that shows push notifications when no tab has
+// focus, and a foreground handler for when a tab IS open and focused — FCM
+// only auto-displays via the service worker in the unfocused case, so without
+// this a message would otherwise arrive silently while the app is in view.
+function initMessaging() {
+  if (!('serviceWorker' in navigator) || typeof Notification === 'undefined') return;
+  try {
+    if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) return;
+  } catch (e) { return; }
+  navigator.serviceWorker.register('/firebase-messaging-sw.js').then(() => {
+    try {
+      firebase.messaging().onMessage((payload) => {
+        const body = payload.notification?.body || payload.data?.body || '';
+        if (!body) return;
+        const toast = document.getElementById('toast');
+        if (toast) {
+          toast.innerHTML = `🔔 ${escHtml(body.slice(0, 80))}`;
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 6000);
+        }
+      });
+    } catch (e) {
+      console.error('Firebase messaging init failed:', e);
+    }
+  }).catch(err => console.error('Service worker registration failed:', err));
 }
 
 function showSignInScreen() {
@@ -1724,7 +1757,7 @@ function normalizeStateArrays(s) {
     'dailySnapshots','showUpDays','earned','rejectionLog','workoutLog',
     'journalLog','outsideLog','skills','todayFocusIds','carryOverIds',
     'rolledOverTasks','trackedHabits','questionBank','focusLog','customHabits',
-    'weeklyReflections','briefingSources','lists','projects'
+    'weeklyReflections','briefingSources','lists','projects','voiceSamples'
   ];
   fields.forEach(f => {
     if (s[f] && !Array.isArray(s[f])) s[f] = Object.values(s[f]);
@@ -2617,7 +2650,7 @@ const SANDBOX_DEMO_STATE_FULL = {
   pipeline: [
     {
       id:1, company:'Clarity Digital', role:'Sr. Programmatic Partnerships Manager',
-      stage:'interview', appliedDate:'2026-04-07',
+      stage:'interview1', appliedDate:'2026-04-07',
       jdUrl:'', jdText:'',
       nextStep:'Loop interview April 28 — prepare monetization case study',
       notes:'Referral from Jordan Park. Strong fit on header bidding + publisher-side experience. Comp: $135–155k + equity.',
@@ -2714,7 +2747,14 @@ const SANDBOX_DEMO_STATE_FULL = {
   todayFocusIds: [1, 2],
   focusBlocksToday: 3,
   weeklyPlans:[], nextWeeklyId:1,
-  questionBank:[], nextQuestionBankId:1,
+  questionBank:[
+    { id:1, question:'Walk me through how you\'d diagnose a sudden drop in header bidding fill rate.', answer:'I\'d start by segmenting by bidder response time and timeout rate — a fill drop is almost always either a timeout misconfiguration or a bidder-side outage, not a demand problem. Pull per-bidder win rate and latency from the wrapper logs, compare against the last known-good baseline, and check if the drop lines up with a recent timeout or adapter change.', tags:['Technical','Ad Tech'], role:'Sr. Programmatic Partnerships Manager', company:'Clarity Digital', date:'2026-04-08T14:22:00.000Z' },
+    { id:2, question:'Tell me about a time you had to rebuild trust with a partner after a mistake.', answer:'A reporting discrepancy caused a publisher to question our numbers for two weeks. I got on a call, walked through the exact root cause line by line instead of just apologizing, and sent a daily reconciliation summary until they trusted the pipeline again. The relationship ended up stronger because they saw how I handle it when something breaks.', tags:['Behavioral','Culture Fit'], role:'Yield & Partnerships Lead', company:'Streamline Media', date:'2026-04-11T09:05:00.000Z' },
+    { id:3, question:'How do you think about buyer-side vs. seller-side SPO when advising a publisher?', answer:'Seller-side SPO is about cutting redundant paths and consolidating demand into the most efficient route to each buyer, while buyer-side SPO is the DSP deciding which of those paths to trust. I frame it for publishers as: fewer, cleaner paths usually beat more paths, because duplicate bid requests just add latency and confuse the buyer\'s path-selection logic.', tags:['Strategy','Ad Tech'], role:'Publisher Development Manager', company:'Vantage DSP', date:'2026-04-19T16:40:00.000Z' },
+    { id:4, question:'What\'s your approach to setting PMP deal floors that balance yield and fill?', answer:'', tags:['To Practice','Ad Tech'], role:'Sr. Programmatic Partnerships Manager', company:'Clarity Digital', date:'2026-04-22T11:15:00.000Z' },
+    { id:5, question:'Describe a time you disagreed with a hiring manager\'s technical approach — how did you handle it?', answer:'', tags:['Behavioral','To Practice'], role:'', company:'', date:'2026-04-23T08:30:00.000Z' },
+    { id:6, question:'Why are you interested in moving from a buy-side role into publisher-facing partnerships?', answer:'I\'ve spent most of my career optimizing demand-side performance, but the parts of the job I\'ve been most energized by were always the relationship and strategy conversations — helping a partner understand their own inventory and negotiate deal structure. I want a role where that\'s the main job, not the part I sneak in between campaigns.', tags:['Behavioral','Strategy'], role:'', company:'', date:'2026-04-24T13:50:00.000Z' },
+  ], nextQuestionBankId:7,
   trackedHabits:['workout','journal','outside'], customHabits:[],
   lifeAreas:{health:{label:'Health',icon:'◑',intention:''},finance:{label:'Finance',icon:'◒',intention:''},learning:{label:'Learning',icon:'▷',intention:''},relationships:{label:'Relationships',icon:'◌',intention:''},home:{label:'Home',icon:'□',intention:''}},
   workoutLog:[], workoutGoal:3, workoutGoalPeriod:'week', workedOutToday:false,
@@ -2753,6 +2793,18 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog';
 
 const RELEASE_NOTES = [
+  {
+    version: '0.35',
+    date: '2026-07-16',
+    items: [
+      'Pipeline: Prep and Debrief tabs now show which interview stage you\'re on',
+      'Read tab: new topic search — brush up on any subject across your sources and get an AI-generated quick take',
+      'Account: new "AI Writing Voice" section — paste a few messages you\'ve actually sent so AI-drafted emails sound more like you; voice-matching now also draws from your Q Bank answers',
+      'Account: new Notifications section — opt into a daily check-in reminder that works even when the app is closed (requires adding Show Up to your Home Screen on iOS)',
+      'Progress tab: fixed "Contacts in your corner" surfacing stale, long-inactive contacts instead of who\'s actually engaged with you right now',
+      'Progress tab: five new cards — app usage, habit success rate, task types this month, Coach progress, and contact engagement',
+    ],
+  },
   {
     version: '0.34',
     date: '2026-07-16',
@@ -3371,6 +3423,9 @@ const DEFAULT_STATE = {
   weeklyCapacity: 20,
   lastModified: 0,
   resume: '',
+  voiceSamples: [],
+  notificationPrefs: { dailyCheckin: false },
+  appTimeLog: {},
   questionBank: [],
   nextQuestionBankId: 1,
   focusLog: [],
@@ -3715,6 +3770,90 @@ function saveUserName() {
   S.userName = inp.value.trim();
   save();
   updateHeader();
+}
+
+function addVoiceSample() {
+  if (!S.voiceSamples) S.voiceSamples = [];
+  if (S.voiceSamples.length >= 5) { showToast('Up to 5 samples — remove one first'); return; }
+  S.voiceSamples.push('');
+  save();
+  renderAccount();
+}
+
+function saveVoiceSample(idx, value) {
+  if (!S.voiceSamples) S.voiceSamples = [];
+  S.voiceSamples[idx] = value;
+  save();
+}
+
+function removeVoiceSample(idx) {
+  S.voiceSamples = (S.voiceSamples || []).filter((_, i) => i !== idx);
+  save();
+  renderAccount();
+}
+
+// Enables/disables the daily check-in push notification. FCM tokens are
+// device-specific and written directly to their own DB path — never through
+// save()/S — since save() does a full overwrite of the whole state node and
+// could let one device's stale copy clobber another device's token. A flat
+// notifSubscribers/{type}/{uid} index is written alongside so the scheduled
+// Cloud Function can find candidates without reading every user's full state.
+async function toggleDailyCheckinNotif(checkboxEl) {
+  if (!firebaseUser || !firebaseDb) { checkboxEl.checked = false; return; }
+  const uid = firebaseUser.uid;
+  const enabling = checkboxEl.checked;
+
+  if (enabling) {
+    // Must be the first thing that runs, with no prior await — browsers
+    // (iOS Safari especially) require the permission prompt to fire within
+    // the same user-gesture call stack as the checkbox's onchange.
+    let permission;
+    try {
+      permission = await Notification.requestPermission();
+    } catch (e) {
+      permission = 'denied';
+    }
+    if (permission !== 'granted') {
+      checkboxEl.checked = false;
+      showToast('Notifications blocked — enable them in your browser settings');
+      return;
+    }
+    let token;
+    try {
+      token = await firebase.messaging().getToken({ vapidKey: VAPID_KEY });
+    } catch (e) {
+      console.error('getToken failed:', e);
+    }
+    if (!token) {
+      checkboxEl.checked = false;
+      showToast("Couldn't enable notifications — try again");
+      return;
+    }
+    firebaseDb.ref(`users/${uid}/fcmTokens/${token}`).set({
+      createdAt: Date.now(),
+      ua: (navigator.userAgent || '').slice(0, 80),
+    }).catch(err => console.error('fcmTokens write failed:', err));
+    firebaseDb.ref(`notifSubscribers/dailyCheckin/${uid}`).set(true)
+      .catch(err => console.error('notifSubscribers write failed:', err));
+    if (!S.notificationPrefs) S.notificationPrefs = {};
+    S.notificationPrefs.dailyCheckin = true;
+    save();
+  } else {
+    try {
+      const token = await firebase.messaging().getToken({ vapidKey: VAPID_KEY });
+      if (token) {
+        firebaseDb.ref(`users/${uid}/fcmTokens/${token}`).remove()
+          .catch(err => console.error('fcmTokens remove failed:', err));
+      }
+    } catch (e) {
+      console.error('getToken (disable path) failed:', e);
+    }
+    firebaseDb.ref(`notifSubscribers/dailyCheckin/${uid}`).remove()
+      .catch(err => console.error('notifSubscribers remove failed:', err));
+    if (!S.notificationPrefs) S.notificationPrefs = {};
+    S.notificationPrefs.dailyCheckin = false;
+    save();
+  }
 }
 
 // ── DAY SNAPSHOT ─────────────────────────────────────────────
@@ -5729,19 +5868,42 @@ async function callClaude(prompt, options = {}) {
   }
 }
 
-// Pulls a few recent journal reflections as a sample of how the user actually writes,
-// so AI-drafted outreach/thank-you notes can be nudged toward their own voice instead of
-// a generic tone. Returns '' when there isn't enough journal history yet.
+// Builds a sample of how the user actually writes, so AI-drafted outreach/thank-you notes
+// can be nudged toward their own voice instead of a generic tone. Two tiers: explicit
+// "voice samples" the user pasted in Settings always take priority and are never crowded
+// out by the passive pool below; recent journal reflections, daily close-out notes, and
+// Q Bank interview answers fill the remaining budget, most recent first. Returns '' when
+// there isn't enough of either to work with yet.
 function buildVoiceSample() {
-  const answered = (S.weeklyReflections || []).filter(r => r.answer && r.answer.trim().length > 40);
-  if (!answered.length) return '';
-  return answered.slice(-3).map(r => r.answer.trim()).join('\n---\n').slice(0, 1200);
+  const explicit = (S.voiceSamples || [])
+    .map(s => (s || '').trim())
+    .filter(s => s.length > 20)
+    .join('\n---\n')
+    .slice(0, 2000);
+
+  const reflectionEntries = (S.weeklyReflections || [])
+    .filter(r => r.answer && r.answer.trim().length > 40)
+    .map(r => ({ date: r.editedAt || r.createdAt || 0, text: r.answer.trim() }));
+  const noteEntries = (S.dailySnapshots || [])
+    .filter(s => s.note && s.note.trim().length > 40)
+    .map(s => ({ date: parseLocalDate(s.date).getTime(), text: s.note.trim() }));
+  const qbankEntries = (S.questionBank || [])
+    .filter(q => q.answer && q.answer.trim().length > 40)
+    .map(q => ({ date: q.date ? new Date(q.date).getTime() : 0, text: q.answer.trim() }));
+  const passive = reflectionEntries.concat(noteEntries, qbankEntries)
+    .sort((a, b) => b.date - a.date)
+    .slice(0, 5)
+    .map(e => e.text)
+    .join('\n---\n')
+    .slice(0, 1200);
+
+  return [explicit, passive].filter(Boolean).join('\n---\n');
 }
 
 function voicePromptBlock() {
   const sample = buildVoiceSample();
   if (!sample) return '';
-  return `\nHere are a few excerpts of how this person writes in their own words, from personal journal reflections — use these only to calibrate tone, vocabulary, and rhythm, not content:\n"""\n${sample}\n"""\n`;
+  return `\nHere are a few excerpts of how this person writes in their own words — from writing samples they've chosen, journal reflections, daily close-out notes, and saved interview answers — use these only to calibrate tone, vocabulary, and rhythm, not content:\n"""\n${sample}\n"""\n`;
 }
 
 let _aiCoachState = {};    // tracks current quiz state
@@ -5752,6 +5914,59 @@ let _spoofDate = null;            // Date object overriding today in sandbox mod
 let _weekPlanEditing = false; // true when user explicitly opens edit mode mid-week
 const _expandedProjects = new Set(); // tracks which parent task IDs are expanded on the Tasks tab
 let _goalPickerOpenId = null;        // task ID currently showing the week-goal picker
+
+// ── PER-TAB TIME TRACKING ──────────────────────────────────────
+// `sandbox` is stamped onto the state when it's set, not read live at flush
+// time — enterSandbox() flips _inSandbox before its own tab switch, and
+// exitSandbox() flips it back before its tab switch, so a live-flag check
+// would either drop the last real segment or leak stale sandbox time into
+// real data. Stamping avoids both.
+let _tabTimeState = { tab: null, enteredAt: null, sandbox: false };
+
+function flushTabTime() {
+  if (!_tabTimeState.tab || !_tabTimeState.enteredAt || _tabTimeState.sandbox) return;
+  const minutes = (Date.now() - _tabTimeState.enteredAt) / 60000;
+  const today = localDateStr(new Date());
+  if (!S.appTimeLog) S.appTimeLog = {};
+  if (!S.appTimeLog[today]) S.appTimeLog[today] = {};
+  S.appTimeLog[today][_tabTimeState.tab] = (S.appTimeLog[today][_tabTimeState.tab] || 0) + minutes;
+  _tabTimeState.enteredAt = Date.now();
+  pruneAppTimeLog();
+}
+
+// Keeps at most the most recent 90 days, mirroring dailySnapshots' .slice(-90).
+function pruneAppTimeLog() {
+  if (!S.appTimeLog) return;
+  const dates = Object.keys(S.appTimeLog).sort();
+  if (dates.length <= 90) return;
+  dates.slice(0, dates.length - 90).forEach(d => delete S.appTimeLog[d]);
+}
+
+function startTabTimeTracking() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      flushTabTime();
+      save();
+      _tabTimeState.enteredAt = null; // paused — background time doesn't count
+    } else if (_tabTimeState.tab) {
+      _tabTimeState.enteredAt = Date.now(); // resume; nothing accrued while hidden
+    }
+  });
+
+  // Crash-loss insurance: update the in-memory log every 60s, but only push an
+  // actual save() every ~5 minutes — nothing else in this app writes to
+  // Firebase on a fixed interval, and a 60s write cadence would be new territory.
+  let ticksSinceSave = 0;
+  setInterval(() => {
+    flushTabTime();
+    ticksSinceSave++;
+    if (ticksSinceSave >= 5) { save(); ticksSinceSave = 0; }
+  }, 60000);
+
+  const flushOnExit = () => { flushTabTime(); save(); };
+  window.addEventListener('pagehide', flushOnExit);
+  window.addEventListener('beforeunload', flushOnExit);
+}
 
 // Returns the task to act on: first incomplete subtask if parent, otherwise the task itself
 function getNextAction(task) {
@@ -6482,15 +6697,19 @@ function setTimerMode(mode) {
 function logFocusSessionManually() {
   const inner = document.getElementById('modal-inner');
   const focusTasks = S.todayFocusIds.map(id => S.tasks.find(t => t.id === id)).filter(t => t && !t.done);
-  const taskOptions = focusTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('');
+  const focusTaskIds = new Set(focusTasks.map(t => t.id));
+  const otherTasks = (S.tasks || []).filter(t => !t.done && !focusTaskIds.has(t.id));
+  const focusOptions = focusTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('');
+  const otherOptions = otherTasks.map(t => `<option value="${t.id}">${escHtml(t.text)}</option>`).join('');
   inner.innerHTML = `
     <div style="padding:4px 0;text-align:left;">
       <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:14px;font-family:'Montserrat',sans-serif;">Log a focus session</div>
-      ${focusTasks.length > 0 ? `
+      ${(focusTasks.length > 0 || otherTasks.length > 0) ? `
         <label style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;">Task</label>
         <select id="mlog-task" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;-webkit-appearance:none;margin-bottom:10px;">
           <option value="">— no specific task —</option>
-          ${taskOptions}
+          ${focusTasks.length > 0 ? `<optgroup label="Today's focus">${focusOptions}</optgroup>` : ''}
+          ${otherTasks.length > 0 ? `<optgroup label="Other open tasks">${otherOptions}</optgroup>` : ''}
         </select>` : ''}
       <label style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:block;">What did you work on?</label>
       <input id="mlog-intention" placeholder="Brief description…" style="width:100%;background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:10px;">
@@ -7815,6 +8034,8 @@ function renderPipelineEntry(e) {
   const iS = iI + `-webkit-appearance:none;appearance:none;cursor:pointer;`;
   const tA = iI + `resize:vertical;min-height:60px;`;
 
+  const stageBadge = `<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.66rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:var(--text-dim);white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:${stageInfo.color};flex-shrink:0;"></span>${escHtml(stageInfo.label)}</span>`;
+
   const tabBtn = (id, label, hasContent) => {
     const isActive = activeTab === id;
     const dot = hasContent && !isActive ? `<span style="width:5px;height:5px;border-radius:50%;background:var(--amber);display:inline-block;margin-left:4px;vertical-align:middle;opacity:0.7;"></span>` : '';
@@ -7921,6 +8142,7 @@ function renderPipelineEntry(e) {
 
   const prepTab = `
     <div style="display:flex;flex-direction:column;gap:14px;">
+      ${stageBadge}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Prepare before the conversation. Fill in what you know.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -8025,6 +8247,7 @@ function renderPipelineEntry(e) {
 
   const debriefTab = `
     <div style="display:flex;flex-direction:column;gap:14px;">
+      ${stageBadge}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:0.75rem;color:var(--text-dim);line-height:1.5;">Fill this in within an hour while it's fresh. It compounds over multiple rounds.</div>
         <button id="digest-btn-${e.id}-debrief" onclick="event.stopPropagation();digestPipelineSection(${e.id},'debrief')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:2px;padding:5px 10px;font-size:0.68rem;color:var(--teal);cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;transition:all 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">✦ Digest</button>
@@ -10538,11 +10761,26 @@ function renderProgress() {
     </div>` : '';
 
   // ── Top contacts by momentum ──
+  // Recency-weighted (last 60 days), not lifetime totals — matches the decay
+  // pattern used elsewhere (getSmartNudges, pipelineVelocityHTML) rather than
+  // letting an old burst of activity permanently outrank someone active now.
+  // Also excludes a contact only when their sole company link is a dead
+  // (rejected/withdrawn) pipeline entry — contacts with no pipeline link at
+  // all are unaffected.
+  const momentumCutoffDays = 60;
   const topContacts = (S.contacts||[])
+    .filter(c => {
+      if (!c.company) return true;
+      const companyLower = c.company.toLowerCase();
+      const hasActiveLink = (S.pipeline||[]).some(e => !['rejected','withdrawn'].includes(e.stage) && e.company && e.company.toLowerCase() === companyLower);
+      if (hasActiveLink) return true;
+      const hasDeadLink = (S.pipeline||[]).some(e => ['rejected','withdrawn'].includes(e.stage) && e.company && e.company.toLowerCase() === companyLower);
+      return !hasDeadLink;
+    })
     .map(c => ({
       c,
-      interactions: (c.interactions||[]).length,
-      tasksDone: (S.tasks||[]).filter(t => t.contactId === c.id && t.done).length,
+      interactions: (c.interactions||[]).filter(i => i.date && getDaysSince(i.date) <= momentumCutoffDays).length,
+      tasksDone: (S.tasks||[]).filter(t => t.contactId === c.id && t.done && t.doneAt && getDaysSince(t.doneAt) <= momentumCutoffDays).length,
     }))
     .map(x => ({ ...x, score: x.interactions + x.tasksDone * 2 }))
     .filter(x => x.score > 0)
@@ -10561,6 +10799,170 @@ function renderProgress() {
           ${x.c.company ? `<div style="font-size:0.68rem;color:var(--text-dim);text-align:right;flex-shrink:0;">${escHtml(x.c.company)}</div>` : ''}
         </div>`).join('')}
     </div>` : '';
+
+  // ── App usage ──
+  const TAB_LABELS = { today:'Today', quests:'Focus', focus:'Coach', network:'Network', briefing:'Read', journal:'Journal', progress:'Progress', account:'Account' };
+  const TAB_COLORS = { today:'var(--amber)', quests:'var(--teal)', focus:'#4a6b8a', network:'#9a4a5a', briefing:'var(--text-mid)', journal:'#a0632d', progress:'#6b5b95', account:'var(--border)' };
+  const appUsageHTML = (() => {
+    const log = S.appTimeLog || {};
+    const dates = Object.keys(log);
+    if (dates.length === 0) return '';
+    const weekStartStr = getWeekStart();
+    const usageMonthPrefix = todayStr.slice(0, 7);
+    let todayMins = 0, weekMins = 0, monthMins = 0;
+    const weekByTab = {};
+    dates.forEach(date => {
+      const tabs = log[date] || {};
+      const dayTotal = Object.values(tabs).reduce((a, b) => a + b, 0);
+      if (date === todayStr) todayMins += dayTotal;
+      if (date >= weekStartStr) weekMins += dayTotal;
+      if (date.startsWith(usageMonthPrefix)) monthMins += dayTotal;
+      if (date >= weekStartStr) {
+        Object.entries(tabs).forEach(([tab, mins]) => { weekByTab[tab] = (weekByTab[tab] || 0) + mins; });
+      }
+    });
+    if (weekMins < 1) return ''; // not enough data yet to be meaningful
+    const cats = Object.entries(weekByTab)
+      .map(([tab, mins]) => ({ key: tab, label: TAB_LABELS[tab] || tab, color: TAB_COLORS[tab] || 'var(--border)', val: Math.round(mins) }))
+      .filter(c => c.val > 0)
+      .sort((a, b) => b.val - a.val);
+    if (cats.length === 0) return '';
+    const barSegs = cats.map(c => `<div style="flex:${c.val};background:${c.color};height:6px;" title="${escHtml(c.label)}: ${c.val} min"></div>`).join('');
+    const legend = cats.map(c => `<div style="display:flex;align-items:center;gap:5px;">
+      <div style="width:8px;height:8px;border-radius:1px;background:${c.color};flex-shrink:0;"></div>
+      <span style="font-size:0.68rem;color:var(--text-dim);">${escHtml(c.label)} <span style="color:var(--text-mid);font-weight:600;">${c.val}m</span></span>
+    </div>`).join('');
+    const fmtMins = m => m >= 60 ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m` : `${Math.round(m)}m`;
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-label" style="margin-bottom:0;">App usage, this week</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);">${fmtMins(weekMins)} total</div>
+      </div>
+      <div style="display:flex;border-radius:3px;overflow:hidden;height:6px;margin-bottom:12px;">${barSegs}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:14px;">${legend}</div>
+      <div style="display:flex;gap:18px;padding-top:10px;border-top:1px solid var(--border);">
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">today</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${fmtMins(todayMins)}</div></div>
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">this week</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${fmtMins(weekMins)}</div></div>
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">this month</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${fmtMins(monthMins)}</div></div>
+      </div>
+    </div>`;
+  })();
+
+  // ── Task types, this month (time-windowed — unlike the lifetime "Tasks completed" card above) ──
+  const taskTypesHTML = (() => {
+    const taskTypesMonthPrefix = todayStr.slice(0, 7);
+    const weekStartStr = getWeekStart();
+    const CAT_META = {
+      apply: { label: 'Apply', color: 'var(--amber)' }, followup: { label: 'Follow-up', color: 'var(--teal)' },
+      network: { label: 'Network', color: '#4a6b8a' }, research: { label: 'Research', color: 'var(--text-mid)' },
+      admin: { label: 'Admin', color: 'var(--border)' }, personal: { label: 'Personal', color: '#9a4a5a' },
+      onboarding: { label: 'Onboarding', color: '#a0632d' }, schedule: { label: 'Scheduling', color: '#6b5b95' },
+      todo: { label: 'To Do', color: '#5a7a5a' },
+    };
+    const doneThisMonth = (S.tasks || []).filter(t => t.done && t.doneDate && t.doneDate.startsWith(taskTypesMonthPrefix));
+    if (doneThisMonth.length === 0) return '';
+    const counts = {};
+    doneThisMonth.forEach(t => { counts[t.cat] = (counts[t.cat] || 0) + 1; });
+    const cats = Object.entries(counts)
+      .map(([key, val]) => ({ key, val, ...(CAT_META[key] || { label: key, color: 'var(--border)' }) }))
+      .sort((a, b) => b.val - a.val);
+    const total = cats.reduce((s, c) => s + c.val, 0);
+    const doneThisWeekCount = (S.tasks || []).filter(t => t.done && t.doneDate && t.doneDate >= weekStartStr).length;
+    const barSegs = cats.map(c => `<div style="flex:${c.val};background:${c.color};height:6px;" title="${escHtml(c.label)}: ${c.val}"></div>`).join('');
+    const legend = cats.map(c => `<div style="display:flex;align-items:center;gap:5px;">
+      <div style="width:8px;height:8px;border-radius:1px;background:${c.color};flex-shrink:0;"></div>
+      <span style="font-size:0.68rem;color:var(--text-dim);">${escHtml(c.label)} <span style="color:var(--text-mid);font-weight:600;">${c.val}</span></span>
+    </div>`).join('');
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-label" style="margin-bottom:0;">Task types, this month</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);">${total} done · ${doneThisWeekCount} this week</div>
+      </div>
+      <div style="display:flex;border-radius:3px;overflow:hidden;height:6px;margin-bottom:12px;">${barSegs}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">${legend}</div>
+    </div>`;
+  })();
+
+  // ── Habit success rate ──
+  const habitSuccessHTML = (() => {
+    const builtInDefs = [
+      { key: 'workout', name: 'Working out', log: S.workoutLog || [], goal: S.workoutGoal || 3, period: S.workoutGoalPeriod || 'week' },
+      { key: 'journal', name: 'Journaling', log: S.journalLog || [], goal: S.journalGoal || 3, period: S.journalGoalPeriod || 'week' },
+      { key: 'outside', name: 'Getting outside', log: S.outsideLog || [], goal: S.outsideGoal || 5, period: S.outsideGoalPeriod || 'week' },
+    ].filter(h => (S.trackedHabits || []).includes(h.key));
+    const customDefs = (S.customHabits || []).map(h => ({
+      name: h.name,
+      log: h.trackingType === 'numeric' ? (h.numericLog || []).filter(e => e.value >= (h.targetValue || 1)).map(e => e.date) : (h.log || []),
+      goal: h.goal, period: h.goalPeriod,
+    }));
+    const rates = builtInDefs.concat(customDefs)
+      .map(h => ({ name: h.name, rate: getHabitSuccessRate(h.log, h.goal, h.period) }))
+      .filter(h => h.rate !== null)
+      .sort((a, b) => b.rate - a.rate);
+    if (rates.length === 0) return '';
+    const rows = rates.map(h => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:0.82rem;color:var(--text);">${escHtml(h.name)}</span>
+        <span style="font-size:0.82rem;font-weight:600;color:${h.rate >= 70 ? 'var(--green)' : h.rate >= 40 ? 'var(--text-mid)' : 'var(--red)'};">${h.rate}%</span>
+      </div>`).join('');
+    return `<div class="card">
+      <div class="card-label">Habit success rate</div>
+      <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:10px;">% of recent periods you hit your goal — not a streak, so one miss won't tank it.</div>
+      ${rows}
+    </div>`;
+  })();
+
+  // ── Coach progress ──
+  const coachProgressHTML = (() => {
+    const skills = S.skills || [];
+    const totalSessions = skills.reduce((a, sk) => a + (sk.sessionsTotal || 0), 0);
+    if (totalSessions === 0) return '';
+    const activeCount = skills.filter(sk => sk.active).length;
+    const weekStartStr = getWeekStart();
+    const coachMonthPrefix = todayStr.slice(0, 7);
+    let sessionsThisWeek = 0, sessionsThisMonth = 0;
+    skills.forEach(sk => {
+      (sk.sessionLog || []).forEach(s => {
+        if (s.date >= weekStartStr) sessionsThisWeek++;
+        if (s.date && s.date.startsWith(coachMonthPrefix)) sessionsThisMonth++;
+      });
+    });
+    const mostPracticed = skills.slice().sort((a, b) => (b.sessionsTotal || 0) - (a.sessionsTotal || 0))[0];
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Coach progress</div>
+      <div style="display:flex;gap:18px;margin-bottom:${mostPracticed ? '14' : '0'}px;flex-wrap:wrap;">
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">total sessions</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${totalSessions}</div></div>
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">this week</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${sessionsThisWeek}</div></div>
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">this month</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${sessionsThisMonth}</div></div>
+        <div><div style="font-size:0.68rem;color:var(--text-dim);">active skills</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${activeCount}</div></div>
+      </div>
+      ${mostPracticed ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:10px;border-top:1px solid var(--border);">Most practiced: <span style="color:var(--text-mid);font-weight:600;">${escHtml(mostPracticed.name)}</span> (${mostPracticed.sessionsTotal || 0} session${(mostPracticed.sessionsTotal || 0) !== 1 ? 's' : ''})</div>` : ''}
+    </div>`;
+  })();
+
+  // ── Contact engagement ──
+  const contactEngagementHTML = (() => {
+    const contacts = S.contacts || [];
+    if (contacts.length === 0) return '';
+    const counts = [7, 30, 90].map(days => {
+      const n = contacts.reduce((sum, c) => sum + (c.interactions || []).filter(i => {
+        if (!i.date) return false;
+        const d = getDaysSince(i.date);
+        return d !== null && d <= days;
+      }).length, 0);
+      return { days, n };
+    });
+    if (counts.every(c => c.n === 0)) return '';
+    const withCreatedAt = contacts.filter(c => c.createdAt);
+    const newContacts = withCreatedAt.filter(c => getDaysSince(c.createdAt) <= 30).length;
+    return `<div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Contact engagement</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;${withCreatedAt.length > 0 ? 'margin-bottom:12px;' : ''}">
+        ${counts.map(c => `<div><div style="font-size:0.68rem;color:var(--text-dim);">last ${c.days}d</div><div style="font-size:0.84rem;font-weight:600;color:var(--text);">${c.n} interaction${c.n !== 1 ? 's' : ''}</div></div>`).join('')}
+      </div>
+      ${withCreatedAt.length > 0 ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:10px;border-top:1px solid var(--border);">${newContacts} new contact${newContacts !== 1 ? 's' : ''} in the last 30 days${withCreatedAt.length < contacts.length ? ` <span style="opacity:0.7;">(only tracked for contacts added since this feature shipped)</span>` : ''}</div>` : ''}
+    </div>`;
+  })();
 
   // ── Pipeline velocity ──
   const activePipe = (S.pipeline||[]).filter(e => !['rejected','withdrawn'].includes(e.stage));
@@ -10776,9 +11178,13 @@ function renderProgress() {
     ${evidenceHTML}
     ${timelineHTML}
     ${insightsHTML}
+    ${appUsageHTML}
     ${funnelHTML}
     ${catBreakdownHTML}
+    ${taskTypesHTML}
+    ${coachProgressHTML}
     ${topContactsHTML}
+    ${contactEngagementHTML}
     ${pipelineVelocityHTML}
     ${recsHTML}
     ${marketContextHTML}
@@ -10870,6 +11276,8 @@ function renderProgress() {
         ${areaRows}
       </div>`;
     })()}
+
+    ${habitSuccessHTML}
 
     <div class="card">
       <div class="card-label" style="margin-bottom:10px;">Weekly activity</div>
@@ -11481,6 +11889,8 @@ function saveMode(newMode) {
 
 function enterSandbox(demoMode) {
   if (_inSandbox) return;
+  flushTabTime(); // bank the last real-mode segment before _inSandbox flips
+  save(); // must persist before S gets replaced by the demo state below, or this flush is lost
   _inSandbox = true;
   _spoofDate = null;
   const baseState = (demoMode === 'full') ? SANDBOX_DEMO_STATE_FULL : SANDBOX_DEMO_STATE;
@@ -11531,6 +11941,7 @@ function setSpoofDate(dateStr) {
 }
 
 function switchTab(tab) {
+  flushTabTime(); // bank time on the outgoing tab before switching
   // Guard: silently redirect hidden tabs to progress
   if (S.mode === 'coach' && JOBSEEKER_TABS.includes(tab)) tab = 'progress';
   currentTab = tab;
@@ -11540,6 +11951,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  _tabTimeState = { tab, enteredAt: Date.now(), sandbox: _inSandbox };
+  save();
   trackEvent('tab_view', { tab });
   render();
 }
@@ -11965,7 +12378,7 @@ function _lmFinish() {
       first: nc.first, last: nc.last, company: nc.company||'',
       role:'', email:'', type:'peer', notes:'', about:'', lastContact: null,
       cadence:null, preferredMethod: _lm.logMethod, resumeSent:false,
-      nextStep:'', interactions:[], priority:false,
+      nextStep:'', interactions:[], priority:false, createdAt: Date.now(),
       nextContactDate: _lm.followUpDate||'', followUpNote: _lm.followUpNote||'',
     };
     S.contacts.push(newC);
@@ -12317,6 +12730,49 @@ function getHabitCountThisPeriod(log, goal, period) {
   const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
   const monday = new Date(now); monday.setDate(now.getDate() - daysFromMon); monday.setHours(0,0,0,0);
   return log.filter(d => new Date(d + 'T00:00:00') >= monday).length;
+}
+
+// % of recent periods where the habit's goal was met — bounded to at most 8
+// periods (or fewer if the habit doesn't have that much history yet), so a
+// long-dormant habit doesn't get a permanently near-zero score, and framed as
+// a rate rather than a streak so one missed period doesn't erase everything
+// that came before it. Returns null when there's no log history at all.
+function getHabitSuccessRate(log, goal, period) {
+  if (!log || !log.length) return null;
+  const sorted = [...log].sort();
+  const firstDate = new Date(sorted[0] + 'T00:00:00');
+  const now = new Date();
+
+  if (period === 'day') {
+    const daysSinceFirst = Math.floor((now - firstDate) / 86400000) + 1;
+    const windowDays = Math.min(60, Math.max(daysSinceFirst, 1));
+    const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - windowDays + 1); cutoff.setHours(0, 0, 0, 0);
+    const hits = log.filter(d => new Date(d + 'T00:00:00') >= cutoff).length;
+    return Math.round((hits / windowDays) * 100);
+  }
+
+  const msPerPeriod = period === 'week' ? 7 * 86400000 : 30 * 86400000; // rough bound only
+  const maxPeriods = Math.min(8, Math.max(1, Math.ceil((now - firstDate) / msPerPeriod)));
+  let hitCount = 0;
+
+  if (period === 'week') {
+    const daysFromMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const ws = new Date(now); ws.setDate(now.getDate() - daysFromMon); ws.setHours(0, 0, 0, 0);
+    for (let i = 0; i < maxPeriods; i++) {
+      const we = new Date(ws); we.setDate(ws.getDate() + 6); we.setHours(23, 59, 59, 999);
+      const count = log.filter(d => { const dt = new Date(d + 'T00:00:00'); return dt >= ws && dt <= we; }).length;
+      if (count >= goal) hitCount++;
+      ws.setDate(ws.getDate() - 7);
+    }
+  } else { // month
+    let y = now.getFullYear(), m = now.getMonth();
+    for (let i = 0; i < maxPeriods; i++) {
+      const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (log.filter(d => d.startsWith(prefix)).length >= goal) hitCount++;
+      m--; if (m < 0) { m = 11; y--; }
+    }
+  }
+  return Math.round((hitCount / maxPeriods) * 100);
 }
 
 function toggleCustomHabit(id) {
@@ -12901,6 +13357,7 @@ function runContactImport(defaultType) {
       about: '',
       interactions: [],
       priority: false,
+      createdAt: Date.now(),
       nextContactDate: '',
       followUpNote: '',
     });
@@ -13140,6 +13597,7 @@ function _liDoImport() {
       nextStep: '',
       interactions: [],
       priority: t.status === 'target',
+      createdAt: Date.now(),
       nextContactDate: '',
       followUpNote: '',
     });
@@ -13233,6 +13691,7 @@ function saveNewContact() {
     nextStep: '',
     interactions: [],
     priority: false,
+    createdAt: Date.now(),
     nextContactDate: '',
     followUpNote: '',
   });
@@ -14229,6 +14688,87 @@ let _briefingDigestLoading = false;
 let _briefingSettingsOpen = false;
 let _briefingSourceFilter = 'all';
 let _briefingTimeFilter = 'all'; // 'all' | 'day' | 'week'
+let _briefingTopicQuery = '';
+let _briefingTopicResult = null; // { query, matches, text, empty?, error?, noAuth? }
+let _briefingTopicLoading = false;
+
+async function searchBriefingTopic() {
+  const input = document.getElementById('briefing-topic-input');
+  const query = (input?.value || '').trim();
+  if (!query) return;
+  _briefingTopicQuery = query;
+  _briefingTopicLoading = true;
+  _briefingTopicResult = null;
+  renderBriefing();
+
+  const sources = (S.briefingSources || []).filter(s => s.enabled);
+  const results = await Promise.allSettled(sources.map(async src => {
+    const items = await _fetchRSS(src.url, 30);
+    return items.map(item => ({ ...item, sourceName: src.name, sourceId: src.id }));
+  }));
+  const allItems = [];
+  results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
+
+  const q = query.toLowerCase();
+  const matches = allItems.filter(a =>
+    (a.title || '').toLowerCase().includes(q) || (a.description || '').toLowerCase().includes(q)
+  ).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+  if (matches.length === 0) {
+    _briefingTopicLoading = false;
+    _briefingTopicResult = { query, matches: [], text: '', empty: true };
+    renderBriefing();
+    return;
+  }
+
+  if (!firebaseUser) {
+    _briefingTopicLoading = false;
+    _briefingTopicResult = { query, matches, text: '', noAuth: true };
+    renderBriefing();
+    return;
+  }
+
+  const list = matches.slice(0, 15).map((a, i) => `${i + 1}. [${a.sourceName}] ${a.title} — ${a.description}`).join('\n');
+  const prompt = `Here are headlines from the user's configured trade publications that mention "${query}":\n\n${list}\n\nIn 3-4 sentences, give the user a quick, specific take on what's happening with "${query}" right now based on these — enough to sound informed about it in a conversation, interview, or networking chat. Reference actual stories by name. If the coverage is thin or one-note, say so plainly rather than padding. Write in plain prose, no bullet points, no markdown formatting.`;
+
+  const result = await callClaude(prompt, { maxTokens: 300 });
+  _briefingTopicLoading = false;
+  _briefingTopicResult = result.error
+    ? { query, matches, text: '', error: result.message }
+    : { query, matches, text: result.text.trim() };
+  renderBriefing();
+}
+
+function clearBriefingTopicSearch() {
+  _briefingTopicQuery = '';
+  _briefingTopicResult = null;
+  renderBriefing();
+}
+
+function renderBriefingTopicResult() {
+  const r = _briefingTopicResult;
+  if (!r) return '';
+  if (r.empty) {
+    return `<div style="margin-top:10px;font-size:0.78rem;color:var(--text-dim);">No articles in your current sources mention "${escHtml(r.query)}". Try a broader term, or add sources that cover it.</div>`;
+  }
+  const matchesHtml = r.matches.slice(0, 8).map(a => `
+    <a href="${safeHref(a.link)}" target="_blank" rel="noopener" style="display:block;padding:6px 0;font-size:0.76rem;color:var(--text-mid);text-decoration:none;border-bottom:1px solid var(--border);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-mid)'">${escHtml(a.sourceName)} — ${escHtml(a.title)}</a>
+  `).join('');
+  const takeHtml = r.error
+    ? `<div style="font-size:0.78rem;color:var(--error);margin-bottom:10px;">${escHtml(r.error)}</div>`
+    : r.noAuth
+      ? `<div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:10px;">Sign in to get a synthesized take — here's what matched, though.</div>`
+      : `<div style="font-size:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.6;margin-bottom:10px;">${escHtml(r.text)}</div>`;
+  return `
+    <div style="margin-top:10px;border-left:3px solid var(--teal);padding:12px 0 12px 14px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+        <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);">"${escHtml(r.query)}" · ${r.matches.length} article${r.matches.length !== 1 ? 's' : ''}</div>
+        <span onclick="clearBriefingTopicSearch()" style="font-size:0.68rem;color:var(--text-dim);cursor:pointer;flex-shrink:0;">Clear ✕</span>
+      </div>
+      ${takeHtml}
+      ${matchesHtml}
+    </div>`;
+}
 
 function setBriefingSourceFilter(sourceId) {
   _briefingSourceFilter = sourceId;
@@ -14538,6 +15078,15 @@ function renderBriefing() {
 
   const settingsHtml = _briefingSettingsOpen ? renderBriefingSettings() : '';
 
+  const topicSearchHtml = `
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;gap:8px;">
+        <input id="briefing-topic-input" value="${escHtml(_briefingTopicQuery || '')}" placeholder="Brush up on a topic across your sources… (e.g. attribution)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchBriefingTopic();}" style="flex:1;background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;box-sizing:border-box;">
+        <button onclick="searchBriefingTopic()" ${_briefingTopicLoading ? 'disabled' : ''} style="flex-shrink:0;background:var(--teal);color:var(--text-inverse);border:none;border-radius:2px;padding:8px 14px;font-size:0.76rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${_briefingTopicLoading ? 'Searching…' : '✦ Search'}</button>
+      </div>
+      ${_briefingTopicResult ? renderBriefingTopicResult() : ''}
+    </div>`;
+
   let digestHtml = '';
   if (hasApiKey) {
     const digest = S.briefingDigest?.text || '';
@@ -14633,7 +15182,7 @@ function renderBriefing() {
       </a>`).join('');
   }
 
-  wrap.innerHTML = header + digestHtml + settingsHtml + `<div style="margin-top:8px;">${filterHtml}${timeFilterHtml}${listHtml}</div>`;
+  wrap.innerHTML = header + topicSearchHtml + digestHtml + settingsHtml + `<div style="margin-top:8px;">${filterHtml}${timeFilterHtml}${listHtml}</div>`;
 }
 
 // ── JOURNAL ──────────────────────────────────────────────────
@@ -15141,6 +15690,35 @@ function renderAccount() {
         </div>
       ` : ''}
     </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:6px">AI Writing Voice</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">Paste 2–3 messages you've actually written and are happy with — outreach, thank-you notes, anything in your own words. AI-drafted emails match these first, before falling back to your journal, daily notes, and Q Bank answers.</div>
+      ${(() => {
+        const samples = (S.voiceSamples && S.voiceSamples.length) ? S.voiceSamples : [''];
+        return samples.map((sample, idx) => `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:0.62rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.06em;text-transform:uppercase;">Sample ${idx + 1}</span>
+              ${samples.length > 1 ? `<span onclick="removeVoiceSample(${idx})" style="font-size:0.68rem;color:var(--text-dim);cursor:pointer;">Remove ✕</span>` : ''}
+            </div>
+            <textarea onblur="saveVoiceSample(${idx},this.value)" placeholder="Paste a message you actually sent…" style="background:var(--surface2);border:none;border-radius:2px;padding:8px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;resize:vertical;min-height:80px;">${escHtml(sample)}</textarea>
+          </div>`).join('');
+      })()}
+      ${(S.voiceSamples || []).length < 5 ? `<button onclick="addVoiceSample()" style="margin-top:4px;background:none;border:1px dashed var(--border);color:var(--text-dim);font-size:0.68rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">+ Add another sample</button>` : ''}
+    </div>
+    ${!_inSandbox ? `
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:6px">Notifications</div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">Push notifications, even when Show Up isn't open. On iOS, only works if you've added Show Up to your Home Screen (Share → Add to Home Screen).</div>
+      ${firebaseUser ? `
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" ${S.notificationPrefs?.dailyCheckin ? 'checked' : ''} onchange="toggleDailyCheckinNotif(this)" style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;">
+        <span>
+          <span style="display:block;font-size:0.84rem;font-weight:500;color:var(--text);">Daily check-in reminder</span>
+          <span style="display:block;font-size:0.72rem;color:var(--text-dim);margin-top:1px;">A nudge in the evening if you haven't checked in yet that day.</span>
+        </span>
+      </label>` : `<div style="font-size:0.78rem;color:var(--text-dim);">Sign in to enable notifications.</div>`}
+    </div>` : ''}
     <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
       <div class="card-label" style="margin-bottom:16px">Your Coach</div>
       <div style="font-size:0.72rem;color:var(--text-dim);">AI features are powered automatically while you're signed in — no API key needed. Limited to 50 AI requests per day.</div>
@@ -15781,8 +16359,13 @@ handleURLTaskAdd();
 // Show app immediately with local data (fast start)
 render();
 updateTabVisibility();
+// switchTab() is only ever called from a click or an explicit redirect — the
+// app never calls it on boot, so without this, all dwell time on the initial
+// tab before the user's first click would never reach _tabTimeState at all.
+if (!_tabTimeState.tab) _tabTimeState = { tab: currentTab, enteredAt: Date.now(), sandbox: _inSandbox };
 fetchWeather();
 startReminderEngine();
+startTabTimeTracking();
 // Then init Firebase — will update with cloud data if newer
 initFirebase();
 </script>

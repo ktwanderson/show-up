@@ -1,4 +1,5 @@
 const { onRequest } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const dns = require('dns').promises;
@@ -166,3 +167,58 @@ exports.fetchUrl = onRequest({ cors: true }, async (req, res) => {
     res.status(502).json({ error: 'network', message: e.message });
   }
 });
+
+// Matches the exact format touchStreak() (index.html) uses for showUpDays entries:
+// `new Date().toDateString()` -> "Thu Jul 16 2026" — NOT the YYYY-MM-DD format used
+// elsewhere in the app. That field was not touched by the 2026-07 timezone-safety
+// migration, so this has to replicate the legacy format exactly or the "already
+// checked in today" comparison below will never match.
+function todayAsToDateString(timeZone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, weekday: 'short', month: 'short', day: '2-digit', year: 'numeric',
+  }).formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t).value;
+  return `${get('weekday')} ${get('month')} ${get('day')} ${get('year')}`;
+}
+
+// Daily "you haven't checked in yet" push. Reads a flat notifSubscribers index
+// rather than scanning every user's full state — keeps this cheap and gives
+// future notification types the same pattern (their own notifSubscribers/{type}
+// index + their own scheduled function) instead of every function reading
+// users/* in full.
+exports.dailyCheckinNudge = onSchedule(
+  { schedule: 'every day 18:00', timeZone: 'America/New_York' },
+  async () => {
+    const today = todayAsToDateString('America/New_York');
+    const subsSnap = await admin.database().ref('notifSubscribers/dailyCheckin').once('value');
+    const uids = Object.keys(subsSnap.val() || {});
+
+    for (const uid of uids) {
+      const [daysSnap, tokensSnap] = await Promise.all([
+        admin.database().ref(`users/${uid}/state/showUpDays`).once('value'),
+        admin.database().ref(`users/${uid}/fcmTokens`).once('value'),
+      ]);
+      const rawDays = daysSnap.val();
+      const days = Array.isArray(rawDays) ? rawDays : Object.values(rawDays || {});
+      if (days.some(d => d.date === today)) continue; // already checked in
+
+      const tokens = Object.keys(tokensSnap.val() || {});
+      if (!tokens.length) continue;
+
+      const resp = await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: 'Show Up',
+          body: "You haven't checked in today — set your energy level to calibrate the day.",
+        },
+        webpush: { fcmOptions: { link: 'https://www.showupapp.io' } },
+      });
+
+      resp.responses.forEach((r, i) => {
+        if (!r.success && r.error?.code === 'messaging/registration-token-not-registered') {
+          admin.database().ref(`users/${uid}/fcmTokens/${tokens[i]}`).remove();
+        }
+      });
+    }
+  }
+);
