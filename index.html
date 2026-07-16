@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.32',
+        release: 'show-up@0.33',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -1789,7 +1789,7 @@ function migrateState(s) {
   if (v < 2) {
     (s.tasks || []).forEach(t => {
       if (t.done && t.doneAt && !t.doneDate) {
-        t.doneDate = new Date(t.doneAt).toISOString().slice(0, 10);
+        t.doneDate = localDateStr(new Date(t.doneAt));
       }
     });
   }
@@ -2512,7 +2512,7 @@ const SANDBOX_DEMO_STATE = {
     {date:'2026-04-14',energy:'regular'},{date:'2026-04-15',energy:'full'},
     {date:'2026-04-16',energy:'regular'},
   ],
-  todayDate: new Date().toISOString().slice(0,10),
+  todayDate: localDateStr(new Date()),
   todayEnergy: 'regular',
   todayFocusIds: [3],
   focusBlocksToday: 2,
@@ -2709,7 +2709,7 @@ const SANDBOX_DEMO_STATE_FULL = {
     {date:'2026-04-18',energy:'full'},{date:'2026-04-19',energy:'regular'},
     {date:'2026-04-21',energy:'full'},
   ],
-  todayDate: new Date().toISOString().slice(0,10),
+  todayDate: localDateStr(new Date()),
   todayEnergy: 'full',
   todayFocusIds: [1, 2],
   focusBlocksToday: 3,
@@ -2750,9 +2750,20 @@ const FEATURE_FLAGS = {
 // ── RELEASE NOTES ────────────────────────────────────────────
 // Add a new entry here with each meaningful deploy.
 // version must match the Sentry release string in the <head>.
-const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog'; 
+const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog';
 
 const RELEASE_NOTES = [
+  {
+    version: '0.33',
+    date: '2026-07-15',
+    items: [
+      'Fixed a timezone bug affecting task completion dates, habit streaks, and contact follow-up/snooze dates — evening or late-night activity in some U.S. timezones could log to the wrong calendar day',
+      'Fixed daily wins not showing up in the "Close out the day" summary',
+      'PIN setup no longer forces itself the first time you sign in — turn it on later in Settings → Security if you want it',
+      'Read tab: "Add a source" now finds something for almost any site, even ones without their own RSS feed',
+      'Read tab: the digest now shows the date it was generated',
+    ],
+  },
   {
     version: '0.32',
     date: '2026-07-15',
@@ -3408,9 +3419,7 @@ async function initPin() {
     stored = hash;
   }
   if (!stored) {
-    pinStage = 'setup';
-    updatePinUI('Choose a 4-digit PIN to protect your app');
-    overlay.classList.remove('hidden');
+    return; // no PIN set yet — skip setup on activation, user can turn it on later in Settings
   } else if (stored === 'disabled') {
     return; // PIN turned off — skip entirely
   } else {
@@ -3710,7 +3719,7 @@ function saveDaySnapshot(sealed) {
     sealed: sealed || S.todaySealed || false,
     completedTasks: focusTasks.filter(t => t.done).map(t => ({ text: t.text, cat: t.cat })),
     incompleteTasks: focusTasks.filter(t => !t.done).map(t => ({ text: t.text, cat: t.cat })),
-    wins: (S.wins || []).filter(w => new Date(w.date).toDateString() === S.todayDate).map(w => w.text),
+    wins: (S.wins || []).filter(w => localDateStr(new Date(w.date)) === S.todayDate).map(w => w.text),
     focusSessions: S.focusBlocksToday || 0,
     gotOutside: S.gotOutsideToday || false,
     note: S.todayNote || '',
@@ -4133,7 +4142,7 @@ function renderToday() {
     : '';
   const followUpNudges = getFollowUpNudges ? getFollowUpNudges() : [];
   const calContactNudges = getCalendarContactNudges();
-  const todayIso = new Date().toISOString().slice(0,10);
+  const todayIso = localDateStr(new Date());
 
   wrap.innerHTML = `
     ${(weekPlannerHtml || weekReviewHtml || weekGoalsPromptHtml) ? (() => {
@@ -4598,7 +4607,7 @@ function renderToday() {
       const areaKeys = Object.keys(areas);
       if (areaKeys.length === 0) return '';
       const today = todayLocal();
-      const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })();
+      const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return localDateStr(d); })();
       const areaStats = areaKeys.map(k => {
         const a = areas[k];
         const color = getAreaColor(k);
@@ -4849,7 +4858,7 @@ function removeFocusItem(id) {
 
 function completeRolledOverTask(id) {
   const t = S.tasks.find(x => x.id === id);
-  if (t) { t.done = true; t.doneAt = Date.now(); t.doneDate = new Date().toISOString().slice(0,10); gainXP(5); }
+  if (t) { t.done = true; t.doneAt = Date.now(); t.doneDate = localDateStr(new Date()); gainXP(5); }
   S.rolledOverTasks = (S.rolledOverTasks || []).filter(rid => rid !== id);
   save();
   renderToday();
@@ -4876,7 +4885,7 @@ function completeFocusTask(id, event) {
   const oldLv = getLvl(S.xp).num;
   task.done = true;
   task.doneAt = Date.now();
-  task.doneDate = new Date().toISOString().slice(0,10);
+  task.doneDate = localDateStr(new Date());
   gainXP(xp);
   S.totalDone++;
   if (S.doneBy[task.cat] !== undefined) S.doneBy[task.cat]++;
@@ -4891,7 +4900,7 @@ function completeFocusTask(id, event) {
       if (parent && !parent.done) {
         parent.done = true;
         parent.doneAt = Date.now();
-        parent.doneDate = new Date().toISOString().slice(0,10);
+        parent.doneDate = localDateStr(new Date());
         S.totalDone++;
         if (S.doneBy[parent.cat] !== undefined) S.doneBy[parent.cat]++;
         setTimeout(() => showToast('All steps done — project complete ✓'), 400);
@@ -4925,7 +4934,7 @@ function toggleOutside() {
   S.gotOutsideToday = true;
   S.totalOutside = (S.totalOutside || 0) + 1;
   if (!S.outsideLog) S.outsideLog = [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr(new Date());
   if (!S.outsideLog.includes(today)) S.outsideLog.push(today);
   gainXP(20);
   const outsideGoal = S.outsideGoal || 5;
@@ -5444,7 +5453,7 @@ function saveSkillSession(skillId) {
 
   skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
   if (!skill.sessionLog) skill.sessionLog = [];
-  skill.sessionLog.push({ date: new Date().toISOString().slice(0,10), notes });
+  skill.sessionLog.push({ date: localDateStr(new Date()), notes });
 
   const oldLevel = skill.level;
   skill.level = calcSkillLevel(skill.sessionsTotal);
@@ -6287,7 +6296,7 @@ function logAICoachSession() {
   }));
   const numCorrect = scored.filter(q => q.correct).length;
   skill.learningHistory.push({
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateStr(new Date()),
     score: `${numCorrect}/${questions.length}`,
     quizQuestions: scored,
     analysis: {
@@ -6300,7 +6309,7 @@ function logAICoachSession() {
   // Increment session
   skill.sessionsTotal = (skill.sessionsTotal || 0) + 1;
   if (!skill.sessionLog) skill.sessionLog = [];
-  skill.sessionLog.push({ date: new Date().toISOString().slice(0, 10), notes: `Your Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
+  skill.sessionLog.push({ date: localDateStr(new Date()), notes: `Your Coach: ${analysis.levelAssessment} — ${analysis.nextStep || ''}` });
 
   const oldLevel = skill.level;
   skill.level = calcSkillLevel(skill.sessionsTotal);
@@ -6541,7 +6550,7 @@ function renderCapacityBar() {
   const ws = getWeekStart();
   const wEnd = new Date(ws);
   wEnd.setDate(wEnd.getDate() + 6);
-  const wEndStr = wEnd.toISOString().slice(0, 10);
+  const wEndStr = localDateStr(wEnd);
 
   // Count leaf tasks only (parent containers excluded to avoid double-counting)
   const parentIds = new Set(S.tasks.filter(t => t.parentId).map(t => t.parentId));
@@ -7579,7 +7588,7 @@ function completeQuestTask(id, event) {
   const cat = CATS[task.cat];
   const xp = cat ? cat.xp : 15;
   const oldLv = getLvl(S.xp).num;
-  task.done = true; task.doneAt = Date.now(); task.doneDate = new Date().toISOString().slice(0,10);
+  task.done = true; task.doneAt = Date.now(); task.doneDate = localDateStr(new Date());
   gainXP(xp);
   S.totalDone++;
   trackEvent('task_complete', { cat: task.cat, pts: task.points || 1, isSubtask: !!task.parentId });
@@ -10478,7 +10487,7 @@ function renderProgress() {
   // ── This week pts ──
   const ws = getWeekStart();
   const wEnd = new Date(ws); wEnd.setDate(wEnd.getDate()+6);
-  const wEndStr = wEnd.toISOString().slice(0,10);
+  const wEndStr = localDateStr(wEnd);
   const ptsThisWeek = (S.tasks||[]).filter(t=>t.done&&t.doneDate&&t.doneDate>=ws&&t.doneDate<=wEndStr).reduce((s,t)=>s+(t.points||1),0);
 
   // ── Productivity insights ──
@@ -10894,7 +10903,7 @@ function getSuggestedUrgentIds() {
   const ws = getWeekStart();
   const wEnd = new Date(ws);
   wEnd.setDate(wEnd.getDate() + 6);
-  const wEndStr = wEnd.toISOString().slice(0, 10);
+  const wEndStr = localDateStr(wEnd);
   return new Set((S.tasks || []).filter(t => {
     if (t.done || t.parentId) return false;
     if (t.weekGoalIdx !== undefined && t.weekGoalIdx !== null) return true;
@@ -11109,10 +11118,10 @@ function getWeekStats() {
   const ws = getWeekStart();
   const wEnd = new Date(ws);
   wEnd.setDate(wEnd.getDate() + 6);
-  const wEndStr = wEnd.toISOString().slice(0,10);
+  const wEndStr = localDateStr(wEnd);
   const tasks = S.tasks.filter(t => {
     if (!t.done) return false;
-    const d = t.doneDate || (t.doneAt ? new Date(t.doneAt).toISOString().slice(0,10) : null);
+    const d = t.doneDate || (t.doneAt ? localDateStr(new Date(t.doneAt)) : null);
     return d && d >= ws && d <= wEndStr;
   });
   const weekFocusBlocks = (S.dailySnapshots || [])
@@ -12165,7 +12174,7 @@ function scheduleJobSearchTime() {
 // ── WORKOUT TRACKING ─────────────────────────────────────────
 function logWorkout() {
   if (S.workedOutToday) { showToast('Already logged for today ✓'); return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr(new Date());
   S.workedOutToday = true;
   if (!S.workoutLog) S.workoutLog = [];
   if (!S.workoutLog.includes(today)) S.workoutLog.push(today);
@@ -12250,7 +12259,7 @@ function getHabitStreak(log, goal, period) {
     const d = new Date(todayStr + 'T12:00:00');
     if (!hasToday) d.setDate(d.getDate() - 1); // start from yesterday if not yet done today
     while (true) {
-      const ds = d.toISOString().slice(0, 10);
+      const ds = localDateStr(d);
       if (!log.includes(ds)) break;
       streak++;
       d.setDate(d.getDate() - 1);
@@ -12665,7 +12674,7 @@ function autoLogHabitsFromTask(task) {
 }
 
 function toggleJournal() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr(new Date());
   if (S.journaledToday) {
     S.journaledToday = false;
     S.journalLog = (S.journalLog || []).filter(d => d !== today);
@@ -12691,7 +12700,7 @@ function checkWorkoutImport() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('workout') === 'logged') {
     window.history.replaceState({}, '', window.location.pathname);
-    const today = new Date().toISOString().slice(0,10);
+    const today = localDateStr(new Date());
     if (!S.workedOutToday) {
       S.workedOutToday = true;
       if (!S.workoutLog) S.workoutLog = [];
@@ -13574,7 +13583,7 @@ function releaseContactCadence(contactId, snooze) {
   if (!c) return;
   if (snooze) {
     const d = new Date(); d.setDate(d.getDate() + snooze);
-    c.nextContactDate = d.toISOString().slice(0, 10);
+    c.nextContactDate = localDateStr(d);
     c.followUpNote = c.followUpNote || '';
     showToast(`Snoozed ${snooze} days ✓`);
   } else {
@@ -13590,7 +13599,7 @@ function releaseContactCadence(contactId, snooze) {
 
 function hideNudgeTomorrow(contactId) {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tStr = tomorrow.toISOString().slice(0,10);
+  const tStr = localDateStr(tomorrow);
   const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
   hidden[contactId] = tStr;
   localStorage.setItem('showup_nudge_hidden', JSON.stringify(hidden));
@@ -13610,7 +13619,7 @@ function dismissFollowUpNudge(contactId) {
 function markContactedToday(contactId) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
-  c.lastContact = new Date().toISOString().slice(0,10);
+  c.lastContact = localDateStr(new Date());
   c.nextContactDate = '';
   c.followUpNote = '';
   save();
@@ -13619,10 +13628,10 @@ function markContactedToday(contactId) {
 }
 
 function getFollowUpNudges() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr(new Date());
   const twoDaysOut = new Date();
   twoDaysOut.setDate(twoDaysOut.getDate() + 2);
-  const cutoff = twoDaysOut.toISOString().slice(0,10);
+  const cutoff = localDateStr(twoDaysOut);
   const hidden = JSON.parse(localStorage.getItem('showup_nudge_hidden') || '{}');
   return (S.contacts || []).filter(c => {
     if (!c.nextContactDate || c.nextContactDate > cutoff) return false;
@@ -13651,7 +13660,7 @@ function snoozeNudge(contactId, days) {
   const c = S.contacts.find(x => x.id === contactId);
   if (!c) return;
   const d = new Date(); d.setDate(d.getDate() + days);
-  c.nudgeSnoozedUntil = d.toISOString().slice(0, 10);
+  c.nudgeSnoozedUntil = localDateStr(d);
   save();
   renderToday();
   const until = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -14346,7 +14355,11 @@ async function discoverRSSFeed(siteUrl) {
         }
       } catch(e) { /* skip */ }
     }
-    return null;
+    // Last resort: most sites don't publish a real feed, but Google News indexes almost
+    // everything — a site-scoped Google News search is itself a valid RSS feed, so this
+    // works even when the site has no feed of its own.
+    const domain = new URL(siteUrl).hostname.replace(/^www\./, '');
+    return `https://news.google.com/rss/search?q=site:${domain}&hl=en-US&gl=US&ceid=US:en`;
   } catch(e) {
     return null;
   }
@@ -14520,16 +14533,17 @@ function renderBriefing() {
   let digestHtml = '';
   if (hasApiKey) {
     const digest = S.briefingDigest?.text || '';
+    const digestDateStr = (d => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }))(S.briefingDigest?.generatedAt ? new Date(S.briefingDigest.generatedAt) : new Date());
     if (_briefingDigestLoading) {
       digestHtml = `
         <div style="margin-bottom:18px;border-left:3px solid var(--teal);padding:14px 0 14px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
-          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest</div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest for ${digestDateStr}</div>
           <div style="font-size:0.82rem;color:var(--text-dim);font-family:'DM Sans',sans-serif;">Synthesizing what's worth reading…</div>
         </div>`;
     } else if (digest) {
       digestHtml = `
         <div style="margin-bottom:18px;border-left:3px solid var(--teal);padding:14px 0 14px 16px;background:linear-gradient(90deg,rgba(58,147,129,0.04) 0%,transparent 100%);">
-          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest</div>
+          <div style="font-size:0.6rem;font-family:'Montserrat',sans-serif;letter-spacing:0.09em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Digest for ${digestDateStr}</div>
           <div style="font-size:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.6;">${escHtml(digest)}</div>
         </div>`;
     }
@@ -14726,7 +14740,7 @@ function exportData() {
   const blob = new Blob([json], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
+  const date = localDateStr(new Date());
   a.href = url;
   a.download = `showup-data-${date}.json`;
   a.click();
@@ -15531,7 +15545,7 @@ async function _doFetchJobEmails() {
       return { id: m.id, subject: get('Subject'), from: get('From'), date: get('Date'), snippet: d.snippet || '' };
     }));
 
-    localStorage.setItem('showup_job_emails', JSON.stringify({ fetchedAt: new Date().toISOString().slice(0,10), emails }));
+    localStorage.setItem('showup_job_emails', JSON.stringify({ fetchedAt: localDateStr(new Date()), emails }));
     _jobInboxOpen = true;
     renderToday();
     showToast(`${emails.length} job email${emails.length !== 1 ? 's' : ''} loaded`);
