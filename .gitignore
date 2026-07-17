@@ -21,3 +21,6 @@ Icon?
 
 # Claude Code worktree bookkeeping (local-only, never track as submodules)
 .claude/worktrees/
+
+# Business/legal drafts — not app code, not for the public repo
+tester-nda-draft.md

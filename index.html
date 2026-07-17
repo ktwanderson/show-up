@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.35',
+        release: 'show-up@0.36',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2794,6 +2794,16 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.36',
+    date: '2026-07-17',
+    items: [
+      'Fixed "Couldn\'t parse response" errors when Your Coach generates diagnostic questions — increased the response budget and made the underlying JSON parsing more robust',
+      'Q Bank moved from Network to the Coach tab, alongside Skills',
+      'Account: new toggle to turn off the weekly journal reflection prompt',
+      'Read tab: "Manage sources" now has an optional focus topics field — the digest will specifically call out topics you tell it you care about (e.g. measurement, CTV, attribution)',
+    ],
+  },
+  {
     version: '0.35',
     date: '2026-07-16',
     items: [
@@ -3456,6 +3466,7 @@ let _pipelineDigestView = {}; // id → { notes, prep, debrief } → 'raw' | 'di
 let _pipelineCollapsed = {}; // section key → bool
 let networkView = 'people';
 let focusView = 'timer';
+let coachView = 'skills';
 let _focusWrapId = 'focus-wrap';
 let _pendingImportRows = null;
 let _emailDraftRetry = null; // stores last {type, channel, goal} for "Try again"
@@ -3629,6 +3640,13 @@ function disablePin() {
 function enablePin() {
   localStorage.removeItem(PIN_KEY);
   changePin();
+}
+
+function toggleJournalPrompt() {
+  S.journalPromptDisabled = !S.journalPromptDisabled;
+  save();
+  if (typeof renderAccount === 'function') renderAccount();
+  if (currentTab === 'today') renderToday();
 }
 
 // Timer — not persisted
@@ -4049,6 +4067,7 @@ function updateHeader() {
 
 // ── WEEKLY PROMPTS ───────────────────────────────────────────
 function ensureWeekPrompt() {
+  if (S.journalPromptDisabled) return;
   const weekStart = getWeekStart();
   if (S.lastPromptWeek !== weekStart) {
     S.lastPromptWeek = weekStart;
@@ -4378,6 +4397,7 @@ function renderToday() {
 
     ${(() => {
       if (isRest) return '';
+      if (S.journalPromptDisabled) return '';
       const weekReflection = getThisWeekReflection();
       const alreadyAnswered = weekReflection && weekReflection.answer && !weekReflection.dismissed;
       if (alreadyAnswered) return '';
@@ -5330,10 +5350,15 @@ function renderFocusTimer() {
   const wrap = document.getElementById(_focusWrapId);
   if (!wrap) return;
 
-  // Coach tab: always show Skills directly, no timer/history here
+  // Coach tab: Skills / Q Bank sub-views
   if (_focusWrapId === 'focus-wrap') {
-    wrap.innerHTML = '<div></div>';
-    renderSkills();
+    const coachToggleHTML = `<div style="display:flex;gap:20px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:20px;">
+      <button class="view-toggle-btn ${coachView!=='qbank'?'active':''}" onclick="coachView='skills';renderFocusTimer()">Skills</button>
+      <button class="view-toggle-btn ${coachView==='qbank'?'active':''}" onclick="coachView='qbank';renderFocusTimer()">Q Bank</button>
+    </div>`;
+    wrap.innerHTML = `<div>${coachToggleHTML}</div>`;
+    if (coachView === 'qbank') { renderQuestionBank(); _stickyNetBar(); }
+    else renderSkills();
     return;
   }
 
@@ -5825,6 +5850,29 @@ async function fetchViaProxy(targetUrl, timeoutMs = 10000) {
   }
 }
 
+// Finds the first {...} or [...] in text and returns its exact matching-bracket span by
+// tracking nesting depth (ignoring brackets inside string literals) — more robust than a
+// greedy regex, which can either overshoot to an unrelated bracket later in the model's
+// prose, or fail to match at all on truncated output.
+function extractFirstJSONBlock(text) {
+  const startMatch = text.match(/[\{\[]/);
+  if (!startMatch) return null;
+  const start = startMatch.index;
+  const openChar = text[start];
+  const closeChar = openChar === '{' ? '}' : ']';
+  let depth = 0, inString = false, escapeNext = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null; // never closed — likely truncated
+}
+
 async function callClaude(prompt, options = {}) {
   if (!firebaseUser) {
     return { error: 'no_auth', message: 'Sign in to use AI features.' };
@@ -5854,10 +5902,10 @@ async function callClaude(prompt, options = {}) {
     }
     const text = data.content?.[0]?.text || '';
     // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-    if (jsonMatch) {
+    const jsonStr = extractFirstJSONBlock(text);
+    if (jsonStr) {
       try {
-        return { ok: true, text, json: JSON.parse(jsonMatch[0]) };
+        return { ok: true, text, json: JSON.parse(jsonStr) };
       } catch (e) {
         return { ok: true, text, json: null };
       }
@@ -6125,7 +6173,7 @@ Return ONLY valid JSON, no other text:
 
 IMPORTANT: "correctAnswer" must be an exact string match to one of the values in "options".`;
 
-  const result = await callClaude(prompt);
+  const result = await callClaude(prompt, { maxTokens: 2000 });
 
   if (result.error) {
     showModal(`
@@ -6139,7 +6187,13 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
     return;
   }
 
-  const questions = Array.isArray(result.json) ? result.json : null;
+  // Models sometimes wrap the requested array in a named object property (e.g.
+  // {"questions": [...]}) despite being told to return only the bare array — accept that too.
+  let questions = Array.isArray(result.json) ? result.json : null;
+  if (!questions && result.json && typeof result.json === 'object') {
+    const arrayProp = Object.values(result.json).find(v => Array.isArray(v));
+    if (arrayProp) questions = arrayProp;
+  }
   if (!questions || questions.length === 0) {
     showModal(`<div style="text-align:left;"><div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Montserrat',sans-serif;">Couldn't parse response</div><button onclick="startContinuationSession(${skillId})" style="width:100%;padding:10px;background:var(--amber);color:var(--text-inverse);border:none;border-radius:2px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button></div>`);
     return;
@@ -6259,7 +6313,7 @@ Return ONLY valid JSON, no other text:
 
 IMPORTANT: "correctAnswer" must be an exact string match to one of the values in "options".`;
 
-  const result = await callClaude(prompt);
+  const result = await callClaude(prompt, { maxTokens: 2000 });
 
   if (result.error) {
     showModal(`
@@ -6273,7 +6327,13 @@ IMPORTANT: "correctAnswer" must be an exact string match to one of the values in
     return;
   }
 
-  const questions = Array.isArray(result.json) ? result.json : null;
+  // Models sometimes wrap the requested array in a named object property (e.g.
+  // {"questions": [...]}) despite being told to return only the bare array — accept that too.
+  let questions = Array.isArray(result.json) ? result.json : null;
+  if (!questions && result.json && typeof result.json === 'object') {
+    const arrayProp = Object.values(result.json).find(v => Array.isArray(v));
+    if (arrayProp) questions = arrayProp;
+  }
   if (!questions || questions.length === 0) {
     showModal(`
       <div style="text-align:left;">
@@ -9080,19 +9140,21 @@ let _qbOpenId = null;
 let _pendingBulkImport = null; // holds extracted items between preview and confirm
 
 function renderQuestionBank() {
-  const container = document.getElementById('networkContent');
+  const wrap = document.getElementById('focus-wrap');
+  if (!wrap) return;
+  const container = wrap.querySelector('div');
   if (!container) return;
   const bank = (S.questionBank || []);
   const iI = `background:var(--surface2);border:none;border-radius:2px;padding:7px 10px;font-size:0.8rem;font-family:'DM Sans',sans-serif;color:var(--text);width:100%;outline:none;box-sizing:border-box;`;
   const filterTabs = ['all','Behavioral','Technical','Ad Tech','Strategy','To Practice'];
   const tabsHTML = filterTabs.map(t => {
     const isActive = _qbFilter === t;
-    return `<button onclick="_qbFilter=${JSON.stringify(t)};renderNetwork()" style="background:none;border:none;border-bottom:2px solid ${isActive?'var(--amber)':'transparent'};padding:6px 2px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isActive?'var(--text)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${t}</button>`;
+    return `<button onclick="_qbFilter=${JSON.stringify(t)};renderFocusTimer()" style="background:none;border:none;border-bottom:2px solid ${isActive?'var(--amber)':'transparent'};padding:6px 2px;font-size:0.72rem;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;color:${isActive?'var(--text)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;">${t}</button>`;
   }).join('');
   let html = `
     <div class="net-sticky-bar">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
-        <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;clearTimeout(window._qbDebounce);window._qbDebounce=setTimeout(()=>{const _p=this.selectionStart;renderNetwork();const _si=document.getElementById('qb-search');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="${iI}max-width:200px;">
+        <input id="qb-search" value="${escHtml(_qbSearch)}" placeholder="Search questions…" oninput="_qbSearch=this.value;clearTimeout(window._qbDebounce);window._qbDebounce=setTimeout(()=>{const _p=this.selectionStart;renderFocusTimer();const _si=document.getElementById('qb-search');if(_si){_si.focus();try{_si.setSelectionRange(_p,_p);}catch(e){}}},120);" style="${iI}max-width:200px;">
         <div style="display:flex;gap:10px;flex-shrink:0;">
           <button onclick="openBulkQBankImport()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-dim)'">✦ Bulk import</button>
           <button onclick="openAddToQuestionBank()" style="background:none;border:none;color:var(--text-dim);font-size:0.74rem;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;padding:0;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='var(--text-dim)'">+ Add</button>
@@ -9118,7 +9180,7 @@ function renderQuestionBank() {
     const tagsHTML = (q.tags||[]).map(t => `<span style="display:inline-block;background:var(--surface2);border-radius:2px;padding:2px 7px;font-size:0.68rem;color:var(--text-dim);margin:0 3px 3px 0;font-family:'Montserrat',sans-serif;">${escHtml(t)}</span>`).join('');
     const answerPreview = q.answer ? escHtml(q.answer.slice(0,100)) + (q.answer.length>100?'…':'') : '';
     html += `<div style="border-bottom:1px solid var(--border);">
-      <div onclick="_qbOpenId=${isOpen?'null':q.id};renderNetwork()" style="padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+      <div onclick="_qbOpenId=${isOpen?'null':q.id};renderFocusTimer()" style="padding:12px 0;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
         <div style="font-size:0.84rem;color:var(--text);line-height:1.4;margin-bottom:5px;">${escHtml(q.question||'')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:${answerPreview&&!isOpen?'4':'0'}px;">${tagsHTML}</div>
         ${q.role||q.company ? `<div style="font-size:0.7rem;color:var(--text-dim);">${[q.role,q.company].filter(Boolean).map(escHtml).join(' · ')}</div>` : ''}
@@ -9180,7 +9242,7 @@ function saveToQuestionBank() {
   S.questionBank.push({ id: S.nextQuestionBankId++, question, answer, tags, role, company, date: new Date().toISOString() });
   save();
   closeModal();
-  if (networkView === 'qbank') renderNetwork();
+  if (coachView === 'qbank') renderFocusTimer();
 }
 
 function openQBankFromPipeline(pipelineId) {
@@ -9192,7 +9254,7 @@ function deleteFromQuestionBank(id) {
   S.questionBank = (S.questionBank||[]).filter(q => q.id !== id);
   _qbOpenId = null;
   save();
-  if (networkView === 'qbank') renderNetwork();
+  if (coachView === 'qbank') renderFocusTimer();
 }
 
 function openBulkQBankImport() {
@@ -9304,8 +9366,8 @@ function confirmBulkQBankImport() {
   _pendingBulkImport = null;
   save();
   closeModal();
-  networkView = 'qbank';
-  renderNetwork();
+  coachView = 'qbank';
+  renderFocusTimer();
   showToast(items.length + ' questions added to Q Bank ✓');
 }
 
@@ -14227,7 +14289,6 @@ function renderNetwork() {
     <button class="view-toggle-btn ${networkView==='people'?'active':''}" onclick="networkView='people';renderNetwork()">People</button>
     <button class="view-toggle-btn ${networkView==='pipeline'?'active':''}" onclick="networkView='pipeline';renderNetwork()">Pipeline</button>
     <button class="view-toggle-btn ${networkView==='companies'?'active':''}" onclick="networkView='companies';renderNetwork()">Companies</button>
-    <button class="view-toggle-btn ${networkView==='qbank'?'active':''}" onclick="networkView='qbank';renderNetwork()">Q Bank</button>
     <button class="view-toggle-btn ${networkView==='rejections'?'active':''}" onclick="networkView='rejections';renderNetwork()">Rejections</button>
   </div>`;
 
@@ -14240,13 +14301,6 @@ function renderNetwork() {
   if (networkView === 'companies') {
     wrap.innerHTML = `<div id="networkContent">${toggleHTML}</div>`;
     renderCompanies();
-    _stickyNetBar();
-    return;
-  }
-
-  if (networkView === 'qbank') {
-    wrap.innerHTML = `<div id="networkContent">${toggleHTML}</div>`;
-    renderQuestionBank();
     _stickyNetBar();
     return;
   }
@@ -14821,14 +14875,18 @@ async function fetchBriefingArticles(force) {
 async function generateBriefingDigest(articles) {
   if (!firebaseUser || articles.length === 0) return null;
 
-  const signature = articles.slice(0, 20).map(a => a.title).join('|').slice(0, 500);
+  const focusTopics = (S.briefingFocusTopics || '').trim();
+  const signature = (articles.slice(0, 20).map(a => a.title).join('|') + '||' + focusTopics).slice(0, 500);
   const existing = S.briefingDigest;
   if (existing && existing.articleSignature === signature && (Date.now() - existing.generatedAt) < 12 * 60 * 60 * 1000) {
     return existing.text;
   }
 
   const list = articles.slice(0, 20).map((a, i) => `${i + 1}. [${a.sourceName}] ${a.title} — ${a.description}`).join('\n');
-  const prompt = `Here are recent headlines from industry trade publications:\n\n${list}\n\nIn 3-4 sentences, synthesize what's actually worth paying attention to here and why — for someone job searching in media/advertising/tech who wants to stay informed without doom-scrolling. Be specific, reference actual stories by name. No generic statements like "the industry continues to evolve." If nothing stands out, say so plainly. Write in plain prose, no bullet points, no markdown formatting.`;
+  const focusLine = focusTopics
+    ? ` This person has said they especially care about: ${focusTopics}. If any of today's headlines touch on those, call them out specifically and explain why they matter — don't bury them in the general synthesis.`
+    : '';
+  const prompt = `Here are recent headlines from industry trade publications:\n\n${list}\n\nIn 3-4 sentences, synthesize what's actually worth paying attention to here and why — for someone job searching in media/advertising/tech who wants to stay informed without doom-scrolling.${focusLine} Be specific, reference actual stories by name. No generic statements like "the industry continues to evolve." If nothing stands out, say so plainly. Write in plain prose, no bullet points, no markdown formatting.`;
 
   const result = await callClaude(prompt, { maxTokens: 300 });
   if (result.error) return null;
@@ -14836,6 +14894,13 @@ async function generateBriefingDigest(articles) {
   S.briefingDigest = { text: result.text.trim(), generatedAt: Date.now(), articleSignature: signature };
   save();
   return result.text.trim();
+}
+
+function saveBriefingFocusTopics() {
+  const input = document.getElementById('briefing-focus-topics');
+  if (!input) return;
+  S.briefingFocusTopics = input.value.trim();
+  save();
 }
 
 function toggleBriefingSource(id) {
@@ -15001,6 +15066,11 @@ function renderBriefingSettings() {
         <button id="briefing-add-btn" onclick="addBriefingSource()" style="padding:7px 12px;border:none;background:var(--text);color:var(--surface);border-radius:2px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Add</button>
       </div>
       <div id="briefing-add-error" style="display:none;font-size:0.72rem;color:var(--red);margin-top:6px;"></div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Focus topics (optional)</div>
+        <input id="briefing-focus-topics" type="text" value="${escHtml(S.briefingFocusTopics || '')}" placeholder="e.g. measurement, CTV, attribution" onblur="saveBriefingFocusTopics()" style="width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:var(--surface2);color:var(--text);font-size:0.78rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:5px;line-height:1.5;">The digest will specifically call these out when they show up in today's headlines, on top of its usual synthesis.</div>
+      </div>
       <div style="margin-top:16px;">
         <div style="font-size:0.62rem;font-family:'Montserrat',sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Suggested sources</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -15850,6 +15920,16 @@ function renderAccount() {
           ? `<a href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;text-decoration:none;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">Share feedback →</a>`
           : `<span style="flex-shrink:0;font-size:0.68rem;color:var(--text-dim);font-family:'Montserrat',sans-serif;letter-spacing:0.04em;">Coming soon</span>`
         }
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:24px;margin-bottom:28px">
+      <div class="card-label" style="margin-bottom:16px">Journal</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:0.84rem;color:var(--text);font-weight:500">Weekly reflection prompt</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">${S.journalPromptDisabled ? 'Off — the Today tab won\'t ask a weekly question.' : 'A reflective question appears on Today once a week.'}</div>
+        </div>
+        <button onclick="toggleJournalPrompt()" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em">${S.journalPromptDisabled ? 'Turn on' : 'Turn off'}</button>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:24px">
