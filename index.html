@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.36',
+        release: 'show-up@0.37',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2794,6 +2794,13 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNw
 
 const RELEASE_NOTES = [
   {
+    version: '0.37',
+    date: '2026-07-22',
+    items: [
+      'Fixed a rare bug where switching into demo/preview mode right after a save could overwrite your real synced data with the demo data — pending saves now check before writing',
+    ],
+  },
+  {
     version: '0.36',
     date: '2026-07-17',
     items: [
@@ -3775,6 +3782,7 @@ function save() {
   if (firebaseUser && firebaseDb && !_syncPaused) {
     clearTimeout(_saveTimeout);
     _saveTimeout = setTimeout(() => {
+      if (_inSandbox) return; // mode may have switched to sandbox during the debounce window — don't upload demo state
       firebaseDb.ref(`users/${firebaseUser.uid}/state`).set(S).catch(err => {
         console.error('Firebase save failed:', err);
       });
