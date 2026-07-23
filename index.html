@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.37',
+        release: 'show-up@0.38',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2793,6 +2793,13 @@ const FEATURE_FLAGS = {
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog';
 
 const RELEASE_NOTES = [
+  {
+    version: '0.38',
+    date: '2026-07-22',
+    items: [
+      'Fixed a bug where reinstating a withdrawn or rejected opportunity into a new interview round could carry over prep and debrief notes from the round before it, instead of starting blank',
+    ],
+  },
   {
     version: '0.37',
     date: '2026-07-22',
@@ -9387,8 +9394,11 @@ function updatePipelineStage(id, stage) {
     if (!e.stageHistory.find(h => h.stage === stage)) {
       e.stageHistory.push({ stage, date: todayLocal() });
     }
-    // Archive current prep/debrief when advancing between interview stages
-    if (INTERVIEW_STAGE_KEYS.has(e.stage) && INTERVIEW_STAGE_KEYS.has(stage)) {
+    // Archive current prep/debrief whenever leaving an interview stage with data —
+    // not just when advancing to another interview stage. Otherwise a withdrawn/rejected
+    // detour (neither in INTERVIEW_STAGE_KEYS) skips the archive on both legs of the trip,
+    // and notes from the stage before the detour bleed into the next round after reinstatement.
+    if (INTERVIEW_STAGE_KEYS.has(e.stage)) {
       const hasData = e.prepPeople || e.prepQuestions || e.prepStories || e.prepAsk ||
                       e.debriefWentWell || e.debriefImprove || e.debriefFollowUp || e.debriefGutRead;
       if (hasData) {
