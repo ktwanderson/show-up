@@ -10,7 +10,7 @@
     Sentry.onLoad(function() {
       Sentry.init({
         environment: window.location.hostname.includes('netlify') ? 'staging' : 'production',
-        release: 'show-up@0.38',
+        release: 'show-up@0.39',
         ignoreErrors: [
           // iOS Safari bug: Firebase's internal IndexedDB cache fires this when the browser suspends the page
           'Attempt to get records from database without an in-progress transaction',
@@ -2474,6 +2474,7 @@ const LEVELS = [
 // Realistic "coach only" user shown during preview mode.
 // Completely isolated — never written to localStorage.
 const SANDBOX_DEMO_STATE = {
+  _sandbox: true, // self-identifying marker — checked at the Firebase write choke point independent of the _inSandbox flag
   userName: 'Demo',
   mode: 'coach',
   xp: 1180,
@@ -2567,6 +2568,7 @@ const SANDBOX_DEMO_STATE = {
 
 // ── SANDBOX DEMO STATE (FULL — Coach + Job Seeker) ────────────
 const SANDBOX_DEMO_STATE_FULL = {
+  _sandbox: true, // self-identifying marker — checked at the Firebase write choke point independent of the _inSandbox flag
   userName: 'Demo',
   mode: 'jobseeker',
   xp: 2680,
@@ -2792,7 +2794,19 @@ const FEATURE_FLAGS = {
 // version must match the Sentry release string in the <head>.
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIUXNp7PTNwMIFyrfWUV9E_uNj2lUhYLDgAuQa3Pwj5jCNBA/viewform?usp=dialog';
 
+// Demo/preview mode is a dev tool for recording walkthroughs, not a feature for regular
+// users — gated to this account only, both in the UI (hides the buttons) and inside
+// enterSandbox() itself (defense in depth against calling it directly).
+const DEMO_MODE_ADMIN_EMAIL = 'kendra.t.anderson@gmail.com';
+
 const RELEASE_NOTES = [
+  {
+    version: '0.39',
+    date: '2026-07-23',
+    items: [
+      'Demo/preview mode is now restricted to the app owner\'s account and its sample data lives in its own separate backend record, instead of being reachable by any signed-in user',
+    ],
+  },
   {
     version: '0.38',
     date: '2026-07-22',
@@ -3783,13 +3797,17 @@ function loadState() {
 }
 
 function save() {
-  if (_inSandbox) return;  // never write sandbox state to real storage
+  if (_inSandbox || S._sandbox) return;  // never write sandbox state to real storage
   S.lastModified = Date.now();
   localStorage.setItem('jhc3', JSON.stringify(S));
   if (firebaseUser && firebaseDb && !_syncPaused) {
     clearTimeout(_saveTimeout);
     _saveTimeout = setTimeout(() => {
-      if (_inSandbox) return; // mode may have switched to sandbox during the debounce window — don't upload demo state
+      // Re-check independently of the flag: mode may have switched to sandbox during the
+      // debounce window, or the flag and the in-memory state could desync some other way.
+      // S._sandbox is a marker baked into the demo data itself, so this catches that case
+      // even if a future change forgets to re-check _inSandbox here.
+      if (_inSandbox || S._sandbox) return;
       firebaseDb.ref(`users/${firebaseUser.uid}/state`).set(S).catch(err => {
         console.error('Firebase save failed:', err);
       });
@@ -11969,25 +11987,51 @@ function saveMode(newMode) {
 
 function enterSandbox(demoMode) {
   if (_inSandbox) return;
+  // Demo mode is a dev tool for recording walkthroughs, not a feature for regular users —
+  // bail even if this got called directly (e.g. from the console) by a non-admin account.
+  if (!firebaseUser || firebaseUser.email !== DEMO_MODE_ADMIN_EMAIL) return;
   flushTabTime(); // bank the last real-mode segment before _inSandbox flips
   save(); // must persist before S gets replaced by the demo state below, or this flush is lost
-  _inSandbox = true;
-  _spoofDate = null;
-  const baseState = (demoMode === 'full') ? SANDBOX_DEMO_STATE_FULL : SANDBOX_DEMO_STATE;
-  S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, baseState));
-  const banner = document.getElementById('sandbox-banner');
-  if (banner) {
-    banner.style.display = 'flex';
-    document.body.style.paddingTop = '44px';
-    const lbl = document.getElementById('sandbox-mode-label');
-    if (lbl) lbl.textContent = demoMode === 'full' ? 'Coach + Job Seeker preview' : 'Coach-only preview';
-    const inp = document.getElementById('spoof-date-input');
-    if (inp) inp.value = todayLocal();
-  }
-  focusView = 'skills';
-  currentTab = 'focus';
-  updateTabVisibility();
-  switchTab(demoMode === 'full' ? 'today' : 'focus');
+
+  const fallback = (demoMode === 'full') ? SANDBOX_DEMO_STATE_FULL : SANDBOX_DEMO_STATE;
+
+  const applyDemoState = (baseState) => {
+    _inSandbox = true;
+    _spoofDate = null;
+    S = normalizeStateArrays(Object.assign({}, DEFAULT_STATE, baseState));
+    const banner = document.getElementById('sandbox-banner');
+    if (banner) {
+      banner.style.display = 'flex';
+      document.body.style.paddingTop = '44px';
+      const lbl = document.getElementById('sandbox-mode-label');
+      if (lbl) lbl.textContent = demoMode === 'full' ? 'Coach + Job Seeker preview' : 'Coach-only preview';
+      const inp = document.getElementById('spoof-date-input');
+      if (inp) inp.value = todayLocal();
+    }
+    focusView = 'skills';
+    currentTab = 'focus';
+    updateTabVisibility();
+    switchTab(demoMode === 'full' ? 'today' : 'focus');
+  };
+
+  // The demo dataset now lives as its own Firebase entity (users/{uid}/demoState/{mode}) —
+  // separate from this account's real state — rather than only existing as hardcoded JS.
+  // First run seeds it from the built-in fallback; after that, Firebase is the source of
+  // truth, editable independent of a code deploy.
+  if (!firebaseDb) { applyDemoState(fallback); return; }
+  const demoRef = firebaseDb.ref(`users/${firebaseUser.uid}/demoState/${demoMode}`);
+  demoRef.once('value', (snapshot) => {
+    const stored = snapshot.val();
+    if (stored) {
+      applyDemoState(stored);
+    } else {
+      demoRef.set(fallback).catch(err => console.error('Demo state seed failed:', err));
+      applyDemoState(fallback);
+    }
+  }, (err) => {
+    console.error('Demo state load failed:', err);
+    applyDemoState(fallback);
+  });
 }
 
 function exitSandbox() {
@@ -15559,6 +15603,7 @@ function renderAccount() {
             </div>
           </label>`).join('')}
       </div>
+      ${firebaseUser && firebaseUser.email === DEMO_MODE_ADMIN_EMAIL ? `
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;">
         <div style="font-size:0.72rem;color:var(--text-dim);">Load a demo account — your real data stays untouched.</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -15575,7 +15620,7 @@ function renderAccount() {
           </div>
           <button onclick="enterSandbox('full')" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-mid);font-size:0.72rem;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.04em;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">◆ Preview →</button>
         </div>
-      </div>
+      </div>` : ''}
     </div>`;
 
   wrap.innerHTML = whatsNewSection + nameSection + modeSection + `
